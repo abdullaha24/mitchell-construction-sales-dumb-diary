@@ -384,3 +384,32 @@ function checkDetails_(input, current, choices) {
   if (changes.length === 0) return fail_('Nothing to save.');
   return { ok: true, fields, changes };
 }
+
+/**
+ * A yyyy-MM-dd day the way the salesman reads it: "12 Nov".
+ * @param {string} key
+ */
+function shortDay_(key) {
+  const [, month, day] = key.split('-').map(Number);
+  return `${day} ${MONTH_NAMES[month - 1].slice(0, 3)}`;
+}
+
+/**
+ * Checks a Snooze (spec 007, owner P6-1) against the site as it is now. Never trusts the page.
+ * Only the three buttons, counted from today; only an open site. `already` is true when the
+ * site's follow-up is already on or after that day: a snooze never brings a follow-up earlier.
+ * @param {any} input { followUp: 'tomorrow' | '3days' | '1week' }
+ * @param {CurrentSite} current
+ * @param {string} todayKey yyyy-MM-dd today in Pakistan
+ * @returns {{ ok: true, followUp: string, already: boolean } | Failure}
+ */
+function checkSnooze_(input, current, todayKey) {
+  if (!input || typeof input !== 'object') return fail_('Something went wrong. Try again.');
+  const choice = input.followUp;
+  if (typeof choice !== 'string' || !Object.prototype.hasOwnProperty.call(FOLLOW_UP_DAYS, choice)) {
+    return fail_('Tap Tomorrow, 3 days or 1 week.');
+  }
+  if (CLOSED_STAGES.includes(current.stage)) return fail_('Won and Lost sites have no follow-up.');
+  const followUp = addDays_(todayKey, FOLLOW_UP_DAYS[choice]);
+  return { ok: true, followUp, already: !!current.followUp && current.followUp >= followUp };
+}

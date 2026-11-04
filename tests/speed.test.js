@@ -77,6 +77,12 @@ test('a save opens Sales Diary once, not Meta-Data, and reads each tab once', ()
   assert.deepEqual(update.opens, ['diary']);
   assert.deepEqual(update.reads, { Links: 1, Sites: 1, Activity: 1, Lists: 1 });
 
+  const snooze = w.cost(() => w.s.repSnoozeSite(RIA, 'S000001', { followUp: '1week' }));
+  assert.equal(snooze.result.ok, true);
+  assert.equal(snooze.result.notice, undefined, 'it really moved the date');
+  assert.deepEqual(snooze.opens, ['diary']);
+  assert.deepEqual(snooze.reads, { Links: 1, Sites: 1, Activity: 1 }, 'a snooze needs no pick-lists (spec 007)');
+
   const edit = w.cost(() => w.s.repEditSite(RIA, 'S000001', { name: 'F-11 B', buyerType: 'Dealer', phone: '923001234567' }));
   assert.equal(edit.result.ok, true, edit.result.message);
   assert.deepEqual(edit.opens, ['diary']);
@@ -101,7 +107,7 @@ test('opening his page costs one Sales Diary open and one read of Links, Sites a
 
 test('junk codes cost nothing: no sheet is opened', () => {
   const w = world();
-  for (const call of [() => w.s.repAddSite('junk', {}), () => w.s.repUpdateSite('junk', 'S000001', {}), () => w.s.repLoad(undefined)]) {
+  for (const call of [() => w.s.repAddSite('junk', {}), () => w.s.repUpdateSite('junk', 'S000001', {}), () => w.s.repSnoozeSite('junk', 'S000001', {}), () => w.s.repLoad(undefined)]) {
     const result = w.cost(() => { try { call(); } catch (e) { return e.message; } return ''; });
     assert.equal(result.result, "This link doesn't work. Ask the owner for a new one.");
     assert.deepEqual(result.opens, []);

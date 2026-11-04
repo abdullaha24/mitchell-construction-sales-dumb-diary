@@ -114,7 +114,7 @@ One row per change. **Never edited or deleted by the app.**
 | `timestamp` | | Server time. |
 | `rep` | RIA | Who made the change. |
 | `site_id` | `S000123` | |
-| `action` | stage_change | `created` (new site; since spec 005 with the stage it started at and its value, terms, reason and note), `stage_change` (with `from_stage` / `to_stage`), `update` (same stage: value, note or follow-up), `details` (Edit details: `note` lists what changed, with the old → new number). |
+| `action` | stage_change | `created` (new site; since spec 005 with the stage it started at and its value, terms, reason and note), `stage_change` (with `from_stage` / `to_stage`), `update` (same stage: value, note or follow-up), `details` (Edit details: `note` lists what changed, with the old → new number), `snooze` (spec 007: the follow-up pushed from the card; `next_followup` = the new date, other detail columns blank; not counted as work). |
 | `from_stage` | Sample / Trial | Blank if not a stage change. |
 | `to_stage` | Rate Quoted | |
 | `value_rs` | 450000 | If given. |
@@ -151,12 +151,6 @@ Starting contents (filled in by phase 1 setup, only when a list has no rows yet)
 | --- | --- | --- |
 | Script Properties | `salesmen` | The salesmen list from `Rep_Mapping` (codes and regions only), **each current salesman's `Rep-Targets` amount for this month and next month** (as `RIA\|yyyy-MM`: whole Rs., spec 006, so the 1st of a month rolls over without a refresh), and when it was read. Used for 24 hours, then read again (a copy without targets, from before spec 006, is read again at once); **Sales Diary → Refresh salesmen & targets**, Check setup and the Links window refresh it at once (specs 005, 006). Script Properties can only be seen by the script's owner. A salesman's page receives only his own target for this month. |
 | Script cache | `save:<rep>:<saveId>` | What a save did, for 6 hours, so a repeat after a lost reply isn't saved twice (specs 003–005). |
-
-## Proposed changes (not in the code yet)
-
-[Spec 007](../specs/007-card-helpers-areas.md), being built:
-- `Activity`: new `action` value **`snooze`** (`next_followup` = the new date; other detail
-  columns blank).
 
 ## Not modelled yet
 - Multiple contacts per site (v1: one).

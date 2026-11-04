@@ -496,6 +496,42 @@ function saveDetails_(diary, salesman, siteId, input, now, saveId) {
 }
 
 /**
+ * Saves a Snooze (spec 007) for one of his sites, **inside the lock**, against the row as it is
+ * at that moment: only `next_followup` and `updated_at`, plus one `snooze` row in `Activity`.
+ * Never `worked_at` (a snooze is not work on the site: going cold keeps counting, owner P6-2),
+ * `note_at`, the note, stage or value. A follow-up already on or after the day is left alone.
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} diary
+ * @param {{ rep: string, region: string }} salesman
+ * @param {any} siteId
+ * @param {any} input what the page sent
+ * @param {Date} now
+ * @param {string} saveId
+ * @returns {SaveOutcome} result: { ok: true, site, notice? } or { ok: false, message }
+ */
+function saveSnooze_(diary, salesman, siteId, input, now, saveId) {
+  return oncePerSave_(salesman.rep, saveId, fingerprintOf_(siteId, input), 'redo', () => {
+    const sites = readTab_(diary, DIARY_TABS.sites);
+    const activity = readTab_(diary, DIARY_TABS.activity);
+    const row = hisRow_(sites, siteId, salesman.rep);
+    const before = currentSiteOf_(row);
+    const checked = checkSnooze_(input, before, dayKey_(now));
+    if (!checked.ok) return checked;
+    if (checked.already) {
+      // Nothing to write (e.g. he snoozed it on another phone): he gets the card as it is.
+      return { ok: true, site: cardOf_(row), notice: `Follow-up is already ${shortDay_(before.followUp)}.` };
+    }
+    const followUp = dayStart_(checked.followUp);
+    const cells = { next_followup: followUp, updated_at: now };
+    setCells_(sites, row._row, cells);
+    appendRows_(activity.sheet, [rowFor_(activity.columns, textify_({
+      activity_id: nextId_(activity.rows.map((r) => r.activity_id), 'A', 7),
+      timestamp: now, rep: salesman.rep, site_id: siteId, action: 'snooze', next_followup: followUp,
+    }))]);
+    return { ok: true, site: cardOf_({ ...row, ...cells }) };
+  });
+}
+
+/**
  * What a save sent, as text: tells a plain repeat from a resend with different content.
  * @param {any} siteId
  * @param {any} input

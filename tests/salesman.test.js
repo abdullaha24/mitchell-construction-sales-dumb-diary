@@ -328,7 +328,8 @@ test('a busy lock says "Busy right now", not something that reads like no signal
 
 test("Google's own error text never reaches a salesman: only our plain messages", () => {
   const w = world({ diaryOpens: false });
-  for (const call of [() => w.s.repLoad(RIA), () => w.s.repCheckPhone(RIA, '03001234567'), () => w.s.repAddSite(RIA, GOOD)]) {
+  for (const call of [() => w.s.repLoad(RIA), () => w.s.repCheckPhone(RIA, '03001234567'), () => w.s.repAddSite(RIA, GOOD),
+    () => w.s.repSnoozeSite(RIA, 'S000001', { followUp: 'tomorrow' })]) {
     assert.throws(call, (e) => e.message === 'Something went wrong. Try again in a minute.');
   }
 });
@@ -337,6 +338,9 @@ test('saving runs inside the script lock and saves before letting go', () => {
   const w = world();
   w.s.repAddSite(RIA, GOOD);
   assert.deepEqual(w.lockService._events, ['waitLock 10000', 'flush', 'releaseLock']);
+  w.lockService._events.length = 0;
+  assert.equal(w.s.repSnoozeSite(RIA, 'S000001', { followUp: 'tomorrow' }).ok, true);
+  assert.deepEqual(w.lockService._events, ['waitLock 10000', 'flush', 'releaseLock'], 'a snooze too (spec 007)');
 });
 
 test('the Meta-Data sheet is never written by any salesman function', () => {
@@ -345,6 +349,7 @@ test('the Meta-Data sheet is never written by any salesman function', () => {
   w.s.repLoad(RIA);
   w.s.repCheckPhone(RIA, '03001234567');
   w.s.repAddSite(RIA, GOOD);
+  w.s.repSnoozeSite(RIA, 'S000001', { followUp: 'tomorrow' });
 });
 
 test('repAddSite straight to Rate Quoted or Won: stage, value, terms and note in Sites and Activity', () => {

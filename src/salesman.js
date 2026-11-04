@@ -151,6 +151,21 @@ function repEditSite(k, siteId, input) {
 }
 
 /**
+ * Saves a Snooze for one of his sites (spec 007): its follow-up moves to Tomorrow, 3 days or
+ * 1 week from today, without the Update screen. The reply carries only that site's card, or
+ * { ok: false, message }. Checks run inside the lock (saveSnooze_).
+ * @param {any} k his link code
+ * @param {any} siteId
+ * @param {any} input { followUp: 'tomorrow' | '3days' | '1week', saveId }
+ */
+function repSnoozeSite(k, siteId, input) {
+  return forSalesman_(() => {
+    const { salesman, diary } = requireRep_(k);
+    return saveSnooze_(diary, salesman, siteId, input, new Date(), saveIdOf_(input)).result;
+  });
+}
+
+/**
  * Which of his recent saves already reached the sheet (spec 005): asked once when his page
  * reopens with saves it never heard back about, so they aren't shown as unsaved or sent twice.
  * Only his own save IDs can match (the record is keyed by his code). Sends nothing new.

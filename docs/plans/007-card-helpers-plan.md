@@ -13,7 +13,7 @@
   `note_at`, or '').
 - Tests: what each save writes; fallbacks; page load never reads `Activity` (speed test).
 
-## [ ] Step 2: Server: Snooze
+## [x] Step 2: Server: Snooze
 - `repSnoozeSite(k, siteId, input)` (public, inside `forSalesman_` / `requireRep_`) →
   `saveSnooze_` inside the lock, once per save ID: his open site only, Tomorrow / 3 days / 1 week
   from today, never earlier (notice, nothing written), writes `next_followup` + `updated_at` and

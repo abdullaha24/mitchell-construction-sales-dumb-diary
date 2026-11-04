@@ -151,3 +151,115 @@ test('his page data stays plain (no Dates) and his own sites only', () => {
   assert.equal(holdsDate(reply), false);
   assert.ok(!JSON.stringify(plain(reply)).includes('Gulberg Mall'));
 });
+
+// ---------------------------------------------------------------------------------- Snooze
+
+test('repSnoozeSite: only a working salesman link, and only his own sites (ADR-0004)', () => {
+  for (const [k, id, message] of [
+    [OWNER, 'S000001', "This link doesn't work. Ask the owner for a new one."],
+    ['junk', 'S000001', "This link doesn't work. Ask the owner for a new one."],
+    [RIA, 'S000002', "That site isn't in your list."], // SH's site
+    [SH, 'S000001', "That site isn't in your list."], // RIA's site
+    [RIA, 'S999999', "That site isn't in your list."],
+    [RIA, { site_id: 'S000001' }, "That site isn't in your list."],
+    [RIA, 'S000001 ', "That site isn't in your list."],
+  ]) {
+    const w = world();
+    assert.throws(() => w.s.repSnoozeSite(k, id, { followUp: 'tomorrow' }), (e) => e.message === message,
+      `${String(k).slice(0, 5)} ${JSON.stringify(id)}`);
+    assert.deepEqual(w.diary._writes(), []);
+  }
+});
+
+for (const [choice, days] of [['tomorrow', 1], ['3days', 3], ['1week', 7]]) {
+  test(`Snooze ${choice}: the follow-up moves to today + ${days}; nothing else in the row`, () => {
+    const w = world();
+    const before = rowOf(w, 1);
+    const reply = plain(w.s.repSnoozeSite(RIA, 'S000001', { followUp: choice }));
+    assert.equal(reply.ok, true);
+    const after = rowOf(w, 1);
+    assert.equal(after.next_followup.toISOString(), dayStart(karachiDay(days)).toISOString());
+    assert.ok(after.updated_at.getTime() > before.updated_at.getTime());
+    for (const kept of SITES.filter((h) => !['next_followup', 'updated_at'].includes(h))) {
+      assert.deepEqual(after[kept], before[kept], kept); // worked_at too: snooze is not work (P6-2)
+    }
+    assert.equal(reply.site.followUp, karachiDay(days));
+    assert.equal(reply.site.worked, '2026-10-03', 'still going cold');
+    assert.deepEqual(rowOf(w, 2), rowOf(world(), 2), "SH's row is untouched");
+  });
+}
+
+test('Snooze: one snooze row in Activity, and nothing typed becomes a formula', () => {
+  const w = world();
+  w.s.repSnoozeSite(RIA, 'S000001', { followUp: '3days' });
+  const a = lastActivity(w);
+  assert.ok(isDate(a.timestamp));
+  assert.equal(a.next_followup.toISOString(), dayStart(karachiDay(3)).toISOString());
+  assert.deepEqual({ ...a, timestamp: 'D', next_followup: 'D' }, {
+    activity_id: 'A0000008', timestamp: 'D', rep: 'RIA', site_id: 'S000001', action: 'snooze', from_stage: '',
+    to_stage: '', value_rs: '', payment_terms: '', lost_reason: '', note: '', next_followup: 'D',
+  });
+  assert.equal(activityRows(w).length, 2);
+  assert.ok(!JSON.stringify(w.diary._snapshot()).includes('FORMULA('));
+});
+
+test('Snooze: a site with no follow-up date gets one', () => {
+  const w = world();
+  w.diary.getSheetByName('Sites').getRange(2, SITES.indexOf('next_followup') + 1).setValues([['']]);
+  assert.equal(plain(w.s.repSnoozeSite(RIA, 'S000001', { followUp: 'tomorrow' })).site.followUp, karachiDay(1));
+});
+
+test('Snooze: only the three buttons, only open sites; refusals write nothing', () => {
+  const w = world();
+  for (const input of [{ followUp: karachiDay(3) }, { followUp: 'date' }, { followUp: 'keep' }, { followUp: 'toString' },
+    { followUp: 7 }, {}, null, 'tomorrow']) {
+    assert.deepEqual(plain(w.s.repSnoozeSite(RIA, 'S000001', input)).ok, false, JSON.stringify(input));
+  }
+  assert.deepEqual(plain(w.s.repSnoozeSite(RIA, 'S000001', { followUp: 'date' })),
+    { ok: false, message: 'Tap Tomorrow, 3 days or 1 week.' });
+  assert.deepEqual(plain(w.s.repSnoozeSite(RIA, 'S000003', { followUp: 'tomorrow' })),
+    { ok: false, message: 'Won and Lost sites have no follow-up.' });
+  assert.deepEqual(w.diary._writes(), []);
+});
+
+test('Snooze never brings a follow-up earlier: nothing written, the card as it is, a notice', () => {
+  const w = world();
+  const reply = plain(w.s.repSnoozeSite(RIA, 'S000005', { followUp: '1week' }));
+  const [, m, d] = karachiDay(10).split('-').map(Number);
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  assert.deepEqual({ ok: reply.ok, notice: reply.notice, followUp: reply.site.followUp },
+    { ok: true, notice: `Follow-up is already ${d} ${months[m - 1]}.`, followUp: karachiDay(10) });
+  assert.deepEqual(w.diary._writes(), []);
+  // The same day counts as "already" too: snoozing it twice changes nothing.
+  w.s.repSnoozeSite(RIA, 'S000001', { followUp: 'tomorrow' });
+  const writes = w.diary._writes().length;
+  assert.equal(plain(w.s.repSnoozeSite(RIA, 'S000001', { followUp: 'tomorrow' })).notice !== undefined, true);
+  assert.equal(w.diary._writes().length, writes);
+});
+
+test('Snooze: the reply carries only that site (no Dates, nobody else)', () => {
+  const reply = world().s.repSnoozeSite(RIA, 'S000001', { followUp: 'tomorrow' });
+  assert.equal(holdsDate(reply), false);
+  const r = plain(reply);
+  assert.equal(r.sites, undefined);
+  assert.equal(r.site.id, 'S000001');
+  assert.ok(!JSON.stringify(r).includes('Gulberg Mall'));
+  assert.ok(!JSON.stringify(r).includes('Blue Area'));
+});
+
+test('Snooze saved twice (reply lost) is saved once, and repSaveStatus knows it', () => {
+  const w = world();
+  w.s.repSnoozeSite(RIA, 'S000001', { followUp: 'tomorrow', saveId: 'snooze00001' });
+  w.s.repSnoozeSite(RIA, 'S000001', { followUp: 'tomorrow', saveId: 'snooze00001' });
+  assert.equal(activityRows(w).filter((a) => a.action === 'snooze').length, 1);
+  assert.deepEqual(plain(w.s.repSaveStatus(RIA, ['snooze00001', 'other000001'])), { ok: true, landed: ['snooze00001'] });
+  assert.deepEqual(plain(w.s.repSaveStatus(SH, ['snooze00001'])), { ok: true, landed: [] }, "only his own saves");
+});
+
+test('Snooze after Update: going cold keeps the day of the Update', () => {
+  const w = world();
+  w.s.repUpdateSite(RIA, 'S000001', { stage: 'Rate Quoted', value: '450000', terms: 'Credit', followUp: 'tomorrow', note: 'x' });
+  const worked = rowOf(w, 1).worked_at.getTime();
+  w.s.repSnoozeSite(RIA, 'S000001', { followUp: '1week' });
+  assert.equal(rowOf(w, 1).worked_at.getTime(), worked);
+});
