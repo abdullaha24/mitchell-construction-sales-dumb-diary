@@ -49,7 +49,7 @@ Code rules that tests enforce:
 - Helper functions end in `_`. A web page can call any public function, with any arguments.
   The only public ones are `doGet`, `onOpen`, `menuCheckSetup`, `menuLinks`, `menuRefreshSalesmen`, `ownerListLinks`,
   `ownerNewLink`, `ownerCancelLink`, `repLoad`, `repCheckPhone`, `repAddSite`, `repUpdateSite`,
-  `repEditSite`. Every `menu…`/
+  `repEditSite`, `repSaveStatus`. Every `menu…`/
   `owner…` one starts with the signed-in-owner check; every `rep…` one with `requireRep_(k)`
   (working salesman link only) and returns only that salesman's data (ADR-0004). Adding one means updating `tests/menu.test.js` and saying why in the spec.
 - No function name may be defined in two `src/` files (tsc does **not** catch this for JS; the
