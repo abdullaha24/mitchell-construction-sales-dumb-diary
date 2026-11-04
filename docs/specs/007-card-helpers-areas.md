@@ -1,10 +1,10 @@
 # 007: Site card helpers (Call, WhatsApp, last note, going cold, snooze) and the area filter
 
-- **Status:** Draft
-- **Owner approval:** _pending_
+- **Status:** Approved
+- **Owner approval:** approved by the owner on 2026-11-04 (session 4)
 - **Related:** roadmap phase 6 · [vision](../product/vision.md) → 2 "Site card", 5 "Route
   planning" · ADR-0004 (his own data only) · [ADR-0009](../decisions/0009-worked-at-and-note-at.md)
-  (proposed: two new `Sites` columns) · [glossary](../product/glossary.md) → Going cold, Site
+  (two new `Sites` columns) · [glossary](../product/glossary.md) → Going cold, Site
   card · builds on [spec 004](004-update-site.md), [spec 005](005-faster-saves.md),
   [spec 006](006-focus-tabs.md)
 
@@ -163,8 +163,7 @@ From the top, as today plus the new lines (marked **new**):
   (14 → 15). It starts with `requireRep_(k)` inside `forSalesman_`.
 
 ## Data
-**Proposed data-model change** (ADR-0009, Proposed; [data model](../architecture/data-model.md)
-→ "Proposed changes"):
+**Data-model change** (ADR-0009, Accepted; [data model](../architecture/data-model.md)):
 - **`Sites`: two new columns at the end**, after `updated_at`:
 
   | Column | Example | Notes |
@@ -238,20 +237,11 @@ Checked live (on RIA's test link, TEST rows deleted afterwards with the owner's 
 - Several contacts per site (one contact, as today).
 
 ## Open questions
-Answered by the owner on 2026-11-04 (session 4):
+_None open._ Answered by the owner on 2026-11-04 (session 4):
 1. **(P6-1)** Snooze: tap **Snooze**, then pick **Tomorrow / 3 days / 1 week** (two taps).
 2. **(P6-2)** Going cold: **only a real Update** (from the Update screen: stage, note, value,
    follow-up) resets the 7 days. **Snooze does not**, and **Edit details does not**.
 3. **(P6-3)** WhatsApp opens an **empty chat** with the contact (no pre-filled text).
 4. **(P6-4)** Call / WhatsApp taps are **not logged** in the history.
-
-Still open (business, for the owner):
-5. **(P6-5) Snoozing again and again.** A salesman could snooze the same site every day and never
-   visit it. Going cold catches this only for Sample / Trial and Rate Quoted sites; a Visited /
-   Lead site can be snoozed for ever. Every snooze is in `Activity`, so the owner can see it.
-   - **(Recommended) No limit.** Every snooze is in the history; the owner screen (phase 7) can
-     show "snoozed 4 times" next to a site. Keeps the salesman's day simple.
-   - **Show it to him:** after 3 snoozes in a row with no real Update, the card says
-     **"Snoozed 3 times"** (one more `Sites` column to count them).
-   - **Limit it:** after 3 snoozes in a row, Snooze disappears from that card until he does a
-     real Update (the same extra column).
+5. **(P6-5)** Snoozing again and again: **no limit.** Every snooze is kept in `Activity`; the
+   owner screen (phase 7) may show it.

@@ -21,4 +21,4 @@ and don't re-argue it every session.
 | [0006](0006-owner-private-link.md) | Owner opens his screen with a private owner link | Accepted |
 | [0007](0007-meta-data-id-in-code.md) | The Meta-Data sheet's ID is kept in the code | Accepted |
 | [0008](0008-sales-diary-id-and-web-address-in-code.md) | The Sales Diary sheet's ID and the web app address are kept in the code | Accepted |
-| [0009](0009-worked-at-and-note-at.md) | Two new `Sites` columns: `worked_at` (going cold) and `note_at` (last-spoken line) | Proposed |
+| [0009](0009-worked-at-and-note-at.md) | Two new `Sites` columns: `worked_at` (going cold) and `note_at` (last-spoken line) | Accepted |

@@ -1,6 +1,6 @@
 # 0009: Two new `Sites` columns: `worked_at` (going cold) and `note_at` (last-spoken line)
 
-- **Status:** Proposed
+- **Status:** Accepted (owner, 2026-11-04, with spec 007)
 - **Date:** 2026-11-04
 - **Deciders:** owner / agent
 
