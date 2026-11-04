@@ -1,6 +1,6 @@
 # Data model (Google Sheets)
 
-> Status: **v0.4** (2026-11-04). v0.3 came from the owner interview and session 2 answers; v0.4
+> Status: **v0.5** (2026-11-04). v0.5: targets kept with the salesmen list (spec 006). v0.3 came from the owner interview and session 2 answers; v0.4
 > aligns the Meta-Data reading notes with [spec 001](../specs/001-foundations.md) as built. The tabs and headers act as the app's database schema. **Any change
 > here must be made in the same change as the code.**
 
@@ -147,7 +147,7 @@ Starting contents (filled in by phase 1 setup, only when a list has no rows yet)
 
 | Store | Key | Holds |
 | --- | --- | --- |
-| Script Properties | `salesmen` | The salesmen list from `Rep_Mapping` (codes, regions, row numbers only) and when it was read. Used for 24 hours, then read again; **Sales Diary → Refresh salesmen** and Check setup refresh it at once (spec 005). |
+| Script Properties | `salesmen` | The salesmen list from `Rep_Mapping` (codes and regions only), **each current salesman's `Rep-Targets` amount for this month and next month** (as `RIA\|yyyy-MM`: whole Rs., spec 006, so the 1st of a month rolls over without a refresh), and when it was read. Used for 24 hours, then read again (a copy without targets, from before spec 006, is read again at once); **Sales Diary → Refresh salesmen & targets**, Check setup and the Links window refresh it at once (specs 005, 006). Script Properties can only be seen by the script's owner. A salesman's page receives only his own target for this month. |
 | Script cache | `save:<rep>:<saveId>` | What a save did, for 6 hours, so a repeat after a lost reply isn't saved twice (specs 003–005). |
 
 ## Not modelled yet

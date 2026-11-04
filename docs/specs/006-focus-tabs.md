@@ -1,6 +1,6 @@
 # 006: Focus tabs (Today's Chase, Hot Pipeline, All My Parties) and his target
 
-- **Status:** Approved
+- **Status:** In progress (built and checked locally; live test next)
 - **Owner approval:** approved by the owner on 2026-11-04 (session 4)
 - **Related:** roadmap phase 5 · [vision](../product/vision.md) → Home screen · ADR-0004 (his own
   data only) · ADR-0005 (Meta-Data read only) · [glossary](../product/glossary.md) → App screens ·
@@ -59,8 +59,8 @@ him find any party in two seconds, and shows **his monthly target**.
   card shows **at the top of every tab** until he fixes it (a site he just moved out of Today's
   Chase could otherwise vanish from view with its failed save).
 - After **+ New Site → Save** he lands on **All My Parties** with the search cleared, so he sees
-  the new site at the top with "Saving…". After an **Update** or **Edit details** he goes back to
-  the tab he came from.
+  the new site at the top with "Saving…". After an **Update** (or **Back**) he goes back to the
+  tab he came from, **at the same place** in the list.
 - **Long lists stay fast on a cheap phone:** each tab shows its first 50 cards and a **Show more**
   button for the next 50.
 - **The day rolls over by itself.** "Today" is Pakistan time, worked out from Google's clock when

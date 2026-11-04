@@ -16,13 +16,13 @@ All files share **one global scope** in Apps Script, so:
 | `appsscript.json` | Manifest: Pakistan time, V8, web app runs as the owner, open to anyone with a link (`ANYONE_ANONYMOUS`). |
 | `config.js` | Fixed settings: Meta-Data and Sales Diary IDs, web address (ADR-0007, ADR-0008), tab names, headers, starting `Lists` values. |
 | `rules.js` | Plain logic, no spreadsheet access: columns by name, months, Rs., reading salesmen and targets, the Check setup summary. |
-| `metadata.js` | The **only** code that opens the Meta-Data sheet. Read only. |
+| `metadata.js` | The **only** code that opens the Meta-Data sheet. Read only. Keeps the salesmen list and this month's and next month's targets in Script Properties for a day (specs 005, 006). |
 | `diary.js` | The **only** code that opens the Sales Diary sheet by ID; adding rows at the bottom. |
 | `setup.js` | Creates missing Sales Diary tabs (including `Links`) and fills the starting `Lists`. |
 | `links.js` | Link codes: make, look up (who is visiting), new and cancel, inside a lock. |
-| `menu.js` | `onOpen` (the Sales Diary menu) and `menuCheckSetup`. |
+| `menu.js` | `onOpen` (the Sales Diary menu), `menuCheckSetup` and `menuRefreshSalesmen` (Refresh salesmen & targets). |
 | `linkswindow.js`, `Links.html` | The owner's Links window and the three `owner…` functions it calls. |
 | `siterules.js` | Plain logic for sites: tidy phone numbers, areas and "Did you mean", follow-up dates, checking a new site, IDs. |
 | `sites.js` | Reading tabs by header; a salesman's sites; the yes/no phone check; saving a site inside the lock; no-number counts. |
-| `salesman.js` | `repLoad`, `repCheckPhone`, `repAddSite`: what a salesman's page calls. Working salesman link only. |
+| `salesman.js` | `repLoad`, `repCheckPhone`, `repAddSite`, `repUpdateSite`, `repEditSite`, `repSaveStatus`: what a salesman's page calls. Working salesman link only. His page data includes only his own target. |
 | `webapp.js`, `App.html`, `Page.html` | `doGet`: a salesman gets his app (`App.html`); the owner "Hello, owner"; anything else "This link doesn't work" / "Something went wrong". |
