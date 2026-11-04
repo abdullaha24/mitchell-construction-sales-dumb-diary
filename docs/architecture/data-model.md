@@ -150,6 +150,18 @@ Starting contents (filled in by phase 1 setup, only when a list has no rows yet)
 | Script Properties | `salesmen` | The salesmen list from `Rep_Mapping` (codes and regions only), **each current salesman's `Rep-Targets` amount for this month and next month** (as `RIA\|yyyy-MM`: whole Rs., spec 006, so the 1st of a month rolls over without a refresh), and when it was read. Used for 24 hours, then read again (a copy without targets, from before spec 006, is read again at once); **Sales Diary → Refresh salesmen & targets**, Check setup and the Links window refresh it at once (specs 005, 006). Script Properties can only be seen by the script's owner. A salesman's page receives only his own target for this month. |
 | Script cache | `save:<rep>:<saveId>` | What a save did, for 6 hours, so a repeat after a lost reply isn't saved twice (specs 003–005). |
 
+## Proposed changes (not in the code yet)
+
+[Spec 007](../specs/007-card-helpers-areas.md) (Draft) and [ADR-0009](../decisions/0009-worked-at-and-note-at.md)
+(Proposed). Move these into the tables above only together with the code, once approved:
+- `Sites`: two new columns at the end, after `updated_at`: **`worked_at`** (server timestamp: site
+  added or last saved from the Update screen; drives going cold instead of `updated_at`; not
+  written by Edit details or Snooze, owner P6-2) and **`note_at`** (server timestamp: when
+  `last_note` was written; the day on the last-spoken line). `updated_at` stays "last change of
+  any kind".
+- `Activity`: new `action` value **`snooze`** (`next_followup` = the new date; other detail
+  columns blank).
+
 ## Not modelled yet
 - Multiple contacts per site (v1: one).
 - Dealer repeat orders (later phase).

@@ -21,3 +21,4 @@ Status values: `Draft` → `Approved` → `In progress` → `Done` (or `Dropped`
 | [004](004-update-site.md) | Update a site: stage, Rs. value + Cash / Credit, lost reason, follow-up, note; edit details | Done |
 | [005](005-faster-saves.md) | Instant saves, faster server, stage when adding a site (phase 4b) | Done |
 | [006](006-focus-tabs.md) | Focus tabs: Today's Chase, Hot Pipeline, All My Parties with search; his monthly target | Done |
+| [007](007-card-helpers-areas.md) | Site card helpers: Call / WhatsApp, last-spoken line, going cold, snooze; area filter | Draft |

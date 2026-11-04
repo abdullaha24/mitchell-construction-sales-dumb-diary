@@ -7,7 +7,9 @@ the data model, update those too. The ready-to-ask versions (options and recomme
 
 ## Open
 
-_None right now._ Add new questions here as they come up.
+| # | Question | Options (agent's recommendation first) |
+| --- | --- | --- |
+| P6-5 | Spec 007: a salesman could snooze the same site again and again and never visit it (going cold only catches Sample / Trial and Rate Quoted). Any limit? | **(Recommended) No limit**: every snooze is in `Activity`; the owner screen (phase 7) can show "snoozed 4 times". · **Show it to him**: after 3 snoozes in a row with no real Update the card says "Snoozed 3 times" (one more `Sites` column). · **Limit it**: after 3 in a row, Snooze disappears from that card until a real Update (same extra column). |
 
 ## Answered
 
@@ -84,3 +86,12 @@ Owner, session 4 (2026-11-04):
 | --- | --- | --- |
 | P5-1 | Spec 006: Hot Pipeline order? | **Biggest Rs. first.** Rate Quoted sites by value, largest first; then sites with no value shown (Sample / Trial), soonest follow-up first. |
 | P5-2 | Spec 006: a total Rs. ("Rs. 4,500,000 quoted") at the top of Hot Pipeline? | **No.** Salesmen see their target only (as Q12c). |
+
+Owner, session 4 (phase 6):
+
+| # | Question | Answer |
+| --- | --- | --- |
+| P6-1 | Spec 007: how does Snooze work? | **Tap Snooze, then pick Tomorrow / 3 days / 1 week** (two taps). No Pick date. |
+| P6-2 | Spec 007: what resets "going cold" (7 days)? | **Only a real Update** (from the Update screen: stage, note, value, follow-up). **Snooze does not; Edit details does not.** |
+| P6-3 | Spec 007: what does the WhatsApp button open? | **An empty chat** with the contact (no pre-filled text). |
+| P6-4 | Spec 007: are Call / WhatsApp taps written in the history? | **No**, not logged. |
