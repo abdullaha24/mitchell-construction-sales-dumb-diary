@@ -9,7 +9,8 @@ Owner: correct anything wrong here; agents should treat this file as the authori
 | --- | --- |
 | **Salesman / rep** | One of the 7 field salesmen, identified by his short code from the Meta-Data sheet: RIA, AUR, WAK (North), SH, SJ, SM (Center), IB (South). In code: `rep`. (MUB and UAK have left.) |
 | **Region** | North / Center / South. A region can cover more than one city (North ≈ Islamabad and around, Center ≈ Lahore, South ≈ Karachi). Used for targets, area lists and owner reports. |
-| **Owner** | The company owner. Sees everything, on his own screen, opened with his private owner link. |
+| **Admin / Administrator** | The company owner as the app shows him (owner, P7-7). **Use this word on every screen and message**, never "owner". Sees everything on the **admin screen**, opened with his private admin link, and can update any site there; his changes are marked `admin` in the history. |
+| **Owner** | The company owner. A **docs-only** word for the Admin (same person); not used on screens. |
 | **Party** | Anyone a salesman sells to: a contractor, a builder, a dealer, a project owner. |
 | **Contact** | The actual person to call at a party or site: site engineer, thekedar, procurement officer. |
 | **Thekedar** | Urdu: contractor or labour contractor on a site. Often the real decision-maker on materials. |
@@ -93,6 +94,6 @@ Stored in the `Lists` tab so the owner can rename or reorder them. **Never hard-
 | **Today's Chase** | Default tab: follow-ups due today or overdue. |
 | **Hot Pipeline** | Tab: sites at Sample / Trial or Rate Quoted. |
 | **All My Parties** | Tab: everything the salesman owns, searchable. |
-| **Owner screen** | The owner's view: pipeline by salesman/region (with targets), who worked today, overdue + going cold, won/lost + lost reasons. |
-| **Owner link** | The owner's private link to his screen. Same kind of secret link as a salesman's (ADR-0006). |
+| **Admin screen** (docs: owner screen) | The admin's view (spec 008), four tabs: **Today** (who worked today), **Team** (each salesman and region against target), **Late & cold**, **This month** (won / lost and lost reasons). He can Update any site from it. |
+| **Admin link** (docs: owner link) | The admin's private link to his screen. Same kind of secret link as a salesman's (ADR-0006, ADR-0010). |
 | **Site card** | One site in a list: name, last note, call and WhatsApp buttons, snooze. |

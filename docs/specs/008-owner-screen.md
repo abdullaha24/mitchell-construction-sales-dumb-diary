@@ -1,14 +1,20 @@
 # 008: The owner screen (team, who worked today, late and going cold, this month; owner updates)
 
-- **Status:** Draft
-- **Owner approval:** _pending_
+- **Status:** Approved
+- **Owner approval:** approved by the owner on 2026-11-04 (session 4), with answers P7-4 to P7-7
 - **Related:** roadmap phase 7 · [vision](../product/vision.md) → "What the owner gets" ·
   ADR-0004 (salesmen see only their own data) · ADR-0006 (owner private link) ·
-  [ADR-0010](../decisions/0010-owner-link-can-update-sites.md) (**Proposed**: the owner link can
+  [ADR-0010](../decisions/0010-owner-link-can-update-sites.md) (Accepted: the admin link can
   also change sites) · ADR-0009 (`worked_at`) · [glossary](../product/glossary.md) → Owner screen,
-  Target, House / office sales · owner answers A6, A7, A8, P3-4, P6-5, **P7-1 to P7-3** ·
+  Target, House / office sales · owner answers A6, A7, A8, P3-4, P6-5, **P7-1 to P7-7** ·
   builds on [spec 004](004-update-site.md), [spec 005](005-faster-saves.md),
   [spec 006](006-focus-tabs.md), [spec 007](007-card-helpers-areas.md)
+
+> **Words on screen (owner, P7-7):** everywhere a person sees it, the app says **Admin** (or
+> Administrator), not "owner": the admin screen, the salesman's card (*"Admin: …"*), the
+> `Activity` value for his changes (`admin`), the Links window, Check setup and the menu
+> messages, and *"Ask the admin for a new one."* In these docs "owner" and "admin" mean the same
+> person. The `Links.role` value stays `owner` (it is his working link's row in the live sheet).
 
 ## Why
 Today the owner's link only says "Hello, owner". To know what his 7 salesmen are doing he still
@@ -23,7 +29,7 @@ P7-3), and the history shows it was him.
 ### Opening his link
 - He opens his private owner link (ADR-0006) on his phone. The page shows at once with
   everything below inside it (no second wait), like the salesman's app.
-- **The top bar:** **Owner** · *"Updated 10:42"* · a **Refresh** button. Under it, small:
+- **The top bar:** **Admin** · *"Updated 10:42"* · a **Refresh** button. Under it, small:
   *"November: Won Rs. 4,200,000 logged, not invoiced"* (the whole team this month).
 - **Four tabs**, sharing the width at 360 px: **Today** · **Team** · **Late & cold** ·
   **This month**. It opens on **Today** (his first question each day is "is everyone
@@ -126,17 +132,18 @@ P7-3), and the history shows it was him.
   **"Saving…"**, then it clears; a failure turns the card orange, **"Not saved. Tap to try
   again."**, at the top of every tab, with what he typed kept. Nothing is sent later when the
   page is closed.
-- His change is in the history as **his**: the `Activity` row says `owner` where a salesman's
+- His change is in the history as **his**: the `Activity` row says `admin` where a salesman's
   code would be. On **Today** it shows as **"You"**.
 - **No Edit details and no Snooze** on the owner screen: names, contacts and areas stay the
   salesman's (and the sheet's, as today); Snooze is the salesman's shortcut. The owner moves a
   site to another salesman in the sheet, as today (A9).
 - **On the salesman's phone:** the site shows the owner's change the next time his page loads
-  (opening the app, or a save's reply). How the owner's note shows there: open question 1.
+  (opening the app, or a save's reply). A note he wrote shows there as **"Admin: …"** (owner,
+  P7-4), e.g. *"5 Nov: Admin: call him Friday, he's ready"*.
 - **Two people, one site:** if the salesman saved a change to the site after the owner's screen
-  was loaded (or the other way round), the later save is **refused, not merged**: *"RIA changed
-  this site a moment ago. Here it is now: check it and save again."* (or *"The owner changed
-  this site…"* on the salesman's phone). The card is refreshed from the reply and what was typed
+  was loaded (or the other way round), the later save is **refused, not merged**: *"This site
+  was changed a moment ago. Here it is now: check it and save again."* (the same words on both
+  phones: the server can't always tell who changed it). The card is refreshed from the reply and what was typed
   is kept. Without this, a screen opened in the morning would silently undo the salesman's
   afternoon update (the Update form sends the stage, value and date it was opened with).
 
@@ -158,7 +165,7 @@ P7-3), and the history shows it was him.
 - **This month:** from the 1st (00:00 Pakistan time) to now.
 - **Worked today** (owner, P7-2): a current salesman worked today if at least one `Activity` row
   dated today has his code in `rep`, whatever the `action` (`created`, `stage_change`, `update`,
-  `details`, `snooze`). Rows by the owner (`rep` = `owner`) never count for anyone. "Current
+  `details`, `snooze`). Rows by the admin (`rep` = `admin`) never count for anyone. "Current
   salesmen" = `Rep_Mapping`; "(no link)" = no active `rep` row in `Links` for him.
 - **Won this month** (owner, P7-1: the month it was **marked Won**):
   - a site counts when its stage **now** is Won (Order) **and** the latest `Activity` row that
@@ -167,7 +174,7 @@ P7-3), and the history shows it was him.
   - Its Rs. is the site's **current** `value_rs` (so a value corrected later with an Update is
     the one added up), counted for the site's **current** salesman (`Sites.rep`, so a site the
     owner handed over counts for the new salesman, and one the owner marked Won counts for the
-    site's salesman, not for "owner").
+    site's salesman, not for "admin").
   - Won, then moved back (reopened) this month: **not counted** (it isn't won). Won again later:
     counted in the month of the new win. A Won site typed into the sheet by hand (no `Activity`
     row) is not counted.
@@ -185,7 +192,7 @@ P7-3), and the history shows it was him.
   "No number yet").
 - **Snoozes:** `Activity` rows this month with `action` = `snooze`, counted per salesman (`rep`)
   and per site.
-- **Owner Update** (new public function `ownerPageUpdateSite(k, siteId, input)`):
+- **Owner Update** (new public function `adminPageUpdateSite(k, siteId, input)`):
   - his working owner link only (below); any site in `Sites`, found by its ID (the owner may
     change any salesman's site); an unknown ID gets *"That site isn't in the diary."*;
   - the same checks as the salesman's Update (spec 004: stages, value + terms, lost reason,
@@ -193,10 +200,12 @@ P7-3), and the history shows it was him.
   - **inside the lock**, against the row as it is at that moment; writes only the cells that
     change, as the salesman's Update does, every text through `asText_` / `textify_`;
   - **never changes `rep` or `region`** (handing over stays in the sheet);
-  - one `Activity` row, exactly like a salesman's Update, except `rep` = **`owner`**;
-  - `updated_at` = now; `note_at` = now when there is a note; **`worked_at`: open question 2**
-    (recommended: not changed);
-  - once per save ID (spec 005), remembered under `save:owner:<saveId>` (never a salesman's key);
+  - one `Activity` row, exactly like a salesman's Update, except `rep` = **`admin`**;
+  - a note is stored as **"Admin: "** + the note, in `last_note` and in the `Activity` note
+    (owner, P7-4);
+  - `updated_at` = now; `note_at` = now when there is a note; **`worked_at` is never written**
+    (owner, P7-5: only the salesman's own Update resets going cold);
+  - once per save ID (spec 005), remembered under `save:admin:<saveId>` (never a salesman's key);
   - reply: only that site's card (with its salesman), or `{ ok: false, message }`.
 - **Two people, one site** (salesman's Update **and** owner's Update): the form sends what it was
   opened on (`seen`: stage, value, Cash / Credit, lost reason, follow-up). Inside the lock, if the
@@ -204,30 +213,30 @@ P7-3), and the history shows it was him.
   `{ ok: false, changed: true, message, site }` with the site as it is now. (His own saves sent
   one after another still go through: each is opened on the result of the one before.) A form
   from before this version, without `seen`, is saved as today.
-- **The owner-link check** (new helper `requireOwnerLink_(k)`): a code not shaped like ours →
+- **The owner-link check** (new helper `requireAdminLink_(k)`): a code not shaped like ours →
   *"This link doesn't work."* without opening any sheet; otherwise Sales Diary is opened once and
   `Links` read: only an **active** row with `role` = `owner` and exactly this code passes. A
   salesman's code, a cancelled owner code or anything else → the same *"This link doesn't
-  work."* and nothing else. Every new `ownerPage…` function starts with it, inside
-  `forOwnerPage_` (only our own plain messages reach the page, as `forSalesman_` does).
+  work."* and nothing else. Every new `adminPage…` function starts with it, inside
+  `forAdminPage_` (only our own plain messages reach the page, as `forSalesman_` does).
 - **Why not the signed-in check:** the existing `owner…` functions (Links window) and `menu…`
   functions run from the sheet's menu, where Google tells the script who is signed in
   (`isSignedInSelf_`). The owner screen is a web page opened by link, run as the owner for
   anonymous visitors, so Google gives no email: only the link code can tell it's him (as
-  `requireRep_` does for salesmen). The prefix **`ownerPage…`** keeps the two kinds apart, and a
+  `requireRep_` does for salesmen). The prefix **`adminPage…`** keeps the two kinds apart, and a
   test checks each function starts with the right check.
 - **Public functions** (allow-list in `tests/menu.test.js`, 15 → **18**):
-  - `ownerPageLoad(k)`: his screen's data (for Refresh);
-  - `ownerPageUpdateSite(k, siteId, input)`: an owner Update;
-  - `ownerPageSaveStatus(k, saveIds)`: which of **his** saves landed (spec 005), keyed
-    `save:owner:…`, so it can never report a salesman's save.
+  - `adminPageLoad(k)`: his screen's data (for Refresh);
+  - `adminPageUpdateSite(k, siteId, input)`: an owner Update;
+  - `adminPageSaveStatus(k, saveIds)`: which of **his** saves landed (spec 005), keyed
+    `save:admin:…`, so it can never report a salesman's save.
   - `doGet` serves the owner's page for a working owner link (no new function).
 - **Salesman functions are unchanged for the owner's code:** every `rep…` function refuses it
   (*"This link doesn't work."*), as today.
 - **Link codes:** the owner's page carries **his own** code only (it needs it to save); never a
   salesman's code. "(no link)" is a yes/no, never a code.
 - **Speed:**
-  - Opening (doGet / `ownerPageLoad`): Sales Diary opened **once**; `Links`, `Sites`, `Lists`
+  - Opening (doGet / `adminPageLoad`): Sales Diary opened **once**; `Links`, `Sites`, `Lists`
     read once each; Meta-Data **not opened** while the kept copy is fresh.
   - **`Activity` is never read whole when the page opens**: only **this month's rows, from the
     bottom up**, in blocks of 500 rows, stopping as soon as a block reaches a row from before
@@ -257,29 +266,29 @@ P7-3), and the history shows it was him.
   copy.
 - **Writes:** an owner Update writes `Sites` cells and one `Activity` row, as a salesman's Update.
 - **Data-model changes** (made in [data model](../architecture/data-model.md) with the code):
-  - `Activity.rep`: *"Who made the change: a salesman's code, or **`owner`** (an owner Update
-    from his screen, spec 008)."* The site's salesman is in `Sites.rep`.
+  - `Activity.rep`: *"Who made the change: a salesman's code, or **`admin`** (an Update from the
+    admin screen, spec 008)."* The site's salesman is in `Sites.rep`.
   - **Kept by the script:** the `salesmen` Script Properties entry also keeps the **region and
     house / office targets** (`Targets`: North, Center, South, `UNASSIGNED`) for this month and
     next month, in their own `regionTargets` part (never mixed with salesman codes). A kept copy
     without it is read again at once (as spec 006 did for salesman targets). Refreshed by the
     same daily read, **Refresh salesmen & targets**, Check setup and the Links window. A problem
     in `Targets` never stops salesmen working: there is just no region target until it's fixed.
-  - If open question 1 is answered as recommended: an owner note is stored in `last_note` (and
-    the `Activity` note) as *"Owner: …"*.
+  - An admin note is stored in `last_note` (and the `Activity` note) as *"Admin: …"* (P7-4).
 - **Owner page data:** `today`, `now` (Google's clock), `month`, his own `k`, the salesmen
   (`rep`, `region`, this month's target, has a working link yes/no, saves today by kind, snoozes
   this month), region and house targets, the sites above (cards with `rep`, `region`,
   `snoozes`, and `closed` = the day marked Won / Lost this month, if so), today's saves (time,
   who, site ID and name, what happened, note), lost reasons and the stage rules for the Update
   form.
-- **Code layout (for the build):** a new page `Owner.html` for the owner's tabs; the site
-  screen, the Update form and the save queue are **shared** with the salesman's `App.html`
-  through an included file, so both pages save the same way. The salesman's page must look and
-  behave exactly as before (all existing browser checks unchanged). New server code in a new
-  `owner.js`; `saveUpdate_` is shared by the salesman's and the owner's Update (who is saving is
-  passed in).
-- **AGENTS.md** (with the code): the public-function rule gains the `ownerPage…` kind.
+- **Code layout (for the build):** the admin's page is the salesman's `App.html` (site screen,
+  Update form and save queue: one copy, so both save the same way) with the admin-only part,
+  **`Admin.html`** (its tabs, lists and styles), inserted by `doGet` **only into the admin's
+  page**. A salesman's page gets nothing of it (no extra bytes on his weak signal) and must look
+  and behave exactly as before (all existing browser checks unchanged). New server code in
+  **`admin.js`**; `saveUpdate_` is shared by the salesman's and the admin's Update (who is saving
+  is passed in).
+- **AGENTS.md** (with the code): the public-function rule gains the `adminPage…` kind.
 
 ## Acceptance criteria
 (Amounts in this spec are made up; real targets never go in git, owner S3-1.)
@@ -294,15 +303,15 @@ Checked locally:
       counts; region and team sums; targets for salesman, region and house (none, 0, listed
       twice); late and going cold lists and their order; no-number and snooze counts; former
       salesmen's block.
-- [ ] Safety tests: every `ownerPage…` function with a junk code (no sheet opened), a salesman's
+- [ ] Safety tests: every `adminPage…` function with a junk code (no sheet opened), a salesman's
       code, a cancelled owner code, and no code: *"This link doesn't work."* and nothing else;
       every `rep…` function with the owner's code: refused; the owner's page holds no code but
       his own; a salesman's page data is unchanged (his sites and his target only; no region or
       house target, nobody else's site).
-- [ ] Owner Update tests: same checks and messages as the salesman's; `Activity.rep` = `owner`;
+- [ ] Owner Update tests: same checks and messages as the salesman's; `Activity.rep` = `admin`;
       only changed cells written; texts as text (a note starting `=` stays text); `rep` and
-      `region` never written; once per save ID under `save:owner:`; `ownerPageSaveStatus`
-      reports only his saves; unknown site ID refused; `worked_at` as open question 2 decides;
+      `region` never written; once per save ID under `save:admin:`; `adminPageSaveStatus`
+      reports only his saves; unknown site ID refused; `worked_at` never written; note stored as "Admin: …";
       "two people, one site" refused both ways, nothing written, fresh card in the reply; a
       salesman's two saves in a row still both land.
 - [ ] Speed tests: opening the owner page opens Sales Diary once, Meta-Data not at all (fresh
@@ -311,10 +320,10 @@ Checked locally:
       (one block and the header); with 1,200 from this month, at most 1,501. An
       owner save: one open, each tab read once. Page data for 1,000 open sites stays under the
       pinned size.
-- [ ] Allow-list test: 18 public functions; a source test checks each `ownerPage…` function
-      starts with `requireOwnerLink_` inside `forOwnerPage_`, and each other `owner…` / `menu…`
+- [ ] Allow-list test: 18 public functions; a source test checks each `adminPage…` function
+      starts with `requireAdminLink_` inside `forAdminPage_`, and each other `owner…` / `menu…`
       with the signed-in check.
-- [ ] Browser check at 360 px (new `owner.check.js`, against the real server code and fake
+- [ ] Browser check at 360 px (new `admin.check.js`, against the real server code and fake
       sheets): the four tabs; Today (nothing logged, per-salesman filter, "You"); Team cards,
       targets, % and tap-through to sites and Back; Late / Going cold toggle, order, salesman
       badges; This month and lost-reason buttons; an Update from the owner screen: "Saving…" then
@@ -328,17 +337,17 @@ Checked live (TEST rows on RIA's test link, deleted afterwards with the owner's 
       the sheet through the connector: RIA's TEST sites by stage, Won and Lost this month, today's
       saves, late and going cold; targets match `Rep-Targets` and `Targets` for this month
       (read live, never written into git).
-- [ ] The owner updates a TEST site from his phone: `Activity` has the row with `rep` = `owner`;
+- [ ] The owner updates a TEST site from his phone: `Activity` has the row with `rep` = `admin`;
       RIA's page shows the change after reloading; the Today tab shows it as "You" and RIA is not
       counted as working for it.
-- [ ] From RIA's page, calling `ownerPageLoad` with RIA's code gets *"This link doesn't work."*
+- [ ] From RIA's page, calling `adminPageLoad` with RIA's code gets *"This link doesn't work."*
 - [ ] Opening time measured at phone size (salesman's page today: ~3.9 s warm). The agent drives
       the owner's link in Chromium **only if the owner allows** the agent to read his owner code
       (kept in a scratch file, never in logs or git); otherwise the owner times it on his phone.
 
 ## Out of scope
-- **Links on the phone** (making or cancelling links from the owner screen): open question 3.
-  Until then, links stay in Sales Diary → Links on a computer; in an emergency he can untick
+- **Links on the phone** (making or cancelling links from the admin screen): not in phase 7
+  (owner, P7-6). Links stay in Sales Diary → Links on a computer; in an emergency he can untick
   `active` for that row in the Google Sheets app on his phone (cancels at once).
 - Owner Edit details, Snooze, adding a site, handing sites to another salesman, deleting
   anything (all stay in the sheet).
@@ -348,33 +357,15 @@ Checked live (TEST rows on RIA's test link, deleted afterwards with the owner's 
 - Google sign-in for the owner (ADR-0006 option, not chosen; ADR-0010 keeps the door open).
 
 ## Open questions
-Ask the owner one at a time (tappable options, recommended first):
-1. **(P7-4) How does the salesman see a note the owner wrote?** When the owner updates a site
-   with a note, it becomes the last-spoken line on the salesman's card.
-   - **A. It shows as "Owner: …"** on his card and in the sheet *(Recommended: he knows it came
-     from you and isn't his own words; no change to the sheet's columns)*.
-   - B. Shown like any note, with no sign of who wrote it (the history in the sheet still says
-     owner).
-   - C. A tag "Changed by owner" on his card until his next Update (needs a new column).
-2. **(P7-5) Does the owner's Update reset "going cold"?** Going cold is "nobody has worked this
-   near-order site for 7 days" (P6-2: only a real Update resets it).
-   - **A. No: only the salesman's own Update resets it** *(Recommended: your change, such as a
-     new follow-up date, doesn't mean he worked the site; the yellow stays until he does, and it
-     matches "your saves don't count as his work")*.
-   - B. Yes: any Update, his or yours, resets it (e.g. you called the party yourself).
-3. **(P7-6) Making and cancelling links from the phone** (P2-2 said "on his phone owner screen
-   from phase 7").
-   - **A. Not in phase 7** *(Recommended: with P7-3 a leaked owner link can already change sites;
-     adding links would also let it hand out working salesman links or cancel everyone's. You can
-     cancel a link in an emergency by unticking `active` in the Sheets app on your phone)*.
-   - B. **Cancel link** only, on the phone (lost phone emergency); new links stay on the computer.
-   - C. New link and Cancel link on the phone, as in the Links window.
-
-Answered by the owner on 2026-11-04 (session 4, phase 7):
+_None open._ Answered by the owner on 2026-11-04 (session 4, phase 7):
 - **(P7-1)** A win counts in the **month it was marked Won** (quoted in October, won on
   3 November: November).
 - **(P7-2)** "Worked today": **any save at all** counts (new site, Update, Snooze, Edit details).
   (Agent had recommended counting only new sites and Updates.)
 - **(P7-3)** The owner can **update sites too** from his screen, and the history must show it was
   him. (Agent had recommended look-only.) This widens the risk he accepted in A8 / ADR-0006: see
-  [ADR-0010](../decisions/0010-owner-link-can-update-sites.md) (Proposed).
+  [ADR-0010](../decisions/0010-owner-link-can-update-sites.md) (Accepted).
+- **(P7-4)** His note shows to the salesman as **"Admin: …"**.
+- **(P7-5)** His Update does **not** reset going cold: only the salesman's own Update does.
+- **(P7-6)** **No** making or cancelling links on the phone in phase 7.
+- **(P7-7)** Say **"Admin" / "Administrator"** everywhere a person sees it, instead of "owner".
