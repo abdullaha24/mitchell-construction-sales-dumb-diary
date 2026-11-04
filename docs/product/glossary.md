@@ -7,9 +7,9 @@ Owner: correct anything wrong here; agents should treat this file as the authori
 
 | Term | Meaning |
 | --- | --- |
-| **Salesman / rep** | One of the 8 field salesmen, identified by his short code from the Meta-Data sheet: RIA, AUR, WAK (North), SH, SJ, SM (Center), UAK, IB (South). In code: `rep`. |
+| **Salesman / rep** | One of the 7 field salesmen, identified by his short code from the Meta-Data sheet: RIA, AUR, WAK (North), SH, SJ, SM (Center), IB (South). In code: `rep`. (MUB and UAK have left.) |
 | **Region** | North / Center / South. A region can cover more than one city (North ≈ Islamabad and around, Center ≈ Lahore, South ≈ Karachi). Used for targets, area lists and owner reports. |
-| **Owner** | The company owner. Sees everything, on his own screen. |
+| **Owner** | The company owner. Sees everything, on his own screen, opened with his private owner link. |
 | **Party** | Anyone a salesman sells to: a contractor, a builder, a dealer, a project owner. |
 | **Contact** | The actual person to call at a party or site: site engineer, thekedar, procurement officer. |
 | **Thekedar** | Urdu: contractor or labour contractor on a site. Often the real decision-maker on materials. |
@@ -23,7 +23,7 @@ Owner: correct anything wrong here; agents should treat this file as the authori
 | --- | --- |
 | **Site** | A construction project or job the salesman is chasing, e.g. "F-11 Commercial Tower". The main record in the app. One site has one current stage. |
 | **Buyer type** | What kind of party the site's buyer is: Contractor / Applicator, Project Owner, Consultant, Dealer. |
-| **Area** | Rough neighbourhood or sector, e.g. DHA, Bahria, Gulberg, F-11, SITE. Picked from the owner's list for the region; a salesman can add a missing one. Route planning only, **not** a territory. |
+| **Area** | Rough neighbourhood or sector, e.g. DHA, Bahria, Gulberg, F-11, SITE. No starting list: salesmen add areas as they go, and pick from the areas already used in their region. The app suggests close matches to avoid duplicates. Route planning only, **not** a territory. |
 | **Update / activity** | One logged action on a site: a stage change, note, snooze or follow-up change. |
 | **Follow-up date** | When the salesman should next contact this site. Drives *Today's Chase*. |
 | **Going cold** | A site at *Sample / Trial* or *Rate Quoted* with no update for **7 days**. Shown in yellow. |
@@ -55,13 +55,27 @@ The five stages a site moves through. Shown as plain buttons.
 | **Cash / Credit** | Whether the order is paid upfront or on credit terms. |
 | **Bags / Drums** | Common units for construction chemicals. |
 | **Ugrahi** | Urdu: payment recovery, collecting money owed for past orders. Salesmen spend a lot of time on this. **Later phase.** |
-| **Target** | Monthly Rs. target per salesman (and per region), kept by the owner in the Meta-Data sheet. Salesmen see their own target only. |
+| **Target** | Monthly Rs. target per salesman (and per region), kept by the owner in the Meta-Data sheet. Salesmen see their own target only. The owner screen shows it next to Won Rs., labelled "logged, not invoiced". |
+| **House / office sales** | Sales not tied to a salesman. Its target is the `UNASSIGNED` region in the Meta-Data `Targets` tab. Owner screen only. |
 
 ## Products
 
-Salesmen pick product **categories** (5–8), not individual products. Draft examples from the
-brainstorm: Tile Bond, Admixtures, Waterproofing, Epoxy, Grout / Putty.
-**The owner will supply the real category list** (stored in the `Lists` tab). Never hard-code them.
+Salesmen pick product **categories**, not individual products. The owner's list (session 2),
+in display order, biggest sellers first:
+
+1. Tile Adhesives
+2. Waterproofing Job
+3. Floor Hardeners
+4. Bonding Agents & Sealants
+5. Waterproofing Products
+6. Tile Grouts
+7. Structural Grouts
+8. Restoration & Repair Products
+9. Admixtures
+10. Surface Protection
+11. Mortars, Plasters & Putties
+
+Stored in the `Lists` tab so the owner can rename or reorder them. **Never hard-code them.**
 
 ## Sheets
 
@@ -77,5 +91,6 @@ brainstorm: Tile Bond, Admixtures, Waterproofing, Epoxy, Grout / Putty.
 | **Today's Chase** | Default tab: follow-ups due today or overdue. |
 | **Hot Pipeline** | Tab: sites at Sample / Trial or Rate Quoted. |
 | **All My Parties** | Tab: everything the salesman owns, searchable. |
-| **Owner screen** | The owner's view: pipeline by salesman/region, who worked today, overdue + going cold, won/lost + lost reasons. |
+| **Owner screen** | The owner's view: pipeline by salesman/region (with targets), who worked today, overdue + going cold, won/lost + lost reasons. |
+| **Owner link** | The owner's private link to his screen. Same kind of secret link as a salesman's (ADR-0006). |
 | **Site card** | One site in a list: name, last note, call and WhatsApp buttons, snooze. |

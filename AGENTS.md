@@ -12,7 +12,7 @@ If something here is out of date, fix it in the same change.
 
 ## What this is
 
-**Sales Diary** (working name): a phone-first pocket diary for the 8 field salesmen of a small
+**Sales Diary** (working name): a phone-first pocket diary for the 7 field salesmen of a small
 Pakistani construction-chemicals company, in three regions (North, Center, South).
 Each salesman opens a personal link, sees who to chase today, and logs visits, quotes, wins and
 losses in a few taps. The owner gets his own screen plus a written record in Google Sheets.

@@ -1,6 +1,6 @@
 # Data model (Google Sheets)
 
-> Status: **Draft v0.2** (2026-11-04), updated after the owner interview. Still a draft until the
+> Status: **Draft v0.3** (2026-11-04), updated after the owner interview and session 2 answers. Still a draft until the
 > phase 1 spec is approved. The tabs and headers act as the app's database schema. **Any change
 > here must be made in the same change as the code.**
 
@@ -21,7 +21,8 @@ Conventions:
 
 ## Mitchell Sales Meta-Data (read only)
 
-Structure as found on 2026-11-04. The owner may edit it any time, so read defensively.
+Structure as found on 2026-11-04, after the session 2 edits below. The owner may edit it any
+time, so read defensively.
 
 ### Tab `Rep_Mapping`
 | Column | Example | Notes |
@@ -29,24 +30,34 @@ Structure as found on 2026-11-04. The owner may edit it any time, so read defens
 | `Rep` | RIA | Salesman code. |
 | `Region` | North | North / Center / South. A region can cover several cities. |
 
-As of 2026-11-04 it lists MUB, **who has left**. The owner will remove him; until then the app
-treats a salesman without an active link (Sales Diary `Links`) as unable to open the app.
+Lists the 7 current salesmen: RIA, AUR, WAK (North), SH, SJ, SM (Center), IB (South).
+MUB and UAK were removed on 2026-11-04 (owner's OK). A salesman without an active link in Sales
+Diary `Links` can't open the app, whatever this tab says.
 
 ### Tab `Rep-Targets`
 | Column | Example | Notes |
 | --- | --- | --- |
 | `Rep` | RIA | |
-| `Month` | 2026-11 | `YYYY-MM`. Data runs Jul 2026 – Jun 2027. |
-| `Target` | 13,800,000 | Rs. May come back as text with commas, so parse it. |
+| `Month` | 2026-11 | Stored as a **date cell** (1st of the month) shown as `yyyy-mm`, so Apps Script reads a `Date`, not text. Accept both a `Date` and `YYYY-MM` text. Data runs Jul 2026 – Jun 2027. |
+| `Target` | 13,800,000 | Rs. Stored as a number shown as `#,##0`, but parse text with commas too in case the owner types one. |
 
-**Read only columns A–C.** Column E holds stray cells (a number in E2 and a list of rep codes
-lower down) that are not part of the data. Missing target for a salesman/month → show no target.
+**Read only columns A–C, and skip rows where any of them is blank.** Other cells are the owner's
+own workings and not part of the data: a formula in E2, and a hand-made October progress table
+in **E74:I90**. Rows are **not** grouped neatly by salesman: SM's rows (A74:C84) sit beside that
+table. Missing target for a salesman/month → show no target.
+
+Edits made on 2026-11-04 with the owner's explicit OK (session 2):
+- MUB keeps **Jul 2026** only. From **Aug 2026** his targets are split 50/50: his old rows became
+  SJ's (half value), and SM got matching new rows.
+- All UAK rows (Jul 2026 – Jun 2027) now belong to **IB**.
+- Region totals in `Targets` were unchanged and still match (e.g. Center Nov 2026:
+  SH 5.4M + SJ 0.5M + SM 0.5M = 6.4M).
 
 ### Tab `Targets`
 | Column | Example | Notes |
 | --- | --- | --- |
-| `Region` | North | Also contains `UNASSIGNED` (meaning to be confirmed, open question 5). |
-| `Month` | 2026-11 | |
+| `Region` | North | Also contains `UNASSIGNED` = **house / office sales**, not tied to a salesman. Shown on the owner screen only. |
+| `Month` | 2026-11 | Date cell, same as in `Rep-Targets`. |
 | `Target` | 21,800,000 | Rs. Equals the sum of that region's salesmen in `Rep-Targets` (checked for Nov 2026). |
 
 ---
@@ -54,24 +65,28 @@ lower down) that are not part of the data. Missing target for a salesman/month �
 ## Sales Diary (app-owned)
 
 ### Tab `Links`: private link codes (ADR-0002)
+
+**Created in phase 2**, when its design is final (not by phase 1 setup).
 | Column | Example | Notes |
 | --- | --- | --- |
-| `rep` | RIA | Must exist in `Rep_Mapping`. |
+| `role` | rep | `rep` (a salesman) or `owner` (ADR-0006). |
+| `rep` | RIA | For `rep` rows: must exist in `Rep_Mapping`. Blank for the `owner` row. |
 | `token` | *(long random)* | **Secret.** Whether this column stays in the visible sheet or moves to hidden storage is decided in the phase 2 spec. |
 | `active` | TRUE | FALSE = link cancelled. |
 | `issued_at` | | Server timestamp. |
 
-Owner access (open question 7) may add a row type here; decided in the owner-screen spec.
+The owner's link lives here too, as a `role` = `owner` row (ADR-0006). Exact details are set in
+the phase 2 spec.
 
 ### Tab `Sites`: current state, one row per site
 | Column | Example | Notes |
 | --- | --- | --- |
 | `site_id` | `S000123` | App-generated. |
-| `rep` | RIA | The one salesman who owns it (ADR-0004). Owner may change it to reassign. |
-| `region` | North | Copied from `Rep_Mapping` when created. |
+| `rep` | RIA | The one salesman who owns it (ADR-0004). The owner edits this to hand sites over when a salesman leaves. `Activity` rows keep the original salesman (history). |
+| `region` | North | Copied from `Rep_Mapping` when created. If the owner hands a site to a salesman in another region, he updates this too. |
 | `site_name` | F-11 Commercial Tower | |
 | `buyer_type` | Contractor / Applicator | Contractor / Applicator, Project Owner, Consultant, Dealer. |
-| `area` | DHA | From `Lists` (area for his region), or a new area he added. |
+| `area` | DHA | Picked from areas in `Lists` for his region, or a new one he added. |
 | `contact_name` | Asif (site engineer) | |
 | `contact_phone` | 923001234567 | Stored in **one normalised format**: used for Call/WhatsApp and the duplicate warning. |
 | `products` | Waterproofing, Tile Bond | Product **categories**, from `Lists`. Storage format set in spec. |
@@ -113,6 +128,16 @@ So the owner can change buttons without code changes.
 | `added_by` | owner / RIA | Areas added by salesmen show who added them, so the owner can tidy duplicates. |
 | `active` | TRUE | |
 | `sort` | 10 | Display order. |
+
+Starting contents (filled in by phase 1 setup, only when a list has no rows yet):
+- `product_category`: the owner's 11 categories, in this `sort` order: Tile Adhesives, Waterproofing
+  Job, Floor Hardeners, Bonding Agents & Sealants, Waterproofing Products, Tile Grouts, Structural
+  Grouts, Restoration & Repair Products, Admixtures, Surface Protection, Mortars, Plasters & Putties.
+- `lost_reason` and `buyer_type`: the values in the [glossary](../product/glossary.md).
+- `area`: **empty.** Salesmen add areas as they go. Salesmen in the same region see each other's
+  area **names** (needed so they can pick instead of retype, and for the "Did you mean …?"
+  suggestion), but never who added them. That is only an area name, no site or contact data, so
+  ADR-0004 still holds.
 
 ## Not modelled yet
 - Multiple contacts per site (v1: one).

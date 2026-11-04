@@ -17,4 +17,6 @@ and don't re-argue it every session.
 | [0002](0002-per-salesman-private-links.md) | Identify salesmen by private unguessable links, no logins | Accepted |
 | [0003](0003-code-tooling-and-local-testing.md) | Code tooling: clasp, plain JS, local tests | Accepted |
 | [0004](0004-private-lists-no-territories.md) | Private lists per salesman, no territories, duplicate warning | Accepted |
-| [0005](0005-app-data-sheet-and-meta-data-sheet.md) | App data in "Sales Diary"; salesmen and targets read from "Mitchell Sales Meta-Data" | Accepted |
+| [0005](0005-app-data-sheet-and-meta-data-sheet.md) | App data in "Sales Diary"; salesmen and targets read from "Mitchell Sales Meta-Data" | Accepted (ID bullet superseded by 0007) |
+| [0006](0006-owner-private-link.md) | Owner opens his screen with a private owner link | Accepted |
+| [0007](0007-meta-data-id-in-code.md) | The Meta-Data sheet's ID is kept in the code | Accepted |
