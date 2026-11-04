@@ -263,3 +263,9 @@ test('Snooze after Update: going cold keeps the day of the Update', () => {
   w.s.repSnoozeSite(RIA, 'S000001', { followUp: '1week' });
   assert.equal(rowOf(w, 1).worked_at.getTime(), worked);
 });
+
+test('his page gets the going-cold threshold with the stage rules (owner Q5: 7 days)', () => {
+  const rules = plain(world().s.repLoad(RIA)).rules;
+  assert.equal(rules.coldDays, 7);
+  assert.deepEqual(rules.hotStages, ['Sample / Trial', 'Rate Quoted']);
+});

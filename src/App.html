@@ -77,9 +77,36 @@
       .site-head { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
       .site-head h2 { font-size: 20px; margin: 0 0 4px; }
       .site-head .line { color: var(--soft); font-size: 15px; margin-top: 2px; }
-      .site-head .lastnote { margin-top: 8px; font-size: 15px; }
       .section { font-size: 18px; font-weight: 700; margin: 20px 0 0; }
       #formTitle { font-size: 20px; margin: 4px 0 0; }
+      /* Spec 007: last-spoken line, going cold, Call / WhatsApp / Snooze, area filter. */
+      :root { --yellow-bg: #fff8db; --yellow-line: #e2bd3c; --yellow-ink: #6b4e00; }
+      .card .said { font-size: 14px; margin-top: 4px; overflow-wrap: anywhere; display: -webkit-box;
+                    -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+      .card.cold { background: var(--yellow-bg); border-color: var(--yellow-line); }
+      .card.cold.late { border-left-color: var(--red); }
+      .tag.cold { background: #fbe9a6; color: var(--yellow-ink); font-weight: 700; }
+      .btnrow { display: flex; gap: 8px; margin-top: 10px; }
+      .btnrow > a, .btnrow > button { flex: 1 1 0; min-width: 0; min-height: 44px; display: flex; align-items: center;
+               justify-content: center; padding: 6px 4px; border-radius: 10px; border: 1px solid var(--line);
+               background: #fff; color: var(--blue); font: inherit; font-size: 15px; font-weight: 600;
+               text-decoration: none; white-space: nowrap; }
+      .btnrow > .wa { color: var(--green); }
+      .btnrow > .snooze { color: var(--ink); }
+      .site-head .said { margin-top: 8px; font-size: 15px; overflow-wrap: anywhere; }
+      .areas { display: flex; gap: 8px; overflow-x: auto; margin: -4px 0 12px; padding-bottom: 2px;
+               scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+      .areas::-webkit-scrollbar { display: none; }
+      .areas .pill { flex: none; white-space: nowrap; }
+      .sheet-back { position: fixed; inset: 0; background: rgba(31, 41, 51, .45); z-index: 4; }
+      .sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; background: #fff; border-radius: 16px 16px 0 0;
+               padding: 16px 16px 20px; max-width: 640px; margin: 0 auto; }
+      .sheet-title { font-weight: 700; font-size: 17px; margin-bottom: 12px; overflow-wrap: anywhere; }
+      .sheet-choices { display: flex; gap: 8px; margin-bottom: 12px; }
+      .sheet-choices .big { flex: 1 1 0; min-width: 0; padding: 8px 4px; line-height: 1.2; }
+      .sheet-choices .big small { display: block; font-size: 13px; font-weight: 400; opacity: .9; margin-top: 2px; }
+      .sheet .plain { width: 100%; }
+      #snoozeProblem { margin: -4px 0 12px; }
     </style>
   </head>
   <body>
@@ -108,6 +135,7 @@
                placeholder="Search name, phone, area…" aria-label="Search your parties">
         <button class="plain" id="clearSearch" type="button" aria-label="Clear search" hidden>✕</button>
       </div>
+      <div id="areaRow" class="areas" role="group" aria-label="Show one area" hidden></div>
       <div id="sites"></div>
     </main>
 
@@ -207,6 +235,13 @@
       <button class="plain" id="cancel" type="button">Back</button>
       <button class="big" id="save" type="button">Save</button>
     </div>
+    <div id="snoozeBack" class="sheet-back" hidden></div>
+    <div id="snoozeSheet" class="sheet" role="dialog" aria-modal="true" aria-labelledby="snoozeTitle" hidden>
+      <div id="snoozeTitle" class="sheet-title"></div>
+      <div id="snoozeProblem" class="note error" hidden></div>
+      <div class="sheet-choices" id="snoozeChoices"></div>
+      <button class="plain" id="snoozeCancel" type="button">Cancel</button>
+    </div>
     <div id="toast" role="status"></div>
 
     <script>
@@ -238,6 +273,8 @@
       var tab = 'chase';     // 'chase' | 'hot' | 'all'; the app always opens on Today's Chase
       var shownCount = PAGE_SIZE;
       var query = '';        // the All My Parties search
+      var areaPick = '';     // the All My Parties area filter (spec 007): an area key, '' = all areas
+      var snoozing = null;   // the open Snooze panel: { id, entry (a failed snooze it retries) }
       var listScroll = 0;    // where he was in the list, for coming back to it
       var renderedDay = '';  // the day the list was last drawn for
       var clockGap = 0;      // Google's clock minus the phone's, so a wrong phone clock doesn't matter
@@ -414,7 +451,8 @@
         }
         if (r.areas) data.areas = r.areas;
         saveQueue();
-        savedToast(r);
+        // A snooze already said "Snoozed to …" when he tapped it; only a notice is worth a word.
+        if (entry.fn !== 'repSnoozeSite' || r.notice) savedToast(r);
         if (screen === 'list') renderList();
       }
       function refreshAll() {
@@ -469,11 +507,18 @@
           });
         if (entry.fn === 'repAddSite') run.repAddSite(k, entry.input);
         else if (entry.fn === 'repUpdateSite') run.repUpdateSite(k, entry.siteId, entry.input);
+        else if (entry.fn === 'repSnoozeSite') run.repSnoozeSite(k, entry.siteId, entry.input);
         else run.repEditSite(k, entry.siteId, entry.input);
       }
       // Tapping a card that didn't save reopens it exactly as he left it, with the reason. It stays
       // in the queue (still "Not saved") until he saves it again; Back keeps it.
       function retry(entry) {
+        if (entry.fn === 'repSnoozeSite') {
+          openSnooze(entry.siteId, entry);
+          $('snoozeProblem').textContent = entry.message + ' Tap a day again.';
+          $('snoozeProblem').hidden = false;
+          return;
+        }
         if (entry.fn === 'repAddSite') {
           showForm('', entry);
         } else if (entry.fn === 'repEditSite') {
@@ -550,6 +595,135 @@
       }
       function isFailed(s) { var e = entryFor(s.id); return !!(e && e.status === 'failed'); }
 
+      // ---- Site card helpers (spec 007) ----
+      // Days since the last real Update (adding the site or an Update save; never Snooze or Edit
+      // details, owner P6-2), or -1 if unknown.
+      function daysSinceWorked(s, today) { return s.worked ? dayNumber(today) - dayNumber(s.worked) : -1; }
+      // Going cold (owner Q5): Sample / Trial or Rate Quoted, no real Update for 7 days or more.
+      function coldDays(s, today) {
+        var days = daysSinceWorked(s, today);
+        return isHot(s) && days >= (rules().coldDays || 7) ? days : 0;
+      }
+      function coldTag(days) { return el('span', 'Going cold · no update for ' + days + ' days', 'tag cold'); }
+      // "22 Oct", or "22 Oct 2025" for another year.
+      function dayLabel(key, today) { return shortDay(key) + (key.slice(0, 4) !== today.slice(0, 4) ? ' ' + key.slice(0, 4) : ''); }
+      // The last-spoken line: his last note and the day he wrote it.
+      function saidLine(s, today) { return s.noteDay ? dayLabel(s.noteDay, today) + ': ' + s.note : s.note; }
+      // WhatsApp for a mobile: a Pakistani 03… number, or one from abroad. A landline has none.
+      function hasWhatsApp(phone) { return /^923\d{9}$/.test(phone) || !/^92/.test(phone); }
+      // A link or button inside a card does only its own job: it never opens the site screen.
+      function ownTap(node, onTap) {
+        node.addEventListener('click', function (e) { e.stopPropagation(); if (onTap) onTap(e); });
+        return node;
+      }
+      function linkButton(text, href, cls, target) {
+        var a = el('a', text, cls);
+        a.href = href;
+        a.target = target;
+        if (target === '_blank') a.rel = 'noopener';
+        return ownTap(a);
+      }
+      // Call / WhatsApp (not logged, P6-4), and Snooze when asked. Null when there is nothing to show.
+      function buttonRow(s, withSnooze) {
+        var row = el('div', undefined, 'btnrow');
+        if (s.phone) {
+          // Google shows the app in a frame: the dialer is opened from the top page, WhatsApp in a new one.
+          row.appendChild(linkButton('Call', 'tel:+' + s.phone, 'call', '_top'));
+          if (hasWhatsApp(s.phone)) row.appendChild(linkButton('WhatsApp', 'https://wa.me/' + s.phone, 'wa', '_blank'));
+        }
+        if (withSnooze) {
+          var b = el('button', 'Snooze', 'snooze');
+          b.type = 'button';
+          row.appendChild(ownTap(b, function () { openSnooze(s.id); }));
+        }
+        return row.childNodes.length ? row : null;
+      }
+      // Snooze shows on a due site (in Today's Chase) that is saved and has no save of its own on the way.
+      function canSnooze(s, today) { return inChase(s, today) && !entryFor(s.id) && !/^new-/.test(s.id); }
+
+      // ---- Snooze panel (owner P6-1: Snooze, then Tomorrow / 3 days / 1 week) ----
+      var SNOOZE = [['tomorrow', 'Tomorrow'], ['3days', '3 days'], ['1week', '1 week']];
+      function openSnooze(id, retryEntry) {
+        var s = siteById(id);
+        if (!s) return;
+        snoozing = { id: id, entry: retryEntry || null };
+        $('snoozeTitle').textContent = 'Snooze ' + s.name + ' to:';
+        $('snoozeProblem').hidden = true;
+        var box = $('snoozeChoices'); box.textContent = '';
+        SNOOZE.forEach(function (c) {
+          var b = el('button', c[1], 'big');
+          b.type = 'button';
+          b.appendChild(el('small', shortDay(followKey(c[0]))));
+          b.addEventListener('click', function () { pickSnooze(c[0]); });
+          box.appendChild(b);
+        });
+        $('snoozeBack').hidden = false;
+        $('snoozeSheet').hidden = false;
+      }
+      function closeSnooze() {
+        snoozing = null;
+        $('snoozeBack').hidden = true;
+        $('snoozeSheet').hidden = true;
+      }
+      // A save like any other (spec 005): shown at once, sent in the queue with a one-time ID.
+      // The site leaves Today's Chase at once; going cold keeps counting (P6-2).
+      function pickSnooze(choice) {
+        var s = siteById(snoozing.id);
+        var replaces = snoozing.entry;
+        closeSnooze();
+        if (!s) return;
+        var saveId = newSaveId();
+        var card = clone(s);
+        card.followUp = followKey(choice);
+        enqueue({ id: saveId, fn: 'repSnoozeSite', siteId: s.id, input: { followUp: choice, saveId: saveId }, card: card,
+          state: { followUp: choice } }, replaces);
+        toast('Snoozed to ' + shortDay(card.followUp));
+        if (screen === 'list') renderList();
+      }
+
+      // ---- Area filter (All My Parties, spec 007): his own sites' areas, most sites first ----
+      function areaGroups() {
+        var groups = {};
+        data.sites.forEach(function (s) {
+          var key = areaKey(s.area || '');
+          if (!key) return;
+          var g = groups[key] || (groups[key] = { key: key, count: 0, names: {} });
+          g.count++;
+          g.names[s.area] = (g.names[s.area] || 0) + 1;
+        });
+        return Object.keys(groups).map(function (key) {
+          var g = groups[key];
+          // Shown under the spelling most of his sites use.
+          g.name = Object.keys(g.names).sort(function (a, b) { return g.names[b] - g.names[a] || a.localeCompare(b); })[0];
+          return g;
+        }).sort(function (a, b) { return b.count - a.count || a.name.localeCompare(b.name); });
+      }
+      function pickArea(key) {
+        areaPick = key; shownCount = PAGE_SIZE;
+        renderList();
+      }
+      function renderAreas() {
+        var row = $('areaRow');
+        var groups = tab === 'all' ? areaGroups() : [];
+        if (areaPick && !groups.some(function (g) { return g.key === areaPick; }) && tab === 'all') areaPick = '';
+        var keepScroll = row.scrollLeft;
+        row.textContent = '';
+        row.hidden = !groups.length;
+        if (!groups.length) return;
+        row.appendChild(pill('All areas', !areaPick, function () { pickArea(''); }));
+        groups.forEach(function (g) {
+          var b = pill(g.name + ' ' + g.count, areaPick === g.key, function () { pickArea(areaPick === g.key ? '' : g.key); });
+          b.setAttribute('data-area', g.key);
+          row.appendChild(b);
+        });
+        row.scrollLeft = keepScroll;
+      }
+      function areaName() {
+        var groups = areaGroups();
+        for (var i = 0; i < groups.length; i++) if (groups[i].key === areaPick) return groups[i].name;
+        return '';
+      }
+
       // Search: capitals, spaces and dashes don't matter; every word must match; a number matches
       // however he types it (0300 123, 92300123). Each site's text is worked out once.
       var searchCache = typeof WeakMap === 'function' ? new WeakMap() : null;
@@ -582,6 +756,7 @@
             .sort(function (a, b) { return shownValue(b.s) - shownValue(a.s) || byFollowUp(a, b); });
         }
         var words = searchWords(query);
+        if (areaPick) rows = rows.filter(function (r) { return areaKey(r.s.area || '') === areaPick; });
         if (!words.length) return rows;
         return rows.filter(function (r) {
           var text = searchText(r.s);
@@ -608,7 +783,9 @@
       function cardFor(s, today) {
         var entry = entryFor(s.id);
         var late = isOpenSite(s) && !!s.followUp && s.followUp < today;
-        var card = el('div', undefined, 'card' + (entry && entry.status === 'failed' ? ' failed' : '') + (late ? ' late' : ''));
+        var cold = coldDays(s, today);
+        var card = el('div', undefined, 'card' + (entry && entry.status === 'failed' ? ' failed' : '') + (late ? ' late' : '') +
+          (cold ? ' cold' : ''));
         card.setAttribute('role', 'button');
         card.addEventListener('click', function () {
           var e = entryFor(s.id);
@@ -622,14 +799,18 @@
         if (shownValue(s)) card.appendChild(el('div', rs(s.value) + (s.terms ? ' · ' + s.terms : ''), 'value'));
         var follow = followLine(s, today);
         if (follow) card.appendChild(follow);
+        if (s.note) card.appendChild(el('div', saidLine(s, today), 'said'));
         card.appendChild(el('span', s.stage, 'tag' + stageClass(s.stage)));
         if (!s.phone) card.appendChild(el('span', 'No number yet', 'tag nonum'));
+        if (cold) card.appendChild(coldTag(cold));
         if (entry && entry.status === 'saving') card.appendChild(el('span', entry.slow ? 'Still sending…' : 'Saving…', 'tag saving'));
         if (entry && entry.status === 'checking') card.appendChild(el('span', 'Checking…', 'tag saving'));
         if (entry && entry.status === 'failed') {
           card.appendChild(el('span', 'Not saved. Tap to try again.', 'tag failed'));
           card.appendChild(el('div', entry.message, 'meta'));
         }
+        var buttons = buttonRow(s, canSnooze(s, today));
+        if (buttons) card.appendChild(buttons);
         return card;
       }
       function emptyFor(which, today) {
@@ -643,6 +824,10 @@
           if (next) box.appendChild(el('div', 'Next follow-up: ' + shortDay(next) + '.'));
         } else if (which === 'hot') {
           box.textContent = 'No sites at ' + rules().hotStages.join(' or ') + '.';
+        } else if (areaPick && query.trim()) {
+          box.textContent = 'No site in ' + areaName() + ' matches "' + query.trim() + '".';
+        } else if (areaPick) {
+          box.textContent = 'No site in ' + areaName() + '.';
         } else {
           box.textContent = 'No site matches "' + query.trim() + '".';
         }
@@ -675,6 +860,7 @@
         setTab('all', data.sites.length, false);
         $('searchBox').hidden = tab !== 'all';
         $('clearSearch').hidden = !query;
+        renderAreas();
 
         var box = $('sites');
         box.textContent = '';
@@ -722,12 +908,16 @@
         var meta = [s.area, s.buyerType].filter(Boolean).join(' · ');
         if (meta) head.appendChild(el('div', meta, 'line'));
         head.appendChild(el('div', [s.contactName, showPhone(s.phone)].filter(Boolean).join(' · ') || ' ', 'line'));
+        var buttons = buttonRow(s, false); // no Snooze here: the Update form has the dates (spec 007)
+        if (buttons) head.appendChild(buttons);
         if (!s.phone) head.appendChild(el('span', 'No number yet', 'tag nonum'));
         head.appendChild(el('span', s.stage, 'tag' + stageClass(s.stage)));
+        var cold = coldDays(s, todayKey());
+        if (cold) head.appendChild(coldTag(cold));
         if (s.value) head.appendChild(el('div', 'Last value: ' + rs(s.value) + (s.terms ? ' · ' + s.terms : ''), 'line'));
         if (s.lostReason && s.stage === rules().lostStage) head.appendChild(el('div', 'Lost: ' + s.lostReason, 'line'));
         if (s.followUp) head.appendChild(el('div', 'Follow up: ' + shortDay(s.followUp), 'line'));
-        if (s.note) head.appendChild(el('div', '“' + s.note + '”', 'lastnote'));
+        if (s.note) head.appendChild(el('div', (s.noteDay ? dayLabel(s.noteDay, todayKey()) + ': ' : '') + '“' + s.note + '”', 'said'));
       }
       function renderUpdate() {
         var s = siteById(openId);
@@ -808,8 +998,9 @@
         if (has(r.valueStages, upd.stage)) { card.value = Number(digitsOf(upd.value)); card.terms = upd.terms; }
         card.lostReason = upd.stage === r.lostStage ? upd.lostReason : '';
         card.followUp = followUp;
-        if (upd.note.trim()) card.note = upd.note.trim();
+        if (upd.note.trim()) { card.note = upd.note.trim(); card.noteDay = todayKey(); }
         if (upd.phone.trim()) card.phone = upd.phone.trim();
+        card.worked = todayKey(); // a real Update: no longer going cold (P6-2)
         var replaces = retrying;
         enqueue({ id: upd.saveId, fn: 'repUpdateSite', siteId: openId, input: input, card: card, state: clone(upd) }, replaces);
         store(updKey(openId), null); // the queue carries it now
@@ -999,14 +1190,15 @@
             stage: form.stage, value: has(r.valueStages, form.stage) ? Number(digitsOf(form.value)) : null,
             terms: has(r.valueStages, form.stage) ? form.terms : '', lostReason: form.stage === r.lostStage ? form.lostReason : '',
             followUp: closed ? '' : followKey(form.followUp, form.date, ''), phone: form.phone.trim(),
-            contactName: form.contactName.trim(), products: form.products.slice(), note: form.note.trim(), created: todayKey() };
+            contactName: form.contactName.trim(), products: form.products.slice(), note: form.note.trim(), created: todayKey(),
+            worked: todayKey(), noteDay: form.note.trim() ? todayKey() : '' };
           var saved = clone(form);
           var replaces = retrying;
           if (!replaces) store(DRAFT_KEY, null); // a retried site leaves his other new-site draft alone
           form = emptyForm(); phoneCheck = { valid: true }; retrying = null;
           enqueue({ id: saved.saveId, fn: 'repAddSite', input: input, card: card, state: saved }, replaces);
           // He sees his new site at the top of All My Parties, "Saving…" (spec 006).
-          tab = 'all'; shownCount = PAGE_SIZE; query = ''; $('search').value = '';
+          tab = 'all'; shownCount = PAGE_SIZE; query = ''; areaPick = ''; $('search').value = '';
           showList();
         } else {
           var id = mode.siteId;
@@ -1120,6 +1312,8 @@
         clearTimeout(renderList.timer);
         renderList.timer = setTimeout(renderList, 120); // one redraw once he pauses, not per letter
       });
+      $('snoozeCancel').addEventListener('click', closeSnooze);
+      $('snoozeBack').addEventListener('click', closeSnooze);
       $('clearSearch').addEventListener('click', function () {
         query = ''; $('search').value = ''; shownCount = PAGE_SIZE;
         renderList();

@@ -139,6 +139,12 @@ const NUMBER_STAGES = ['Sample / Trial', 'Rate Quoted', 'Won (Order)'];
 /** Hot Pipeline: his near-term orders (vision, spec 006). */
 const HOT_STAGES = ['Sample / Trial', 'Rate Quoted'];
 
+/**
+ * Going cold (owner Q5, spec 007): a Hot Pipeline site whose last real Update was this many
+ * days ago or more turns yellow on his card.
+ */
+const COLD_DAYS = 7;
+
 /** Closed stages: no follow-up date (owner P4-3). */
 const CLOSED_STAGES = ['Won (Order)', 'Lost / Dead'];
 

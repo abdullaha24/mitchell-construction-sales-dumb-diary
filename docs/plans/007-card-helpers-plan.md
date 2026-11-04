@@ -22,7 +22,7 @@
   repeat save ID + `repSaveStatus`, text as text; allow-list 14 → 15; speed (Links, Sites,
   Activity once; Lists not at all).
 
-## [ ] Step 3: The page
+## [x] Step 3: The page
 - Card: last-spoken line, going cold (yellow + tag), Call / WhatsApp / Snooze row (buttons never
   open the site screen); site screen: Call / WhatsApp, note with its day, going-cold tag.
 - Snooze panel through the save queue (send, retry, failed card on every tab).

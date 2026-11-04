@@ -61,6 +61,7 @@ function loadFor_(salesman, diary) {
     rules: {
       stages: STAGES, valueStages: VALUE_STAGES, numberStages: NUMBER_STAGES,
       closedStages: CLOSED_STAGES, lostStage: LOST_STAGE, paymentTerms: PAYMENT_TERMS, hotStages: HOT_STAGES,
+      coldDays: COLD_DAYS,
     },
   };
 }
