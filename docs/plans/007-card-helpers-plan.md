@@ -38,6 +38,6 @@
   site, Don't snooze, an Update replaces it); orange edge wins over yellow; a flaky wait in
   `queue.check.js` case D.
 
-## [ ] Step 5: Live with the owner (coordinator)
+## [x] Step 5: Live with the owner (coordinator)
 - Add the two `Sites` headers to the live sheet **first**, then push and update the deployment;
   owner tests on his phone (Call / WhatsApp); TEST rows cleaned up with his OK.

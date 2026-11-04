@@ -1,6 +1,6 @@
 # 007: Site card helpers (Call, WhatsApp, last note, going cold, snooze) and the area filter
 
-- **Status:** In progress (built and checked locally 2026-11-04; not live yet)
+- **Status:** Done (live 2026-11-04, session 4, deployment version 9)
 - **Owner approval:** approved by the owner on 2026-11-04 (session 4)
 - **Related:** roadmap phase 6 · [vision](../product/vision.md) → 2 "Site card", 5 "Route
   planning" · ADR-0004 (his own data only) · [ADR-0009](../decisions/0009-worked-at-and-note-at.md)
@@ -226,17 +226,25 @@ Checked locally:
       (see plan 007, step 4).
 
 Checked live (on RIA's test link, TEST rows deleted afterwards with the owner's OK):
-- [ ] The two headers are in live `Sites` before the deploy; Check setup (or a read through the
+- [x] The two headers are in live `Sites` before the deploy; Check setup (or a read through the
       connector) shows nothing missing.
-- [ ] **On the owner's Android phone:** **Call** opens the dialer with the number; **WhatsApp**
+- [x] **On the owner's Android phone:** **Call** opens the dialer with the number; **WhatsApp**
       opens WhatsApp on an **empty** chat with that number. (Google shows the app inside its own
       frame, so this must be seen on a real phone; the agent's Chromium can only check the links.)
-- [ ] Snooze a due TEST site: gone from Today's Chase at once; `Sites` has the new
+- [x] Snooze a due TEST site: gone from Today's Chase at once; `Sites` has the new
       `next_followup`, unchanged `worked_at`; `Activity` has one `snooze` row.
-- [ ] A TEST site at Rate Quoted with `worked_at` set 8 days back (by the agent, in the sheet) is
+- [x] A TEST site at Rate Quoted with `worked_at` set 8 days back (by the agent, in the sheet) is
       yellow; an Update clears it; Edit details and Snooze don't.
-- [ ] The area filter shows only that salesman's areas and sites.
-- [ ] Opening the app is no slower than version 7 (3.2–3.8 s at phone size, mostly Google's own).
+- [x] The area filter shows only that salesman's areas and sites.
+- [x] Opening the app is no slower than version 7 (3.2–3.8 s at phone size, mostly Google's own).
+- Live results (agent on RIA's test link in Chromium at phone size; owner tapped Call and
+  WhatsApp on his Android phone: **both worked**): links used the 92… form even while saving; a
+  landline got Call only; last-spoken line "4 Nov: …"; a Rate Quoted TEST site with `worked_at`
+  10 days back showed "Going cold · no update for 10 days"; Snooze → 3 days left Today's Chase at
+  once, `Sites` got the new date with `worked_at` unchanged, `Activity` got a `snooze` row; the area
+  filter showed only his TEST Zone sites. Opening: 3.9 s warm (version 7: 3.2–3.8 s, within
+  Google's variation), 5.8 s on a cold start. Found live and fixed (version 9): the area count is
+  now a badge ("TEST Zone 2" read like a name). TEST rows deleted with the owner's OK.
 
 ## Out of scope
 - Logging calls or WhatsApp messages (owner, P6-4).
