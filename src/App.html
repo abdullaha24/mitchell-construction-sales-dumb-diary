@@ -525,6 +525,7 @@
         var giveUp = setTimeout(function () {
           if (!release()) return;
           entry.status = 'failed'; entry.message = 'Not saved: no signal.';
+          dropIfCarried(entry);
           saveQueue();
           if (screen === 'list') renderList();
           sendNext();
@@ -545,6 +546,7 @@
                 // His changes stay; the rest now shows the site as it is (spec 008).
                 if (entry.state && entry.state.seen) entry.state = rebased(entry.state, fresh);
               }
+              dropIfCarried(entry);
               saveQueue();
               if (screen === 'list') renderList();
             }
@@ -553,6 +555,7 @@
           .withFailureHandler(function (error) {
             if (!release()) return;
             entry.status = 'failed'; entry.message = readable(error);
+            dropIfCarried(entry);
             saveQueue();
             if (screen === 'list') renderList();
             sendNext();
@@ -1114,6 +1117,9 @@
       // so a form opened over his own unconfirmed save carries that save's changes as his.
       var confirmed = {};
       var superseded = {}; // saves whose changes a later confirmed save carried (their late replies are ignored)
+      // A save a later, confirmed save already carried that then fails anyway (e.g. a retry sent
+      // just before) is not shown as not saved: what it changed is saved.
+      function dropIfCarried(entry) { if (superseded[entry.id]) removeEntry(entry); }
       function confirmAll(sites) {
         confirmed = {};
         sites.forEach(function (c) { confirmed[c.id] = snap(c); });
@@ -1162,9 +1168,12 @@
           followUp: upd.followUp === 'keep' ? s.followUp : upd.followUp === 'date' ? upd.date : upd.followUp,
           note: upd.note, phone: upd.phone, saveId: upd.saveId,
         };
-        // His earlier saves of this site still in the queue: this form was opened over them, so it
-        // carries their changes (spec 008).
-        var earlier = queue.filter(function (q) { return q.card.id === s.id; }).map(function (q) { return q.id; });
+        // His earlier Updates and snoozes of this site still in the queue: this form was opened over
+        // them, so it carries their changes (spec 008). Not Edit details: those are their own saves.
+        // A retry is its own form again: it carries what it was first opened over, and itself.
+        var earlier = retrying ? (retrying.carries || []).concat([retrying.id]) : queue.filter(function (q) {
+          return q.card.id === s.id && (q.fn === 'repUpdateSite' || q.fn === 'adminPageUpdateSite' || q.fn === 'repSnoozeSite');
+        }).map(function (q) { return q.id; });
         // What Google had when the form opened, and what he changes: Google writes only that.
         if (upd.seen) {
           input.seen = clone(upd.seen);

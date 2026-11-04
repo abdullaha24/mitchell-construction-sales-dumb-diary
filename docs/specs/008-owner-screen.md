@@ -235,18 +235,23 @@ P7-3), and the history shows it was him.
   - **Saved once.** A save's fingerprint leaves out `seen` only (it describes what he saw; the
     values and `touched` say what he saves). A retry unchanged keeps its save ID, form and `touched`,
     so it is the same save, saved once; any change gives a new save ID.
-  - **The queue.** An Update lists the saves of his it was opened over (`carries`) and, when it
-    lands, replaces only those failed saves; a late "saved" reply of a save a landed later one
-    carried is ignored (it would put an older card back).
+  - **The queue.** An Update lists his Updates and snoozes of the site it was opened over
+    (`carries`; a retry keeps what it first carried; never Edit details, which are their own
+    saves) and, when it lands, replaces only those failed saves. A late "saved" reply of a save a
+    landed later one carried is ignored (it would put an older card back), and such a save that
+    fails anyway is not shown as not saved (what it changed is saved).
   - A form without `seen` and `touched` (kept on a phone from before this version) saves as it
     always did. Correcting the very thing a lost-reply save already changed (to another value) is
-    refused once, as the server can't tell it was his; he sees it and saves again.
+    refused once, as the server can't tell it was his; he sees it and saves again. So is a lost
+    reply retried unchanged after midnight (its "Tomorrow" now means another day). No data is lost
+    in either case.
   - **Tested at random** (`tests/interleave.test.js`): 1,500 seeded sequences (6,000 checked once)
     of 2 to 4 saves by a salesman and the admin on one site, random things touched, random fates
     (lands, fails, lost reply then retried unchanged or edited, refused then retried), forms left
-    open, refreshes. After every save: only touched things written and never over someone else's
-    newer change; "saved" means it is there; one `Activity` row per save ID; nothing stays orange
-    after a save that carried it landed.
+    open, refreshes, late replies after the phone gave up. After every save: only touched things
+    written and never over someone else's newer change; "saved" means it is there; one `Activity`
+    row per save ID; nothing stays orange after a save that carried it landed; and never refused
+    unless someone else really changed what it touched.
 - **The owner-link check** (new helper `requireAdminLink_(k)`): a code not shaped like ours →
   *"This link doesn't work."* without opening any sheet; otherwise Sales Diary is opened once and
   `Links` read: only an **active** row with `role` = `owner` and exactly this code passes. A

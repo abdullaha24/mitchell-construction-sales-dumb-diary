@@ -406,6 +406,34 @@ const want = (name) => !process.env.ONLY || name.split('/').includes(process.env
     await context.close();
   }
 
+  if (want('M')) {
+    // Spec 008: an Edit details that didn't go through is its own save: a later Update doesn't
+    // carry it, so when he retries it, it is applied ("Saved", and its new area shows at once).
+    console.error('case M');
+    const world = buildWorld();
+    const { page, context } = await open(world);
+    await page.click('.card:has-text("F-11 Tower")');
+    await page.click('#editDetails');
+    await page.click('#f-areas .pill:has-text("+ New area")');
+    await page.fill('#f-newarea', 'Zone Q');
+    await page.evaluate(() => { window.__offline = true; });
+    await page.click('#save');
+    await page.waitForFunction(() => queue.some((q) => q.fn === 'repEditSite' && q.status === 'failed'));
+    await page.evaluate(() => { window.__offline = false; });
+    await page.waitForSelector('#siteView:not([hidden])'); // back on the site screen: an Update
+    await page.fill('#u-note', 'called him');
+    await page.click('#save');
+    await page.waitForFunction(() => document.querySelector('#toast').textContent === 'Saved');
+    await page.waitForSelector('.card.failed:has-text("F-11 Tower")');
+    await page.click('.card.failed');
+    await page.click('#save');
+    await page.waitForFunction(() => document.querySelector('#toast').textContent === 'Saved' && !queue.length);
+    assert.ok(await page.evaluate(() => data.areas.includes('Zone Q')), 'its new area shows at once');
+    const row = world.diary.getSheetByName('Sites').getDataRange().getValues()[1];
+    assert.deepEqual([row[5], row[14]], ['Zone Q', 'called him']);
+    await context.close();
+  }
+
   await browser.close();
   console.log('PASS: the save queue behaves as spec 005 says, in the hard cases.');
 })().catch(async (error) => {

@@ -76,6 +76,12 @@
   `tests/interleave.test.js`: 1,500 seeded random interleavings with four invariants; it fails on
   666238c's design (seed 26: the lost-retry overwrite; seed 139: an untouched value written) and
   catches each of 7 server mutations on its own; page mutations (3) caught by browser checks.
+- [x] Final review follow-ups: invariant 5 (never refused without a real clash; catches "refuse
+  every touched thing" and "refuse his own landed save") and late replies in the random test,
+  which then found two small page cases, fixed: a retry carries only what it first carried, and a
+  carried save that fails anyway is dropped, not left orange. Edit details are never carried by an
+  Update (`queue.check.js` case M: its retry says "Saved" and shows its new area). Known limit noted:
+  a lost reply retried unchanged after midnight can be refused once.
 
 ## [ ] Step 5: Live (coordinator)
 - Push and update the deployment; owner tests on his phone; TEST rows cleaned up with his OK.

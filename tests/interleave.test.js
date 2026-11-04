@@ -14,6 +14,9 @@
 //     visibly not saved (orange) or refused with a message.
 //  3. One Activity row per landed save, never two for one save ID.
 //  4. No save stays orange after a later save that carried its changes landed.
+//  5. A save is never refused unless someone else changed something it touched (to another value)
+//     since its form opened, or moved the stage so that a touched thing is no longer used.
+// (An edited retry gets a new save ID on the real page: any change to an Update form does.)
 // A failure prints the seed: SEED=<n> node --test tests/interleave.test.js runs just that one.
 
 const test = require('node:test');
@@ -112,7 +115,7 @@ function makePhone(who) {
   const isAdmin = who === 'admin';
   const call = (input) => plain(isAdmin ? s.adminPageUpdateSite(ADMIN, SITE, input) : s.repUpdateSite(RIA, SITE, input));
   const load = () => plain(isAdmin ? s.adminPageLoad(ADMIN) : s.repLoad(RIA)).sites.find((c) => c.id === SITE);
-  const p = { who, queue: [], superseded: {}, form: null, card: null, confirmed: null, notes: 0 };
+  const p = { who, queue: [], superseded: {}, form: null, card: null, confirmed: null, notes: 0, late: [] };
   p.refresh = () => {
     const card = load();
     p.confirmed = page.snap(card);
@@ -169,14 +172,14 @@ function makePhone(who) {
     const card = { ...JSON.parse(JSON.stringify(p.card)), stage: want.stage, lostReason: want.lostReason, followUp: want.followUp };
     if (RULES.valueStages.includes(want.stage)) { card.value = want.value; card.terms = want.terms; }
     if (u.note.trim()) card.note = (isAdmin ? 'Admin: ' : '') + u.note.trim();
-    const carries = p.queue.map((e) => e.id);
+    const carries = replaces ? replaces.carries.concat([replaces.id]) : p.queue.map((e) => e.id); // a retry: what it first carried, and itself
     if (replaces) p.queue.splice(p.queue.indexOf(replaces), 1);
     const entry = { id: u.saveId, input, card, state: u, status: 'saving', carries, want };
     p.queue.push(entry);
     p.card = JSON.parse(JSON.stringify(card));
   };
   p.applySuccess = (e, r) => {
-    p.queue.splice(p.queue.indexOf(e), 1);
+    if (p.queue.includes(e)) p.queue.splice(p.queue.indexOf(e), 1);
     if (p.superseded[e.id]) return;
     e.carries.forEach((id) => { p.superseded[id] = true; });
     p.confirmed = page.snap(r.site);
@@ -214,12 +217,14 @@ function run(seed) {
   const fail = (what) => { throw new Error(`seed ${seed}: ${what}\n  ${log.join('\n  ')}`); };
 
   // Sends a phone's next save with a random fate, and checks invariants 1-3 on what Google did.
-  function deliver(ph) {
+  function deliver(ph, only) {
     const e = ph.queue.find((q) => q.status === 'saving');
     if (!e) return;
-    const fate = rnd.pick(['land', 'land', 'land', 'fail', 'lost']);
+    const fate = only || rnd.pick(['land', 'land', 'land', 'fail', 'lost', 'late']);
     log.push(`${ph.who} ${e.id} ${fate} touched=${e.input.touched.join(',')} want=${JSON.stringify(e.want)}${e.input.note ? ' note' : ''}`);
-    if (fate === 'fail') { e.status = 'failed'; e.message = 'Not saved: no signal.'; return; }
+    // A carried save that fails anyway is dropped, not shown orange (dropIfCarried).
+    const failIt = (message) => { e.status = 'failed'; e.message = message; if (ph.superseded[e.id]) ph.queue.splice(ph.queue.indexOf(e), 1); };
+    if (fate === 'fail') { failIt('Not saved: no signal.'); return; }
     const before = sheetState(diary);
     const repeat = rowsBySave[e.id] === 1; // Google already has this save: it answers as it did then
     const r = ph.call(e.input);
@@ -229,6 +234,20 @@ function run(seed) {
     if (rowsBySave[e.id] > 1) fail(`3: two Activity rows for save ${e.id}`);
     if (r.ok && added === 0 && !repeat) fail(`3: "saved" but no Activity row (${e.id})`);
     if (!r.ok && added !== 0) fail(`2: refused (${r.message}) but something was written`);
+    // 5. Refused only for a real clash.
+    if (r.changed) {
+      const t = e.input.touched;
+      const key = (x, f) => (f === 'money' ? `${x.value}|${x.terms}` : x[f]);
+      const usedBy = (stage, f) => ({ stage: true, money: RULES.valueStages.includes(stage), lostReason: stage === LOST,
+        followUp: !RULES.closedStages.includes(stage) })[f];
+      const clash = t.some((f) => {
+        const now = key(before.snap, f);
+        const saw = f === 'money' ? `${e.input.seen.value}|${e.input.seen.terms}` : e.input.seen[f];
+        if (!t.includes('stage') && before.snap.stage !== e.input.seen.stage && !usedBy(before.snap.stage, f)) return true;
+        return now !== saw && now !== key(e.want, f);
+      });
+      if (!clash) fail('5: refused though nobody else changed what he touched');
+    }
     if (r.ok && !repeat) {
       const t = e.input.touched;
       const seen = e.input.seen;
@@ -272,9 +291,16 @@ function run(seed) {
         fail('2: "saved" but his note is not there');
       }
     }
-    if (fate === 'lost') { e.status = 'failed'; e.message = 'Not saved: no signal.'; return; }
-    if (r.ok) ph.applySuccess(e, r); else ph.refused(e, r);
+    if (fate === 'lost') { failIt('Not saved: no signal.'); return; }
+    if (fate === 'late') {
+      // The phone gave up waiting ("not saved"); Google's "saved" arrives later (still honoured).
+      failIt('Not saved: no signal.');
+      if (r.ok) ph.late.push({ e, r });
+      return;
+    }
+    if (r.ok) ph.applySuccess(e, r); else { ph.refused(e, r); if (ph.superseded[e.id]) ph.queue.splice(ph.queue.indexOf(e), 1); }
   }
+  const lateReply = (ph) => { const x = ph.late.shift(); if (x) ph.applySuccess(x.e, x.r); };
 
   const steps = 2 + rnd.int(3);
   for (let i = 0; i < steps; i++) {
@@ -296,6 +322,7 @@ function run(seed) {
     deliver(ph);
     if (rnd.chance(0.3)) deliver(other);
     if (rnd.chance(0.25)) rnd.pick(phones).refresh();
+    if (rnd.chance(0.4)) lateReply(rnd.pick(phones));
     // 4. No save stays orange after a later save that carried it landed.
     for (const p of phones) {
       for (const q of p.queue) if (q.status === 'failed' && p.superseded[q.id]) fail(`4: ${q.id} still orange though carried`);
@@ -307,15 +334,9 @@ function run(seed) {
       if (!ph.queue.includes(e)) continue;
       ph.retry(e, false);
     }
-    while (ph.queue.some((q) => q.status === 'saving')) {
-      const e = ph.queue.find((q) => q.status === 'saving');
-      const before = sheetState(diary);
-      const r = ph.call(e.input);
-      const added = sheetState(diary).rows - before.rows;
-      rowsBySave[e.id] = (rowsBySave[e.id] || 0) + added;
-      if (rowsBySave[e.id] > 1) fail(`3: two Activity rows for save ${e.id}`);
-      if (r.ok) ph.applySuccess(e, r); else ph.refused(e, r);
-    }
+    while (ph.queue.some((q) => q.status === 'saving')) deliver(ph, 'land');
+    while (ph.late.length) lateReply(ph);
+    for (const q of ph.queue) if (q.status === "failed" && ph.superseded[q.id]) fail(`4: ${q.id} still orange though carried (${q.message}) queue=${JSON.stringify(ph.queue.map((x) => [x.id, x.status, x.carries]))}`);
   }
   for (const ph of phones) {
     ph.refresh();
@@ -323,7 +344,7 @@ function run(seed) {
   }
 }
 
-test(`two people, one site: ${SEEDS.length} random interleavings keep the four promises`, () => {
+test(`two people, one site: ${SEEDS.length} random interleavings keep the five promises`, () => {
   for (const seed of SEEDS) run(seed);
 });
 
