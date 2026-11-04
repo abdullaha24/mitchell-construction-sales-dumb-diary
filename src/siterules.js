@@ -330,7 +330,8 @@ function checkUpdate_(input, current, choices, todayKey) {
   }
 
   if (!CLOSED_STAGES.includes(stage)) {
-    const followUp = followUpKey_(input.followUp, todayKey);
+    // A follow-up left as it is stays (spec 008: an untouched one is never changed, even if late).
+    const followUp = current.followUp && input.followUp === current.followUp ? current.followUp : followUpKey_(input.followUp, todayKey);
     if (!followUp) return fail('Pick a follow-up date from today to a year ahead.');
     update.followUp = followUp;
   }
@@ -350,21 +351,27 @@ function checkUpdate_(input, current, choices, todayKey) {
 }
 
 /**
- * Two people, one site (spec 008). An Update form says what it was opened on (`seen`: stage,
- * Rs. value + Cash / Credit, lost reason, follow-up). Each of those he **left as he saw it** keeps
- * whatever the site has **now** (someone else may have changed it meanwhile: his old screen must
- * not undo that). What he **changed** is saved. When he and someone else changed the same thing
- * differently, or someone else moved the stage to one that doesn't use a thing he changed, the
- * save is refused (`conflict`), so he can look and decide. A form without
- * `seen` (a page from before spec 008) is taken as it is.
+ * Two people, one site (spec 008). An Update form says what Google had when it opened (`seen`:
+ * stage, Rs. value + Cash / Credit, lost reason, follow-up) and which of those he changes
+ * (`touched`: 'stage', 'money', 'lostReason', 'followUp'). Only touched things are saved: each
+ * untouched one keeps whatever the site has **now**, whatever value the form still holds, so an
+ * old screen never writes a stale value back. A touched thing clashes only when the site's value
+ * now differs from what he saw **and** from his new value (someone else changed that same thing
+ * to something else; equal to his = his own earlier save, e.g. one whose reply was lost). If
+ * someone else moved the stage while he left it, a touched thing the new stage doesn't use
+ * clashes too (it would be dropped without a word). A clash refuses the save (`conflict`). A form
+ * without `seen` and `touched` (a page from before spec 008) is taken as it is.
  * @param {any} input what the page sent
  * @param {CurrentSite} current the site now (inside the lock)
  * @param {string} todayKey
  * @returns {{ conflict: boolean, input: any }} the input to check and save
  */
-function mergeSeen_(input, current, todayKey) {
+function mergeTouched_(input, current, todayKey) {
   const seen = input && typeof input === 'object' ? input.seen : null;
-  if (!seen || typeof seen !== 'object' || Array.isArray(seen)) return { conflict: false, input };
+  if (!seen || typeof seen !== 'object' || Array.isArray(seen) || !Array.isArray(input.touched)) {
+    return { conflict: false, input };
+  }
+  const touched = new Set(input.touched.filter((/** @type {any} */ t) => ['stage', 'money', 'lostReason', 'followUp'].includes(t)));
   /** @param {any} v */
   const textOf = (v) => (typeof v === 'string' ? v.trim() : '');
   /** @param {any} v */
@@ -372,8 +379,9 @@ function mergeSeen_(input, current, todayKey) {
     const n = isBlank_(v) ? null : parseRs_(typeof v === 'number' ? v : String(v));
     return n !== null && n > 0 ? n : null;
   };
+  // Each thing, as [his, what he saw, now]. His follow-up as a day: the server's own reading of
+  // the button, done again by checkUpdate_.
   const followUp = followUpKey_(input.followUp, todayKey);
-  // Each thing the form can change, as [his, what he saw, now].
   const parts = {
     stage: [textOf(input.stage), textOf(seen.stage), current.stage],
     money: [`${rsOf(input.value)}|${textOf(input.terms)}`, `${rsOf(seen.value)}|${textOf(seen.terms)}`,
@@ -381,33 +389,30 @@ function mergeSeen_(input, current, todayKey) {
     lostReason: [textOf(input.lostReason), textOf(seen.lostReason), current.lostReason],
     followUp: [followUp || textOf(input.followUp), textOf(seen.followUp), current.followUp],
   };
-  const merged = { ...input };
-  const stage = parts.stage[0] !== parts.stage[1] ? parts.stage[0] : current.stage;
-  // Only what the stage being saved uses can clash (a hidden field is never saved).
+  const stage = touched.has('stage') ? parts.stage[0] : current.stage;
   const used = {
     stage: true, money: VALUE_STAGES.includes(stage), lostReason: stage === LOST_STAGE,
     followUp: !CLOSED_STAGES.includes(stage),
   };
-  // Someone else moved the stage while he left it: a change of his that the new stage doesn't use
-  // (a value or follow-up on a site now Lost) would be lost without a word, so it is a clash.
-  const movedByOther = parts.stage[0] === parts.stage[1] && current.stage !== parts.stage[1];
+  const movedByOther = !touched.has('stage') && current.stage !== parts.stage[1];
+  const merged = { ...input };
   for (const [name, [his, saw, now]] of Object.entries(parts)) {
-    if (!used[/** @type {'stage'} */ (name)]) {
-      if (movedByOther && his !== saw) return { conflict: true, input };
-      continue;
-    }
-    if (his !== saw) {
+    if (touched.has(name)) {
+      if (!used[/** @type {'stage'} */ (name)]) {
+        if (movedByOther) return { conflict: true, input };
+        continue;
+      }
       if (now !== saw && now !== his) return { conflict: true, input };
       continue; // his change
     }
-    // Left as he saw it: the site keeps what it has now.
+    // Not touched: never written. The site keeps what it has now.
     if (name === 'stage') merged.stage = current.stage;
     if (name === 'money') {
       merged.value = current.value === null ? '' : String(current.value);
       merged.terms = current.terms;
     }
     if (name === 'lostReason') merged.lostReason = current.lostReason;
-    if (name === 'followUp' && followUpKey_(current.followUp, todayKey)) merged.followUp = current.followUp;
+    if (name === 'followUp') merged.followUp = current.followUp;
   }
   return { conflict: false, input: merged };
 }

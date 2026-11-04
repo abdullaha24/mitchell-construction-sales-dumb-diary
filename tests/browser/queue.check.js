@@ -73,6 +73,8 @@ function stub() {
               if (window.__loseReply && prop !== 'repSaveStatus') {
                 return failure && failure({ message: 'NetworkError: Connection failure due to HTTP 0' });
               }
+              // __replyDelay: Google has saved it, but the reply reaches the phone late.
+              if (window.__replyDelay) { const wait = window.__replyDelay; return setTimeout(() => success && success(JSON.parse(json)), wait); }
               return success && success(JSON.parse(json));
             },
             (error) => failure && failure({ message: String(error.message || error).replace(/^Error: /, '') }));
@@ -372,6 +374,35 @@ const want = (name) => !process.env.ONLY || name.split('/').includes(process.env
     await page.waitForSelector('#toast:has-text("Saved")');
     assert.equal(await page.evaluate(() => queue.filter((q) => q.id === 'otherTab001').length), 1, 'not carried: kept');
     await page.evaluate(() => { window.__delay = 0; });
+    await context.close();
+  }
+
+  if (want('L')) {
+    // Spec 008: U1 lands but its "saved" reply is slow, so the phone gives up (not saved). His
+    // retry U2 carries it with a new note and lands. Then U1's late reply arrives: it says nothing
+    // new and must not put U1's older card (or state) back on the page.
+    console.error('case L');
+    const world = buildWorld();
+    const { page, context } = await open(world, { timing: { slow: 100, giveUp: 400 } });
+    await page.evaluate(() => { window.__replyDelay = 2500; });
+    await page.click('.card:has-text("F-11 Tower")');
+    await page.click('#u-stage .pill:has-text("Sample / Trial")');
+    await page.fill('#u-note', 'first');
+    await page.click('#save');
+    await page.waitForSelector('.card.failed:has-text("F-11 Tower")');
+    await page.evaluate(() => { window.__replyDelay = 0; });
+    assert.equal(world.diary.getSheetByName('Sites').getDataRange().getValues()[1][9], 'Sample / Trial', 'U1 did land');
+    await page.click('.card.failed');
+    await page.fill('#u-note', 'second');
+    await page.click('#save');
+    await page.waitForFunction(() => document.querySelector('#toast').textContent === 'Saved');
+    assert.equal(await page.evaluate(() => data.sites[0].note), 'second');
+    await page.waitForTimeout(2600); // U1's late reply arrives now
+    assert.equal(await page.evaluate(() => data.sites[0].note), 'second', "U2's card stays, not U1's late one");
+    assert.equal(await page.evaluate(() => confirmed.S000001.stage), 'Sample / Trial');
+    assert.deepEqual(await failedNames(page), []);
+    const row = world.diary.getSheetByName('Sites').getDataRange().getValues()[1];
+    assert.deepEqual([row[9], row[14]], ['Sample / Trial', 'second']);
     await context.close();
   }
 

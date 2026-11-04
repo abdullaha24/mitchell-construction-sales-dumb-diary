@@ -67,6 +67,15 @@
   2. A change the new stage doesn't use (the admin closed the site as Lost while RIA's old form
      changed value and follow-up) is now a clash, refused, not dropped: `admin.test.js`.
   `check:browser` run 3 times: green each time.
+- [x] Third review: a lost-reply retry could write the form's untouched old value back (the
+  server guessed "untouched" from values, and `after` swapped `seen`). Redesigned rather than
+  patched: the page sends an explicit `touched` list; Google writes only touched things and refuses
+  only a real clash (now ≠ seen and ≠ his) or a touched thing the other's new stage doesn't use.
+  Removed: the server's guessing from values, `after` and `seenAfterOwnSaves_`, the tapped-field
+  flags on the page. Late replies of carried saves are ignored (`queue.check.js` case L). New
+  `tests/interleave.test.js`: 1,500 seeded random interleavings with four invariants; it fails on
+  666238c's design (seed 26: the lost-retry overwrite; seed 139: an untouched value written) and
+  catches each of 7 server mutations on its own; page mutations (3) caught by browser checks.
 
 ## [ ] Step 5: Live (coordinator)
 - Push and update the deployment; owner tests on his phone; TEST rows cleaned up with his OK.

@@ -208,41 +208,45 @@ P7-3), and the history shows it was him.
     (owner, P7-5: only the salesman's own Update resets going cold);
   - once per save ID (spec 005), remembered under `save:admin:<saveId>` (never a salesman's key);
   - reply: only that site's card (with its salesman), or `{ ok: false, message }`.
-- **Two people, one site** (salesman's Update **and** admin's Update). *(Rewritten after the
-  independent review: the first build compared whole states and could still save a stale form's
-  values, and it broke "saved once" after a lost reply.)*
-  - The Update form records, when it opens, the state **Google last confirmed** for the site
-    (`seen`: stage, Rs. value + Cash / Credit, lost reason, follow-up, from the page load, a
-    Refresh, or a save's reply or refusal; **never** a card still saving or not saved), and which
-    of those things he **touches**. A form opened over his own unconfirmed save shows that save's
-    changes, so they differ from `seen` and go with this save as his: if the earlier one fails,
-    nothing of his is lost. *(Second review.)*
-  - The form also lists his earlier saves of the site still in the queue (`carries`); when it
-    lands, it replaces only those failed saves, never one it didn't carry.
-  - On the server, inside the lock, each of those he **left as he saw it** keeps what the site has
-    **now**, so an old screen can never undo someone else's change; each he **changed** is saved.
-    Only what the saved stage uses counts (a Won site's hidden follow-up is never compared).
-    But if someone else moved the stage while he left it, and he changed something the new stage
-    doesn't use (a value or follow-up on a site now Lost), that is a clash: it would otherwise be
-    dropped without a word. *(Second review.)*
-  - If he and someone else changed the **same** thing differently (or as above), nothing is written and the
-    reply is `{ ok: false, changed: true, message, site }`: *"This site was changed a moment ago.
-    Here it is now: check it and save again."* His card shows the site as it is now; tapping it
-    reopens the form with what he touched kept and everything else from the site now; Save then
-    saves his change on purpose.
-  - A save of his whose reply was lost may have landed: the page also sends those saves' IDs
-    (`after`); if Google remembers one (its 6-hour save record), the site as that save left it is
-    what he saw (so a correction after a lost reply is saved, spec 005).
-  - When the page refreshes under an open form, or he reopens a kept Update draft, and the site
-    shown has changed: the form is brought up to date the same way, with *"This site was changed a
-    moment ago. Check and tap Save again."*
-  - `seen` and `after` are not part of a save's fingerprint: a retry of a save that landed is the
-    same save, saved once.
-  - A form without `seen` (one kept on a phone from before this version) saves as it always did.
-  - Why this and not "refuse any difference": refusing whenever anything changed sends both people
-    round in circles for changes that don't clash (a note added while the other moved the date),
-    and still needs re-basing to avoid saving stale values; field by field, the common case just
-    works and only a real clash asks him to look.
+- **Two people, one site** (salesman's Update **and** admin's Update). *(Simplified after the
+  third review: earlier builds guessed what he meant from the form's values, and each review found
+  a new hole. Now the page says it.)*
+  - **What the form sends.** When the form opens it records what Google last confirmed for the
+    site (`seen`: stage, Rs. value + Cash / Credit, lost reason, follow-up; from the page load, a
+    Refresh, or a save's reply or refusal, never a card still saving or not saved). On Save it
+    sends **`touched`**: the things it would save differently from `seen`. That includes changes of
+    his own earlier saves still unconfirmed (the form shows them), so if one of those fails, this
+    save still carries it. Only what the new stage uses is listed.
+  - **What Google writes.** Only the touched things (plus the note, the times, and `worked_at` as
+    before). Anything not touched is **never written**, whatever the form still holds, so an old
+    screen can't put a stale value back.
+  - **When Google refuses (a clash).** For each touched thing: if the site's value now is
+    different from what he saw **and** different from his new value, someone else changed that same
+    thing to something else, and the save is refused. (Equal to his new value is fine: e.g. his own
+    save whose reply was lost.) Also, if someone else moved the stage while he left it and a touched
+    thing isn't used by the new stage (a value on a site now Lost), it is refused rather than
+    dropped without a word. A note alone is always added. The reply is `{ ok: false, changed: true,
+    message, site }`: *"This site was changed a moment ago. Here it is now: check it and save
+    again."*; his card shows the site as it is now; tapping it reopens the form with his touched
+    changes kept (a pre-picked follow-up he didn't choose is refreshed) and the rest as it is now.
+  - **Bringing a form up to date.** The same happens, with *"This site was changed a moment ago.
+    Check and tap Save again."*, when the page refreshes under an open form or he reopens a kept
+    draft and the site it showed has changed.
+  - **Saved once.** A save's fingerprint leaves out `seen` only (it describes what he saw; the
+    values and `touched` say what he saves). A retry unchanged keeps its save ID, form and `touched`,
+    so it is the same save, saved once; any change gives a new save ID.
+  - **The queue.** An Update lists the saves of his it was opened over (`carries`) and, when it
+    lands, replaces only those failed saves; a late "saved" reply of a save a landed later one
+    carried is ignored (it would put an older card back).
+  - A form without `seen` and `touched` (kept on a phone from before this version) saves as it
+    always did. Correcting the very thing a lost-reply save already changed (to another value) is
+    refused once, as the server can't tell it was his; he sees it and saves again.
+  - **Tested at random** (`tests/interleave.test.js`): 1,500 seeded sequences (6,000 checked once)
+    of 2 to 4 saves by a salesman and the admin on one site, random things touched, random fates
+    (lands, fails, lost reply then retried unchanged or edited, refused then retried), forms left
+    open, refreshes. After every save: only touched things written and never over someone else's
+    newer change; "saved" means it is there; one `Activity` row per save ID; nothing stays orange
+    after a save that carried it landed.
 - **The owner-link check** (new helper `requireAdminLink_(k)`): a code not shaped like ours →
   *"This link doesn't work."* without opening any sheet; otherwise Sales Diary is opened once and
   `Links` read: only an **active** row with `role` = `owner` and exactly this code passes. A

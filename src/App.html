@@ -458,6 +458,9 @@
       // Google confirmed a save (possibly late, after it was shown as not saved).
       function applySuccess(entry, r) {
         removeEntry(entry);
+        // A late reply of a save that a later, confirmed save already carried says nothing new.
+        if (superseded[entry.id]) { saveQueue(); if (screen === 'list') renderList(); return; }
+        (entry.carries || []).forEach(function (id) { superseded[id] = true; });
         if (r.site) confirmed[r.site.id] = snap(r.site); // what Google has now (spec 008)
         if (ADMIN && r.site) r.site = adminMerge(r.site);
         // Older failed saves of the same site are replaced by this newer one. An Update also
@@ -982,7 +985,7 @@
         return { stage: s.stage, value: s.value ? String(s.value) : '', terms: s.terms,
           lostReason: has(data.lostReasons, s.lostReason) ? s.lostReason : '',
           followUp: keepsDate(s) ? 'keep' : 'tomorrow', date: '', note: '', phone: '', saveId: newSaveId(),
-          seen: confirmedFor(s), shown: snap(s), touched: {} };
+          seen: confirmedFor(s), shown: snap(s) };
       }
       function renderSiteHead(s) {
         var head = $('siteHead'); head.textContent = '';
@@ -1007,18 +1010,18 @@
         var r = rules();
         var stages = $('u-stage'); stages.textContent = '';
         r.stages.forEach(function (st) {
-          stages.appendChild(pill(st, upd.stage === st, function () { upd.stage = st; upd.touched.stage = true; updChanged(); }));
+          stages.appendChild(pill(st, upd.stage === st, function () { upd.stage = st; updChanged(); }));
         });
         $('u-valueBox').hidden = !has(r.valueStages, upd.stage);
         $('u-value').value = upd.value;
         var terms = $('u-terms'); terms.textContent = '';
         r.paymentTerms.forEach(function (t) {
-          terms.appendChild(pill(t, upd.terms === t, function () { upd.terms = t; upd.touched.money = true; updChanged(); }));
+          terms.appendChild(pill(t, upd.terms === t, function () { upd.terms = t; updChanged(); }));
         });
         $('u-lostBox').hidden = upd.stage !== r.lostStage;
         var lost = $('u-lost'); lost.textContent = '';
         data.lostReasons.forEach(function (reason) {
-          lost.appendChild(pill(reason, upd.lostReason === reason, function () { upd.lostReason = reason; upd.touched.lostReason = true; updChanged(); }));
+          lost.appendChild(pill(reason, upd.lostReason === reason, function () { upd.lostReason = reason; updChanged(); }));
         });
         var needsNumber = has(r.numberStages, upd.stage) && !s.phone;
         $('u-phoneBox').hidden = !needsNumber;
@@ -1028,7 +1031,7 @@
         var follow = $('u-follow'); follow.textContent = '';
         var options = keepsDate(s) ? [['keep', 'Keep ' + shortDay(s.followUp)]].concat(FOLLOW) : FOLLOW;
         options.forEach(function (f) {
-          follow.appendChild(pill(f[1], upd.followUp === f[0], function () { upd.followUp = f[0]; upd.touched.followUp = true; updChanged(); }));
+          follow.appendChild(pill(f[1], upd.followUp === f[0], function () { upd.followUp = f[0]; updChanged(); }));
         });
         $('u-date').hidden = upd.followUp !== 'date';
         $('u-date').min = todayKey();
@@ -1062,6 +1065,7 @@
         return '';
       }
       // ---- Two people, one site (spec 008) ----
+      // ---- BEGIN update rules (spec 008; loaded as they are by tests/interleave.test.js) ----
       // The five things an Update can change, as a site has them.
       function snap(x) {
         return { stage: x.stage, value: x.value ? Number(x.value) : null, terms: x.terms || '', lostReason: x.lostReason || '',
@@ -1071,10 +1075,45 @@
         return a.stage === b.stage && a.value === b.value && a.terms === b.terms && a.lostReason === b.lostReason &&
           a.followUp === b.followUp;
       }
+      // What an Update form would save, as a site would have it. "Keep" is the date the form showed.
+      function intendedOf(u, today) {
+        var r = rules();
+        var money = has(r.valueStages, u.stage);
+        var days = { tomorrow: 1, '3days': 3, '1week': 7 }[u.followUp];
+        return {
+          stage: u.stage, value: money ? Number(digitsOf(u.value)) || null : null, terms: money ? u.terms || '' : '',
+          lostReason: u.stage === r.lostStage ? u.lostReason || '' : '',
+          followUp: has(r.closedStages, u.stage) ? '' : u.followUp === 'keep' ? (u.shown ? u.shown.followUp : '')
+            : u.followUp === 'date' ? u.date || '' : addDays(today, days || 1),
+        };
+      }
+      // What he changes (`touched`, sent with the save): each thing the form would save differently
+      // from what Google had when it opened (`seen`), including what his own unconfirmed saves of
+      // the site changed (the form shows them). Only what the new stage uses. Google writes only these.
+      function touchedOf(u, today) {
+        var r = rules();
+        var want = intendedOf(u, today);
+        var seen = u.seen;
+        var out = [];
+        if (want.stage !== seen.stage) out.push('stage');
+        if (has(r.valueStages, want.stage) && (want.value !== seen.value || want.terms !== seen.terms)) out.push('money');
+        if (want.stage === r.lostStage && want.lostReason !== seen.lostReason) out.push('lostReason');
+        if (!has(r.closedStages, want.stage) && want.followUp !== seen.followUp) out.push('followUp');
+        return out;
+      }
+      // Did he choose the follow-up, or is it what the form pre-picked (Keep, or Tomorrow for a
+      // late site) on the date it showed? Bringing the form up to date keeps only his choice (or a
+      // date from his own unconfirmed save, which the form showed).
+      function choseFollowUp(u, today) {
+        var preset = u.shown && u.shown.followUp && u.shown.followUp >= today ? 'keep' : 'tomorrow';
+        return u.followUp !== preset || !!(u.shown && u.seen && u.shown.followUp !== u.seen.followUp);
+      }
+      // ---- END update rules ----
       // What Google last confirmed for each site (page load, Refresh, a save's reply or refusal):
       // never a card still saving or not saved. An Update form records it when it opens (`seen`),
       // so a form opened over his own unconfirmed save carries that save's changes as his.
       var confirmed = {};
+      var superseded = {}; // saves whose changes a later confirmed save carried (their late replies are ignored)
       function confirmAll(sites) {
         confirmed = {};
         sites.forEach(function (c) { confirmed[c.id] = snap(c); });
@@ -1084,15 +1123,14 @@
       // value now, so he sees it before saving.
       function rebased(u, s) {
         var d = emptyUpdate(s);
-        var t = u.touched || {};
+        var t = u.seen ? touchedOf(u, todayKey()) : [];
         var out = clone(u);
-        if (!t.stage) out.stage = d.stage;
-        if (!t.money) { out.value = d.value; out.terms = d.terms; }
-        if (!t.lostReason) out.lostReason = d.lostReason;
-        if (!t.followUp) { out.followUp = d.followUp; out.date = ''; }
+        if (!has(t, 'stage')) out.stage = d.stage;
+        if (!has(t, 'money')) { out.value = d.value; out.terms = d.terms; }
+        if (!has(t, 'lostReason')) out.lostReason = d.lostReason;
+        if (!has(t, 'followUp') || !choseFollowUp(u, todayKey())) { out.followUp = d.followUp; out.date = ''; }
         out.seen = d.seen;
         out.shown = d.shown;
-        out.touched = t;
         out.saveId = newSaveId();
         return out;
       }
@@ -1125,12 +1163,12 @@
           note: upd.note, phone: upd.phone, saveId: upd.saveId,
         };
         // His earlier saves of this site still in the queue: this form was opened over them, so it
-        // carries their changes; Google checks whether any of them landed unheard (spec 008).
+        // carries their changes (spec 008).
         var earlier = queue.filter(function (q) { return q.card.id === s.id; }).map(function (q) { return q.id; });
-        // What Google had when the form opened.
+        // What Google had when the form opened, and what he changes: Google writes only that.
         if (upd.seen) {
           input.seen = clone(upd.seen);
-          input.after = earlier.slice(-10);
+          input.touched = touchedOf(upd, todayKey());
         }
         var card = clone(s);
         card.stage = upd.stage;
@@ -1385,7 +1423,6 @@
         upd = draft ? Object.assign(emptyUpdate(s), draft) : emptyUpdate(s);
         // A form kept from before spec 008 has no `seen`: it saves as it always did.
         if (draft && !draft.seen) upd.seen = null;
-        if (!upd.touched) upd.touched = {};
         if (!upd.saveId) upd.saveId = newSaveId();
         $('u-phoneNote').hidden = true;
         showOnly('site');
@@ -1442,9 +1479,9 @@
       $('f-value').addEventListener('input', function (e) { form.value = e.target.value; clearProblem(); touched(); });
       $('f-note').addEventListener('input', function (e) { form.note = e.target.value; clearProblem(); touched(); });
 
-      $('u-value').addEventListener('input', function (e) { upd.value = e.target.value; upd.touched.money = true; updTouched(); });
+      $('u-value').addEventListener('input', function (e) { upd.value = e.target.value; updTouched(); });
       $('u-note').addEventListener('input', function (e) { upd.note = e.target.value; updTouched(); });
-      $('u-date').addEventListener('change', function (e) { upd.date = e.target.value; upd.touched.followUp = true; updTouched(); });
+      $('u-date').addEventListener('change', function (e) { upd.date = e.target.value; updTouched(); });
       $('u-phone').addEventListener('input', function (e) {
         upd.phone = e.target.value; updTouched();
         $('u-phoneNote').hidden = true;

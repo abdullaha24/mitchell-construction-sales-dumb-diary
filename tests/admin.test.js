@@ -315,20 +315,22 @@ test('an admin save is saved once per save ID; adminPageSaveStatus knows only hi
   assert.deepEqual(plain(w.s.adminPageSaveStatus(ADMIN, ['riaSave0001'])), { ok: true, landed: [] }, 'nor he a salesman\'s');
 });
 
-// What the admin's screen showed for S000002 this morning, and what RIA saved since.
+// What the admin's screen showed for S000002 this morning, and what RIA saved since. A page
+// sends `seen` (what Google had when the form opened) and `touched` (what he changes).
 const MORNING = { stage: RQ, value: 300000, terms: 'Credit', lostReason: '', followUp: '2026-11-06' };
 const riaMovesIt = (w) => {
-  const r = plain(w.s.repUpdateSite(RIA, 'S000002', { stage: RQ, value: '350000', terms: 'Cash', followUp: '1week', note: 'new rate', seen: MORNING }));
+  const r = plain(w.s.repUpdateSite(RIA, 'S000002', { stage: RQ, value: '350000', terms: 'Cash', followUp: '1week', note: 'new rate',
+    seen: MORNING, touched: ['money', 'followUp'] }));
   assert.equal(r.ok, true, r.message);
   return sitesRow(w, 'S000002');
 };
 
-test('two people, one site: what he left as he saw it keeps the site as it is now (no silent undo)', () => {
+test('two people, one site: only what he touched is written; the form\'s other values never are', () => {
   const w = world();
   const rias = riaMovesIt(w);
-  // The admin's old screen: stage, value and follow-up as he saw them ("Keep 6 Nov"), plus a note.
+  // The admin's old screen still holds Rs. 300,000 Credit and "Tomorrow": he only adds a note.
   const r = plain(w.s.adminPageUpdateSite(ADMIN, 'S000002', { stage: RQ, value: '300000', terms: 'Credit',
-    followUp: '2026-11-06', note: 'chase him', seen: MORNING }));
+    followUp: 'tomorrow', note: 'chase him', seen: MORNING, touched: [] }));
   assert.equal(r.ok, true, r.message);
   const after = sitesRow(w, 'S000002');
   assert.deepEqual([after.value_rs, after.payment_terms, after.next_followup.getTime(), after.last_note],
@@ -336,17 +338,16 @@ test('two people, one site: what he left as he saw it keeps the site as it is no
   assert.equal(r.site.value, 350000);
 });
 
-test('two people, one site: what he changed is saved, and the rest is kept', () => {
+test('two people, one site: what he touched is saved, and the rest is kept', () => {
   const w = world();
-  const rias = riaMovesIt(w);
-  // Won has no follow-up: the form's hidden "Tomorrow" is never saved, so it can't clash with RIA's.
+  riaMovesIt(w);
+  // Won has no follow-up: the form's hidden "Tomorrow" is not touched, so it can't clash with RIA's.
   const r = plain(w.s.adminPageUpdateSite(ADMIN, 'S000002', { stage: WON, value: '300000', terms: 'Credit',
-    followUp: 'tomorrow', seen: MORNING }));
+    followUp: 'tomorrow', seen: MORNING, touched: ['stage'] }));
   assert.equal(r.ok, true, r.message);
   const after = sitesRow(w, 'S000002');
-  assert.deepEqual([after.stage, after.value_rs, after.payment_terms], [WON, 350000, 'Cash'], 'his stage, RIA\'s value');
-  assert.ok(rias.next_followup, 'RIA had a follow-up; Won has none');
-  assert.equal(after.next_followup, '');
+  assert.deepEqual([after.stage, after.value_rs, after.payment_terms, after.next_followup], [WON, 350000, 'Cash', ''],
+    "his stage, RIA's value");
 });
 
 test('two people, one site: both changed the same thing differently: refused, nothing written', () => {
@@ -354,8 +355,8 @@ test('two people, one site: both changed the same thing differently: refused, no
   const rias = riaMovesIt(w);
   const writes = w.diary._writes().length;
   for (const [name, input] of [
-    ['value', { stage: RQ, value: '320000', terms: 'Credit', followUp: '2026-11-06' }],
-    ['follow-up', { stage: RQ, value: '300000', terms: 'Credit', followUp: 'tomorrow' }],
+    ['value', { stage: RQ, value: '320000', terms: 'Credit', followUp: '2026-11-06', touched: ['money'] }],
+    ['follow-up', { stage: RQ, value: '300000', terms: 'Credit', followUp: 'tomorrow', touched: ['followUp'] }],
   ]) {
     const r = plain(w.s.adminPageUpdateSite(ADMIN, 'S000002', { ...input, note: 'x', seen: MORNING }));
     assert.equal(r.ok, false, name);
@@ -364,29 +365,33 @@ test('two people, one site: both changed the same thing differently: refused, no
     assert.equal(r.site.value, 350000, 'with the site as it is now');
     assert.equal(r.site.rep, 'RIA');
   }
-  const s = plain(w.s.repUpdateSite(RIA, 'S000002', { stage: RQ, value: '1', terms: 'Cash', followUp: 'tomorrow', seen: MORNING }));
+  const s = plain(w.s.repUpdateSite(RIA, 'S000002', { stage: RQ, value: '1', terms: 'Cash', followUp: 'tomorrow', seen: MORNING,
+    touched: ['money'] }));
   assert.equal(s.changed, true, 'the same on a salesman\'s page');
   assert.equal(s.site.rep, undefined, 'his card, as always');
   assert.equal(w.diary._writes().length, writes, 'nothing written');
   assert.equal(sitesRow(w, 'S000002').value_rs, rias.value_rs);
   // Seen the new state, he saves his change on purpose.
-  const now = { stage: RQ, value: 350000, terms: 'Cash', lostReason: '', followUp: '2026-11-11' };
-  const again = plain(w.s.adminPageUpdateSite(ADMIN, 'S000002', { stage: RQ, value: '320000', terms: 'Cash', followUp: '2026-11-11', seen: now }));
+  const riasDay = w.s.dayKey_(rias.next_followup);
+  const now = { stage: RQ, value: 350000, terms: 'Cash', lostReason: '', followUp: riasDay };
+  const again = plain(w.s.adminPageUpdateSite(ADMIN, 'S000002', { stage: RQ, value: '320000', terms: 'Cash', followUp: riasDay,
+    seen: now, touched: ['money'] }));
   assert.equal(again.ok, true, again.message);
   assert.equal(sitesRow(w, 'S000002').value_rs, 320000);
 });
 
 test('two people, one site: the admin closed it as Lost; RIA\'s older form changed value and follow-up: refused', () => {
   const w = world();
-  const a = plain(w.s.adminPageUpdateSite(ADMIN, 'S000002', { stage: LOST, lostReason: 'Price Too High', note: 'gone', seen: MORNING }));
+  const a = plain(w.s.adminPageUpdateSite(ADMIN, 'S000002', { stage: LOST, lostReason: 'Price Too High', note: 'gone', seen: MORNING,
+    touched: ['stage', 'lostReason'] }));
   assert.equal(a.ok, true, a.message);
   const before = sitesRow(w, 'S000002');
   const writes = w.diary._writes().length;
-  for (const input of [
-    { stage: RQ, value: '450000', terms: 'Credit', followUp: '2026-11-06', note: 'he said next week' },
-    { stage: RQ, value: '300000', terms: 'Credit', followUp: '1week', note: 'he said next week' },
+  for (const [input, touched] of [
+    [{ stage: RQ, value: '450000', terms: 'Credit', followUp: '2026-11-06', note: 'he said next week' }, ['money']],
+    [{ stage: RQ, value: '300000', terms: 'Credit', followUp: '1week', note: 'he said next week' }, ['followUp']],
   ]) {
-    const r = plain(w.s.repUpdateSite(RIA, 'S000002', { ...input, seen: MORNING }));
+    const r = plain(w.s.repUpdateSite(RIA, 'S000002', { ...input, seen: MORNING, touched }));
     assert.equal(r.changed, true, 'a change of his that Lost does not use is never dropped silently');
     assert.equal(r.site.stage, LOST);
   }
@@ -394,39 +399,49 @@ test('two people, one site: the admin closed it as Lost; RIA\'s older form chang
   assert.equal(sitesRow(w, 'S000002').last_note, 'Admin: gone', "the admin's note stays");
   assert.equal(sitesRow(w, 'S000002').worked_at.getTime(), before.worked_at.getTime());
   const note = plain(w.s.repUpdateSite(RIA, 'S000002', { stage: RQ, value: '300000', terms: 'Credit', followUp: '2026-11-06',
-    note: 'noted', seen: MORNING }));
+    note: 'noted', seen: MORNING, touched: [] }));
   assert.equal(note.ok, true, 'only a note: it is added; the site stays Lost');
   assert.equal(sitesRow(w, 'S000002').stage, LOST);
 });
 
 test('two people, one site: his own saves in a row, a correction after a lost reply, an old page', () => {
   const w = world();
-  const first = plain(w.s.repUpdateSite(RIA, 'S000002', { stage: RQ, value: '350000', terms: 'Cash', followUp: '1week', seen: MORNING }));
+  const first = plain(w.s.repUpdateSite(RIA, 'S000002', { stage: RQ, value: '350000', terms: 'Cash', followUp: '1week', seen: MORNING,
+    touched: ['money', 'followUp'] }));
   assert.equal(first.ok, true, first.message);
   const card = first.site;
   const second = plain(w.s.repUpdateSite(RIA, 'S000002', { stage: LOST, lostReason: 'Price Too High', note: 'gone',
-    seen: { stage: card.stage, value: card.value, terms: card.terms, lostReason: card.lostReason, followUp: card.followUp } }));
+    seen: { stage: card.stage, value: card.value, terms: card.terms, lostReason: card.lostReason, followUp: card.followUp },
+    touched: ['stage', 'lostReason'] }));
   assert.equal(second.ok, true, second.message);
-  // The first save landed but its reply was lost: his correction is still made on the morning's form.
-  // His page also names that save (`after`): Google finds it landed, so it isn't someone else's change.
+  // The first save landed but its reply was lost: his correction is made on the same form; the
+  // site already holds his own first value, which is no clash.
   const w2 = world();
-  w2.s.repUpdateSite(RIA, 'S000002', { stage: WON, value: '400000', terms: 'Cash', seen: MORNING, saveId: 'firstTry01' });
-  const blind = plain(w2.s.repUpdateSite(RIA, 'S000002', { stage: WON, value: '450000', terms: 'Cash', seen: MORNING }));
-  assert.equal(blind.changed, true, 'without naming it, the server cannot tell it was his');
-  const fix = plain(w2.s.repUpdateSite(RIA, 'S000002', { stage: WON, value: '450000', terms: 'Cash', followUp: 'tomorrow',
-    seen: MORNING, after: ['firstTry01'] }));
+  w2.s.repUpdateSite(RIA, 'S000002', { stage: WON, value: '400000', terms: 'Cash', seen: MORNING, touched: ['stage', 'money'], saveId: 'firstTry01' });
+  const fix = plain(w2.s.repUpdateSite(RIA, 'S000002', { stage: WON, value: '400000', terms: 'Cash', note: 'paid half',
+    seen: MORNING, touched: ['stage', 'money'] }));
   assert.equal(fix.ok, true, fix.message);
-  const other = plain(w2.s.adminPageUpdateSite(ADMIN, 'S000002', { stage: WON, value: '1', terms: 'Cash', seen: MORNING,
-    after: ['firstTry01'] }));
-  assert.equal(other.changed, true, "a salesman's save ID means nothing to the admin's saves");
-  assert.deepEqual([sitesRow(w2, 'S000002').stage, sitesRow(w2, 'S000002').value_rs], [WON, 450000]);
+  assert.deepEqual([sitesRow(w2, 'S000002').stage, sitesRow(w2, 'S000002').value_rs, sitesRow(w2, 'S000002').last_note],
+    [WON, 400000, 'paid half']);
   const old = plain(w.s.repUpdateSite(RIA, 'S000001', { stage: 'Visited / Lead', followUp: '3days', note: 'no seen' }));
-  assert.equal(old.ok, true, 'a page from before spec 008 (no seen) saves as before');
+  assert.equal(old.ok, true, 'a page from before spec 008 (no seen, no touched) saves as before');
+});
+
+test('two people, one site: a follow-up he left alone stays, even when it is late by now', () => {
+  const late = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+  const w = world({ sites: [site('S000001', 'RIA', 'Late Lead', { next_followup: late })] });
+  const day = w.s.dayKey_(late);
+  const r = plain(w.s.repUpdateSite(RIA, 'S000001', { stage: 'Visited / Lead', followUp: day, note: 'still trying',
+    seen: { stage: 'Visited / Lead', value: null, terms: '', lostReason: '', followUp: day }, touched: [] }));
+  assert.equal(r.ok, true, r.message);
+  assert.equal(w.s.dayKey_(sitesRow(w, 'S000001').next_followup), day, 'untouched: never changed');
+  assert.equal(sitesRow(w, 'S000001').last_note, 'still trying');
 });
 
 test('a retry of a save that landed (reply lost) is the same save, even if seen differs: saved once', () => {
   const w = world();
-  const input = { stage: 'Sample / Trial', followUp: '3days', note: 'met him', saveId: 'lostReply01', seen: { stage: 'Visited / Lead', followUp: '2026-11-06' } };
+  const input = { stage: 'Sample / Trial', followUp: '3days', note: 'met him', saveId: 'lostReply01', seen: { stage: 'Visited / Lead', followUp: '2026-11-06' },
+    touched: ['stage', 'followUp'] };
   assert.equal(plain(w.s.repUpdateSite(RIA, 'S000001', input)).ok, true);
   const rows = w.diary.getSheetByName('Activity').getLastRow();
   const again = plain(w.s.repUpdateSite(RIA, 'S000001', { ...input, seen: { stage: 'Sample / Trial', followUp: '2026-11-07' } }));

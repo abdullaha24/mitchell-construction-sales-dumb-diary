@@ -14,4 +14,4 @@ Run them with `npm test` (or `npm run check` for type check + tests). Node's bui
 
 Rule: new logic gets tests; new server functions get a test that a salesman only sees his own
 data (ADR-0004). `admin.test.js` (spec 008): every `adminPage…` function gives nothing to a junk
-code, a salesman's code or a cancelled admin code; it reads `Activity` only from the bottom.
+code, a salesman's code or a cancelled admin code; it reads `Activity` only from the bottom. `interleave.test.js`: "two people, one site" in 1,500 seeded random interleavings (a model of the page's save queue using App.html's own update rules, against the real server); `SEED=<n>` reruns one, `SEEDS=<n>` runs more.
