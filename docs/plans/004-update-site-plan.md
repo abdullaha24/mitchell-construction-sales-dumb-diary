@@ -12,7 +12,7 @@
 - Change only the cells that change (the owner may add columns); never rewrite a whole row.
 - One-time `saveId` per form, as in phase 3.
 
-## [ ] Step 1: Update rules (plain logic)
+## [x] Step 1: Update rules (plain logic)
 `checkUpdate_` and `checkDetails_` in `src/siterules.js`: stage, value 1–1,000,000,000 with
 Cash / Credit at Rate Quoted / Won, lost reason (+ Other needs a note), follow-up only for open
 stages, notes up to 200, the number gate, "a number can't be removed", "Nothing to save".

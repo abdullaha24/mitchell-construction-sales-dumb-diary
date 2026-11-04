@@ -146,16 +146,27 @@ function dayStart_(key) {
 }
 
 /**
- * Checks and tidies what the salesman's page sent for a new site. Never trusts the page.
- * @param {any} input { name, buyerType, contactName, phone, products, area, followUp }
+ * A site's details, checked and tidied (shared by + New Site and Edit details).
+ * @typedef {{
+ *   name: string, buyerType: string, contactName: string, phone: string, products: string[],
+ *   area: string, newArea: boolean,
+ * }} SiteFields
+ */
+
+/** @param {string} message @returns {Failure} */
+function fail_(message) {
+  return { ok: false, message };
+}
+
+/**
+ * Checks and tidies a site's details as the page sent them. Never trusts the page.
+ * @param {any} input { name, buyerType, contactName, phone, products, area }
  * @param {{ buyerTypes: string[], categories: string[], areas: string[] }} choices
  *   the active pick-list values; `areas` are his region's
- * @param {string} todayKey yyyy-MM-dd today in Pakistan
- * @returns {{ ok: true, site: NewSite } | Failure}
+ * @returns {{ ok: true, fields: SiteFields } | Failure}
  */
-function checkNewSite_(input, choices, todayKey) {
-  /** @param {string} message @returns {Failure} */
-  const fail = (message) => ({ ok: false, message });
+function checkSiteFields_(input, choices) {
+  const fail = fail_;
   if (!input || typeof input !== 'object') return fail('Something went wrong. Try again.');
 
   const name = tidyText_(input.name, LIMITS.siteName);
@@ -196,13 +207,25 @@ function checkNewSite_(input, choices, todayKey) {
     }
   }
 
-  const followUp = followUpKey_(input.followUp, todayKey);
-  if (!followUp) return fail('Pick a follow-up date from today to a year ahead.');
-
   return {
     ok: true,
-    site: { name, buyerType: input.buyerType, contactName, phone: phone.phone, products, area, newArea, followUp },
+    fields: { name, buyerType: input.buyerType, contactName, phone: phone.phone, products, area, newArea },
   };
+}
+
+/**
+ * Checks and tidies what the salesman's page sent for a new site. Never trusts the page.
+ * @param {any} input { name, buyerType, contactName, phone, products, area, followUp }
+ * @param {{ buyerTypes: string[], categories: string[], areas: string[] }} choices
+ * @param {string} todayKey yyyy-MM-dd today in Pakistan
+ * @returns {{ ok: true, site: NewSite } | Failure}
+ */
+function checkNewSite_(input, choices, todayKey) {
+  const checked = checkSiteFields_(input, choices);
+  if (!checked.ok) return checked;
+  const followUp = followUpKey_(input.followUp, todayKey);
+  if (!followUp) return fail_('Pick a follow-up date from today to a year ahead.');
+  return { ok: true, site: { ...checked.fields, followUp } };
 }
 
 /**
@@ -220,4 +243,109 @@ function nextId_(used, prefix, digits) {
     if (match) highest = Math.max(highest, Number(match[1]));
   }
   return `${prefix}${String(highest + 1).padStart(digits, '0')}`;
+}
+
+/**
+ * A site as it is now, for checking an update against (what the page shows on its card).
+ * @typedef {{
+ *   stage: string, value: number | null, terms: string, lostReason: string, followUp: string,
+ *   phone: string, name: string, buyerType: string, contactName: string, products: string[],
+ *   area: string,
+ * }} CurrentSite
+ */
+/**
+ * An update, checked: what the site becomes. `phone` is a number added through the gate ('' if
+ * none); `value` and `terms` carry over when the new stage doesn't ask for them.
+ * @typedef {{
+ *   stage: string, value: number | null, terms: string, lostReason: string, followUp: string,
+ *   note: string, phone: string,
+ * }} SiteUpdate
+ */
+
+/**
+ * Checks an Update (spec 004) against the site as it is now. Never trusts the page.
+ * @param {any} input { stage, value, terms, lostReason, followUp, note, phone }
+ * @param {CurrentSite} current
+ * @param {{ lostReasons: string[] }} choices
+ * @param {string} todayKey
+ * @returns {{ ok: true, update: SiteUpdate } | Failure}
+ */
+function checkUpdate_(input, current, choices, todayKey) {
+  const fail = fail_;
+  if (!input || typeof input !== 'object') return fail('Something went wrong. Try again.');
+  const stage = input.stage;
+  if (typeof stage !== 'string' || !STAGES.includes(stage)) return fail('Tap a stage.');
+
+  const note = tidyText_(input.note, LIMITS.note);
+  if (note === null) return fail(`The note is too long (${LIMITS.note} letters at most).`);
+
+  /** @type {SiteUpdate} */
+  const update = {
+    stage, value: current.value, terms: current.terms, lostReason: '', followUp: '', note, phone: '',
+  };
+
+  if (VALUE_STAGES.includes(stage)) {
+    const value = isBlank_(input.value) ? null : parseRs_(input.value);
+    if (value === null || value < 1) return fail('Type the total Rs. value.');
+    if (value > LIMITS.valueRs) return fail(`The Rs. value must be at most ${formatRs_(LIMITS.valueRs)}.`);
+    if (typeof input.terms !== 'string' || !PAYMENT_TERMS.includes(input.terms)) return fail('Tap Cash or Credit.');
+    update.value = value;
+    update.terms = input.terms;
+  }
+
+  if (stage === LOST_STAGE) {
+    if (typeof input.lostReason !== 'string' || !choices.lostReasons.includes(input.lostReason)) {
+      return fail('Tap a lost reason.');
+    }
+    if (looseText_(input.lostReason) === 'other' && !note) return fail('Write a short note for Other.');
+    update.lostReason = input.lostReason;
+  }
+
+  if (!CLOSED_STAGES.includes(stage)) {
+    const followUp = followUpKey_(input.followUp, todayKey);
+    if (!followUp) return fail('Pick a follow-up date from today to a year ahead.');
+    update.followUp = followUp;
+  }
+
+  if (NUMBER_STAGES.includes(stage) && !current.phone) {
+    const phone = tidyPhone_(input.phone);
+    if (!phone.ok) return fail('Check the number.');
+    if (!phone.phone) return fail(`Add the contact's number to move this site to ${stage}.`);
+    update.phone = phone.phone;
+  }
+
+  const unchanged = stage === current.stage && !note && !update.phone &&
+    update.followUp === current.followUp && update.value === current.value &&
+    update.terms === current.terms && update.lostReason === current.lostReason;
+  if (unchanged) return fail('Nothing to save.');
+  return { ok: true, update };
+}
+
+/**
+ * Checks Edit details (spec 004) against the site as it is now: the same field rules as a new
+ * site, plus "a number can be changed, not removed". Lists what changed, with old → new number,
+ * for the history.
+ * @param {any} input { name, buyerType, contactName, phone, products, area }
+ * @param {CurrentSite} current
+ * @param {{ buyerTypes: string[], categories: string[], areas: string[] }} choices
+ * @returns {{ ok: true, fields: SiteFields, changes: string[] } | Failure}
+ */
+function checkDetails_(input, current, choices) {
+  const checked = checkSiteFields_(input, choices);
+  if (!checked.ok) return checked;
+  const fields = checked.fields;
+  if (current.phone && !fields.phone) return fail_("A site's number can be changed, not removed.");
+
+  /** @type {string[]} */
+  const changes = [];
+  if (fields.name !== current.name) changes.push('Site name');
+  if (fields.buyerType !== current.buyerType) changes.push('Buyer type');
+  if (fields.contactName !== current.contactName) changes.push('Contact name');
+  if (fields.phone !== current.phone) {
+    changes.push(current.phone ? `Phone ${current.phone} → ${fields.phone}` : `Phone added ${fields.phone}`);
+  }
+  if (fields.products.join(PRODUCTS_SEPARATOR) !== current.products.join(PRODUCTS_SEPARATOR)) changes.push('Products');
+  if (fields.area !== current.area) changes.push('Area');
+  if (changes.length === 0) return fail_('Nothing to save.');
+  return { ok: true, fields, changes };
 }
