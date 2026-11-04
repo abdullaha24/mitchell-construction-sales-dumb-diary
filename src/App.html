@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <base target="_top">
+    <meta charset="utf-8">
+    <style>
+      :root { --ink: #1f2933; --soft: #52606d; --line: #d9e2ec; --blue: #1f5fbf; --orange: #b45309;
+              --red: #b42318; --green: #1e7d4f; }
+      * { box-sizing: border-box; }
+      body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+             font-size: 16px; line-height: 1.35; color: var(--ink); background: #f5f7fa; }
+      header { position: sticky; top: 0; z-index: 2; display: flex; align-items: center;
+               justify-content: space-between; gap: 8px; padding: 10px 16px; background: #fff;
+               border-bottom: 1px solid var(--line); }
+      header h1 { font-size: 20px; margin: 0; }
+      main { padding: 12px 16px 96px; max-width: 640px; margin: 0 auto; }
+      button { font: inherit; cursor: pointer; }
+      .big { min-height: 48px; padding: 10px 16px; border-radius: 10px; border: 0; background: var(--blue);
+             color: #fff; font-weight: 600; font-size: 17px; }
+      .big.warn { background: var(--orange); }
+      .big:disabled { opacity: .55; }
+      .plain { min-height: 44px; padding: 8px 14px; border-radius: 10px; border: 1px solid var(--line);
+               background: #fff; color: var(--ink); }
+      .card { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px;
+              margin-bottom: 10px; }
+      .card .name { font-weight: 600; font-size: 17px; }
+      .card .meta { color: var(--soft); font-size: 14px; margin-top: 2px; }
+      .tag { display: inline-block; font-size: 13px; padding: 2px 8px; border-radius: 999px;
+             background: #e6effb; color: var(--blue); margin: 6px 6px 0 0; }
+      .tag.nonum { background: #fff4e5; color: var(--orange); font-weight: 600; }
+      .empty, .banner { text-align: center; color: var(--soft); padding: 24px 8px; }
+      .banner { background: #fff4e5; color: var(--orange); border-radius: 10px; padding: 10px; margin-bottom: 12px; }
+      label, .label { display: block; font-weight: 600; margin: 16px 0 6px; }
+      .opt { font-weight: 400; color: var(--soft); }
+      input[type=text], input[type=tel], input[type=date] { width: 100%; min-height: 48px; padding: 10px 12px;
+             font: inherit; font-size: 17px; border: 1px solid #9aa5b1; border-radius: 10px; background: #fff; }
+      .pills { display: flex; flex-wrap: wrap; gap: 8px; }
+      .pill { min-height: 44px; padding: 8px 14px; border-radius: 999px; border: 1px solid #9aa5b1;
+              background: #fff; color: var(--ink); font-size: 15px; }
+      .pill[aria-pressed=true] { background: var(--blue); border-color: var(--blue); color: #fff; }
+      .note { font-size: 14px; margin-top: 6px; color: var(--soft); }
+      .note.warn { color: var(--orange); font-weight: 600; }
+      .note.error { color: var(--red); font-weight: 600; }
+      .actions { position: fixed; left: 0; right: 0; bottom: 0; display: flex; gap: 8px; padding: 10px 16px;
+                 background: #fff; border-top: 1px solid var(--line); }
+      .actions .big { flex: 1; }
+      #toast { position: fixed; left: 50%; bottom: 84px; transform: translateX(-50%); background: var(--ink);
+               color: #fff; padding: 10px 16px; border-radius: 999px; font-size: 15px; display: none; z-index: 3;
+               max-width: calc(100% - 32px); text-align: center; }
+      #toast.error { background: var(--red); }
+      [hidden] { display: none !important; }
+    </style>
+  </head>
+  <body>
+    <div id="data" hidden><?= data ?></div>
+
+    <header>
+      <h1 id="who"></h1>
+      <button class="big" id="newSite" type="button">+ New Site</button>
+    </header>
+
+    <main id="listView">
+      <div id="draftBanner" class="banner" hidden>You have a site that isn't saved yet. Tap + New Site to finish it.</div>
+      <div id="sites"></div>
+    </main>
+
+    <main id="formView" hidden>
+      <label for="f-name">Site / party name</label>
+      <input id="f-name" type="text" maxlength="80" autocomplete="off" placeholder="e.g. F-11 Commercial Tower">
+
+      <div class="label">Buyer type</div>
+      <div class="pills" id="f-buyer"></div>
+
+      <label for="f-contact">Contact name <span class="opt">(optional)</span></label>
+      <input id="f-contact" type="text" maxlength="60" autocomplete="off" placeholder="e.g. Asif (site engineer)">
+
+      <label for="f-phone">Contact phone</label>
+      <input id="f-phone" type="tel" inputmode="tel" maxlength="24" autocomplete="off" placeholder="e.g. 0300 1234567">
+      <div id="phoneNote" class="note" hidden></div>
+
+      <div class="label">Products <span class="opt">(tap all that apply)</span></div>
+      <div class="pills" id="f-products"></div>
+
+      <div class="label">Area <span class="opt">(optional)</span></div>
+      <div class="pills" id="f-areas"></div>
+      <div id="newAreaBox" hidden>
+        <input id="f-newarea" type="text" maxlength="40" autocomplete="off" placeholder="Type the area" style="margin-top:8px">
+        <div class="pills" id="areaSuggest" style="margin-top:8px"></div>
+      </div>
+
+      <div class="label">Next follow-up</div>
+      <div class="pills" id="f-follow"></div>
+      <input id="f-date" type="date" hidden style="margin-top:8px">
+
+      <div id="formNote" class="note error" hidden></div>
+    </main>
+
+    <div class="actions" id="formActions" hidden>
+      <button class="plain" id="cancel" type="button">Back</button>
+      <button class="big" id="save" type="button">Save</button>
+    </div>
+    <div id="toast" role="status"></div>
+
+    <script>
+      // Everything from the server or the sheet goes on screen with textContent, never as HTML.
+      var data = JSON.parse(document.getElementById('data').textContent);
+      var k = data.k;
+      var DRAFT_KEY = 'salesdiary.draft.' + data.rep;
+      var FOLLOW = [['tomorrow', 'Tomorrow'], ['3days', '3 days'], ['1week', '1 week'], ['date', 'Pick date']];
+      var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      var form = emptyForm();
+      var confirmNoNumber = false;
+      var busy = false;
+      var phoneCheck = { valid: true };
+
+      function $(id) { return document.getElementById(id); }
+      function el(tag, text, cls) {
+        var n = document.createElement(tag);
+        if (text !== undefined) n.textContent = text;
+        if (cls) n.className = cls;
+        return n;
+      }
+      function emptyForm() {
+        return { name: '', buyerType: '', contactName: '', phone: '', products: [], area: '', newArea: '', addingArea: false, followUp: 'tomorrow', date: '' };
+      }
+      function shortDay(key) {
+        if (!key) return '';
+        var p = key.split('-');
+        return Number(p[2]) + ' ' + MONTHS[Number(p[1]) - 1];
+      }
+      function toast(text, isError) {
+        var t = $('toast');
+        t.textContent = text;
+        t.className = isError ? 'error' : '';
+        t.style.display = 'block';
+        clearTimeout(toast.timer);
+        toast.timer = setTimeout(function () { t.style.display = 'none'; }, isError ? 6000 : 2500);
+      }
+
+      // ---- Draft kept on the phone until saved (spec 003, no signal) ----
+      function saveDraft() {
+        try { localStorage.setItem(DRAFT_KEY, JSON.stringify(form)); } catch (e) { /* storage blocked: no draft */ }
+      }
+      function loadDraft() {
+        try { var d = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); return d && typeof d === 'object' ? d : null; } catch (e) { return null; }
+      }
+      function clearDraft() {
+        try { localStorage.removeItem(DRAFT_KEY); } catch (e) { /* nothing to clear */ }
+      }
+      function hasDraft() {
+        var d = loadDraft();
+        return !!(d && (d.name || d.contactName || d.phone || d.newArea || (d.products && d.products.length)));
+      }
+
+      // ---- List ----
+      function renderList() {
+        $('who').textContent = data.rep;
+        $('draftBanner').hidden = !hasDraft();
+        var box = $('sites');
+        box.textContent = '';
+        if (!data.sites.length) {
+          box.appendChild(el('div', 'No sites yet. Tap + New Site to add your first one.', 'empty'));
+          return;
+        }
+        data.sites.forEach(function (s) {
+          var card = el('div', undefined, 'card');
+          card.appendChild(el('div', s.name, 'name'));
+          var meta = [s.area, s.buyerType].filter(Boolean).join(' · ');
+          if (meta) card.appendChild(el('div', meta, 'meta'));
+          if (s.followUp) card.appendChild(el('div', 'Follow up: ' + shortDay(s.followUp), 'meta'));
+          card.appendChild(el('span', s.stage, 'tag'));
+          if (!s.phone) card.appendChild(el('span', 'No number yet', 'tag nonum'));
+          box.appendChild(card);
+        });
+      }
+
+      // ---- Form ----
+      function pill(text, pressed, onTap) {
+        var b = el('button', text, 'pill');
+        b.type = 'button';
+        b.setAttribute('aria-pressed', pressed ? 'true' : 'false');
+        b.addEventListener('click', onTap);
+        return b;
+      }
+      function renderForm() {
+        $('f-name').value = form.name;
+        $('f-contact').value = form.contactName;
+        $('f-phone').value = form.phone;
+        $('f-newarea').value = form.newArea;
+
+        var buyer = $('f-buyer'); buyer.textContent = '';
+        data.buyerTypes.forEach(function (t) {
+          buyer.appendChild(pill(t, form.buyerType === t, function () { form.buyerType = t; changed(); }));
+        });
+        var products = $('f-products'); products.textContent = '';
+        data.categories.forEach(function (c) {
+          var on = form.products.indexOf(c) >= 0;
+          products.appendChild(pill(c, on, function () {
+            form.products = on ? form.products.filter(function (p) { return p !== c; }) : form.products.concat([c]);
+            changed();
+          }));
+        });
+        var areas = $('f-areas'); areas.textContent = '';
+        data.areas.forEach(function (a) {
+          areas.appendChild(pill(a, !form.addingArea && form.area === a, function () {
+            form.area = form.area === a && !form.addingArea ? '' : a; form.addingArea = false; changed();
+          }));
+        });
+        areas.appendChild(pill('+ New area', form.addingArea, function () {
+          form.addingArea = !form.addingArea; changed();
+          if (form.addingArea) $('f-newarea').focus();
+        }));
+        $('newAreaBox').hidden = !form.addingArea;
+        renderSuggestions();
+
+        var follow = $('f-follow'); follow.textContent = '';
+        FOLLOW.forEach(function (f) {
+          follow.appendChild(pill(f[1], form.followUp === f[0], function () { form.followUp = f[0]; changed(); }));
+        });
+        $('f-date').hidden = form.followUp !== 'date';
+        $('f-date').min = data.today;
+        $('f-date').max = addDays(data.today, 365);
+        $('f-date').value = form.date;
+        renderSave();
+      }
+      function renderSave() {
+        var save = $('save');
+        var noNumber = !form.phone.trim();
+        save.textContent = busy ? 'Saving…' : (confirmNoNumber && noNumber ? 'Save without a number?' : 'Save');
+        save.className = 'big' + (confirmNoNumber && noNumber && !busy ? ' warn' : '');
+        save.disabled = busy;
+      }
+      function clearProblem() {
+        $('formNote').hidden = true;
+        $('toast').style.display = 'none';
+      }
+      function changed() {
+        confirmNoNumber = false;
+        clearProblem();
+        saveDraft();
+        renderForm();
+      }
+      function addDays(key, days) {
+        var p = key.split('-').map(Number);
+        var d = new Date(Date.UTC(p[0], p[1] - 1, p[2] + days));
+        return d.toISOString().slice(0, 10);
+      }
+
+      // "Did you mean": the same rules as the server (src/siterules.js areaMatches_).
+      function areaKey(s) { return String(s).toLowerCase().replace(/[^\p{L}\p{N}]/gu, ''); }
+      function distance(a, b) {
+        var prev = []; for (var j = 0; j <= b.length; j++) prev[j] = j;
+        for (var i = 1; i <= a.length; i++) {
+          var cur = [i];
+          for (j = 1; j <= b.length; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+          prev = cur;
+        }
+        return prev[b.length];
+      }
+      function closeAreas(typed) {
+        var key = areaKey(typed);
+        if (key.length < 3) return [];
+        for (var i = 0; i < data.areas.length; i++) if (areaKey(data.areas[i]) === key) return [data.areas[i]];
+        return data.areas.map(function (name) {
+          var other = areaKey(name);
+          var prefix = other.length >= 3 && (other.indexOf(key) === 0 || key.indexOf(other) === 0);
+          return { name: name, d: prefix ? 0 : distance(key, other) };
+        }).filter(function (m) { return m.d <= 2; })
+          .sort(function (x, y) { return x.d - y.d || x.name.localeCompare(y.name); })
+          .slice(0, 3).map(function (m) { return m.name; });
+      }
+      function renderSuggestions() {
+        var box = $('areaSuggest'); box.textContent = '';
+        if (!form.addingArea) return;
+        closeAreas(form.newArea).forEach(function (name) {
+          box.appendChild(pill('Did you mean ' + name + '?', false, function () {
+            form.area = name; form.addingArea = false; form.newArea = ''; changed();
+          }));
+        });
+      }
+
+      // ---- Phone check (duplicate warning, ADR-0004) ----
+      function checkPhone() {
+        var typed = form.phone.trim();
+        var note = $('phoneNote');
+        if (!typed) { phoneCheck = { valid: true }; note.hidden = true; return; }
+        google.script.run.withSuccessHandler(function (r) {
+          if (form.phone.trim() !== typed) return; // he typed more meanwhile
+          phoneCheck = r;
+          var lines = [];
+          var cls = 'note warn';
+          if (!r.valid) { lines.push('Check the number.'); cls = 'note error'; }
+          if (r.team) lines.push('Someone in the team already works with this contact.');
+          if (r.mine && r.mine.length) lines.push('You already have this number: ' + r.mine.join(', ') + '.');
+          note.textContent = lines.join(' ');
+          note.className = cls;
+          note.hidden = !lines.length;
+        }).withFailureHandler(function () { /* no signal: the save will check again */ })
+          .repCheckPhone(k, typed);
+      }
+
+      // ---- Saving ----
+      function readable(error) {
+        var message = (error && error.message) || String(error || '');
+        if ((typeof navigator !== 'undefined' && navigator.onLine === false) ||
+            /network|connection|HTTP 0|failed to fetch|timed? ?out/i.test(message)) {
+          return 'Not saved: no signal. Tap Save again.';
+        }
+        return message.replace(/^(Exception|Error):\s*/, '') || 'Something went wrong. Try again.';
+      }
+      function save() {
+        if (busy) return;
+        var note = $('formNote');
+        // Shown under the form and as a pop-up just above Save, which he may be looking at.
+        function problem(text) { note.textContent = text; note.hidden = false; toast(text, true); }
+        if (!form.name.trim()) return problem('Type the site name.');
+        if (!form.buyerType) return problem('Tap a buyer type.');
+        if (phoneCheck.valid === false && form.phone.trim()) return problem('Check the number.');
+        if (form.followUp === 'date' && !form.date) return problem('Pick a follow-up date.');
+        if (!form.phone.trim() && !confirmNoNumber) { confirmNoNumber = true; clearProblem(); renderSave(); return; }
+
+        busy = true; note.hidden = true; renderSave();
+        var input = {
+          name: form.name, buyerType: form.buyerType, contactName: form.contactName, phone: form.phone,
+          products: form.products, area: form.addingArea ? form.newArea : form.area,
+          followUp: form.followUp === 'date' ? form.date : form.followUp,
+        };
+        google.script.run.withSuccessHandler(function (r) {
+          busy = false; confirmNoNumber = false;
+          if (!r || !r.ok) { renderSave(); return problem((r && r.message) || 'Something went wrong. Try again.'); }
+          var keepK = k;
+          data = r; data.k = keepK;
+          form = emptyForm(); clearDraft(); phoneCheck = { valid: true };
+          showList(); toast('Saved');
+        }).withFailureHandler(function (error) {
+          busy = false; confirmNoNumber = false; renderSave();
+          problem(readable(error));
+        }).repAddSite(k, input);
+      }
+
+      // ---- Screens ----
+      function showList() {
+        $('formView').hidden = true; $('formActions').hidden = true;
+        $('listView').hidden = false; $('newSite').hidden = false;
+        renderList(); window.scrollTo(0, 0);
+      }
+      function showForm() {
+        var draft = loadDraft();
+        form = draft ? Object.assign(emptyForm(), draft) : emptyForm();
+        if (!data.buyerTypes.length) form.buyerType = '';
+        confirmNoNumber = false; phoneCheck = { valid: true };
+        $('phoneNote').hidden = true; $('formNote').hidden = true;
+        $('listView').hidden = true; $('newSite').hidden = true;
+        $('formView').hidden = false; $('formActions').hidden = false;
+        renderForm(); window.scrollTo(0, 0);
+        if (form.phone) checkPhone();
+      }
+
+      $('newSite').addEventListener('click', showForm);
+      $('cancel').addEventListener('click', showList);
+      $('save').addEventListener('click', save);
+      $('f-name').addEventListener('input', function (e) { form.name = e.target.value; confirmNoNumber = false; clearProblem(); saveDraft(); renderSave(); });
+      $('f-contact').addEventListener('input', function (e) { form.contactName = e.target.value; clearProblem(); saveDraft(); });
+      $('f-phone').addEventListener('input', function (e) {
+        form.phone = e.target.value; confirmNoNumber = false; phoneCheck = { valid: true };
+        $('phoneNote').hidden = true; clearProblem(); saveDraft(); renderSave();
+      });
+      $('f-phone').addEventListener('change', checkPhone);
+      $('f-newarea').addEventListener('input', function (e) { form.newArea = e.target.value; saveDraft(); renderSuggestions(); });
+      $('f-date').addEventListener('change', function (e) { form.date = e.target.value; saveDraft(); });
+
+      showList();
+    </script>
+  </body>
+</html>

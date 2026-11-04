@@ -1,5 +1,5 @@
 'use strict';
-// Spec 002 → "Opening a link".
+// Spec 002 → "Opening a link"; spec 003 → a salesman's link opens his app.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { loadSrc } = require('./helpers/load-src');
@@ -11,14 +11,22 @@ const { META_TIME_ZONE, metaDataTabs } = require('./fixtures/meta-data');
 const META_DATA_ID = '11rcjx1eZA9BqwSTIoK66hrs7M8rYisL12GirSzLyrkc';
 const SALES_DIARY_ID = '1tuyVPDB33x1Vw8JQYashM4PRQSjGjQq8MBs7l4cJn5Y';
 const LINKS = ['role', 'rep', 'token', 'active', 'issued_at'];
+const SITES = ['site_id', 'rep', 'region', 'site_name', 'buyer_type', 'area', 'contact_name',
+  'contact_phone', 'products', 'stage', 'value_rs', 'payment_terms', 'lost_reason',
+  'next_followup', 'last_note', 'created_at', 'updated_at'];
+const LISTS = ['list', 'value', 'region', 'added_by', 'active', 'sort'];
+const siteRow = (id, rep, name, phone) => [id, rep, 'North', name, 'Dealer', 'DHA', `${name} contact`, phone,
+  '', 'Visited / Lead', '', '', '', NOW, '', NOW, NOW];
 const NOW = new Date('2026-11-04T09:00:00Z');
 const RIA_CODE = 'a'.repeat(64);
 const OWNER_CODE = 'b'.repeat(64);
 const CANCELLED_CODE = 'c'.repeat(64);
 const ODD_CODE = 'd'.repeat(64);
 
-function world({ links, metaTabs = metaDataTabs(), diaryOpens = true } = {}) {
+function world({ links, metaTabs = metaDataTabs(), diaryOpens = true, sites } = {}) {
   const diary = makeSpreadsheet({
+    Sites: sites || [SITES, siteRow('S000001', 'RIA', 'F-11 Tower', '923001234567'), siteRow('S000002', 'SH', 'Gulberg Mall', '923007654321')],
+    Lists: [LISTS, ['buyer_type', 'Dealer', '', 'owner', true, 10], ['area', 'DHA', 'North', 'RIA', true, 10]],
     Links: links || [
       LINKS,
       ['rep', 'RIA', RIA_CODE, true, NOW],
@@ -60,10 +68,33 @@ function assertSafePage(page) {
   return html;
 }
 
-test("a salesman's link: Hello, RIA, and nothing else about him", () => {
-  const html = assertSafePage(visit(world(), RIA_CODE));
-  assert.ok(html.includes('<h1>Hello, RIA</h1>'), html);
-  for (const word of ['owner', 'North', 'Rs.', 'Target', 'SH']) assert.ok(!html.includes(word), word);
+/** The page data a salesman's app carries, decoded as the browser would. */
+function appData(page) {
+  const match = /<div id="data" hidden>([^<]*)<\/div>/.exec(page.getContent());
+  assert.ok(match, 'the app page carries its data');
+  const decoded = match[1].replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+  return JSON.parse(decoded);
+}
+
+test("a salesman's link opens his app with his own sites and his own code only", () => {
+  const page = visit(world(), RIA_CODE);
+  assert.equal(page.getTitle(), 'Sales Diary');
+  const html = page.getContent();
+  assert.ok(html.includes('+ New Site'));
+  const data = appData(page);
+  assert.equal(data.rep, 'RIA');
+  assert.equal(data.k, RIA_CODE, 'his page needs his own code to save');
+  assert.deepEqual(data.sites.map((x) => x.name), ['F-11 Tower']);
+  for (const secret of ['Gulberg Mall', '923007654321', OWNER_CODE, CANCELLED_CODE, ODD_CODE]) {
+    assert.ok(!html.includes(secret), `the page leaks ${secret}`);
+  }
+});
+
+test("a salesman's link writes nothing when the page opens", () => {
+  const w = world();
+  visit(w, RIA_CODE);
+  assert.deepEqual(w.diary._writes(), []);
 });
 
 test("the owner's link: Hello, owner, and that his screen comes later", () => {
@@ -118,11 +149,12 @@ test('page loads never write to any sheet', () => {
   assert.deepEqual(w.diary._writes(), []);
 });
 
-test("whatever is in the sheet is escaped on the page", () => {
-  const tabs = metaDataTabs();
-  tabs.Rep_Mapping.push(['<img src=x onerror=alert(1)>', 'North']);
-  const w = world({ metaTabs: tabs, links: [LINKS, ['rep', '<img src=x onerror=alert(1)>', RIA_CODE, true, NOW]] });
-  const html = assertSafePage(visit(w, RIA_CODE));
-  assert.ok(html.includes('Hello, &lt;IMG SRC=X ONERROR=ALERT(1)&gt;'), html);
-  assert.ok(!/<img/i.test(html));
+test('whatever is in the sheet is escaped on the page', () => {
+  const evil = '<img src=x onerror=alert(1)></div><script>alert(2)</script>';
+  const w = world({ sites: [SITES, siteRow('S000001', 'RIA', evil, '')] });
+  const page = visit(w, RIA_CODE);
+  const html = page.getContent();
+  assert.ok(!/<img/i.test(html), 'no raw <img>');
+  assert.equal((html.match(/<script>/g) || []).length, 1, 'only the page\'s own script');
+  assert.equal(appData(page).sites[0].name, evil, 'the name arrives intact, as text');
 });

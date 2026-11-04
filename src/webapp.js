@@ -1,8 +1,10 @@
 // @ts-check
-// The web app (spec 002). A visitor's link code decides the page:
-//   salesman → "Hello, RIA"; owner → "Hello, owner"; anything else → "This link doesn't work";
-//   Google failing → "Something went wrong", so nobody thinks a good link was cancelled.
-// The code is never written into a page, a log or an error. No server calls from the page yet.
+// The web app (specs 002, 003). A visitor's link code decides the page:
+//   salesman → his app (App.html) with his own sites; owner → "Hello, owner";
+//   anything else → "This link doesn't work"; Google failing → "Something went wrong", so
+//   nobody thinks a good link was cancelled.
+// A code is only ever written into its own holder's page (his page needs it to save), never
+// into anyone else's page, a log or an error.
 // Deployed as "execute as owner", access ANYONE_ANONYMOUS, always at the same address.
 
 /** @typedef {{ heading: string, note: string }} PageText */
@@ -21,26 +23,38 @@ const PAGE_TEXT = {
  */
 function doGet(e) {
   const code = e && e.parameter ? e.parameter[LINK_PARAM] : undefined;
-  /** @type {PageText} */
-  let text;
   try {
-    text = pageTextFor_(whoIsVisiting_(code));
+    const visitor = whoIsVisiting_(code);
+    if (visitor.kind === 'rep') return renderApp_(visitor, String(code));
+    return renderPage_(pageTextFor_(visitor));
   } catch (error) {
     // Deliberately not logged: keep it simple and keep codes out of logs.
-    text = PAGE_TEXT.error;
+    return renderPage_(PAGE_TEXT.error);
   }
-  return renderPage_(text);
 }
 
 /**
- * The words on the page for a visitor.
+ * The salesman's app, with his page data inside it so it shows at once on a weak connection.
+ * The data goes in as escaped text and the page reads it back with JSON.parse.
+ * @param {{ rep: string, region: string }} salesman
+ * @param {string} code his own link code (his page needs it to save)
+ * @returns {GoogleAppsScript.HTML.HtmlOutput}
+ */
+function renderApp_(salesman, code) {
+  const template = HtmlService.createTemplateFromFile('App');
+  template.data = JSON.stringify({ ...loadFor_(salesman), k: code });
+  return template.evaluate()
+    .setTitle('Sales Diary')
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+}
+
+/**
+ * The words on the simple page for the owner or a refused visitor.
  * @param {Visitor} visitor
  * @returns {PageText}
  */
 function pageTextFor_(visitor) {
-  if (visitor.kind === 'rep') return { heading: `Hello, ${visitor.rep}`, note: '' };
-  if (visitor.kind === 'owner') return PAGE_TEXT.owner;
-  return PAGE_TEXT.none;
+  return visitor.kind === 'owner' ? PAGE_TEXT.owner : PAGE_TEXT.none;
 }
 
 /**

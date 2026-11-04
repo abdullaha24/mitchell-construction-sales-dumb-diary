@@ -22,7 +22,7 @@ check; save a site (+ activity, + new area) inside the lock. `src/salesman.js`: 
 `repCheckPhone`, `repAddSite`. Tests: privacy (A never sees B), refusals (owner link,
 cancelled, removed salesman, junk), every validation rule.
 
-## [ ] Step 3: The salesman's page
+## [x] Step 3: The salesman's page
 `doGet` serves `App.html` for a salesman link with his list already in the page (one request
 on a weak connection). New Site form, two-tap save without a number, duplicate warnings,
 "Did you mean", draft kept on the phone, "no signal" message. Browser check
