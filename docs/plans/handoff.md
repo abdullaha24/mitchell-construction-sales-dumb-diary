@@ -61,21 +61,26 @@ and add a randomized invariant test.
 
 ## Owner's working rules (session 4)
 - He often works **from his phone, away from a computer**: he gives commands in chat; the agent
-  builds **and tests live itself** by driving **RIA's test link** in Chromium (see "Testing live"
-  in the phase 6 notes). Test rows are named **TEST …** and deleted only with his OK.
+  builds **and tests live itself** by driving **RIA's test link** in Chromium (see "How session 4
+  worked well" above). Test rows are named **TEST …** and deleted only with his OK.
+- He likes the **orchestrator** way of working (session 4): main agent stays lean; builder and
+  reviewer are subagents. He prefers brisk updates, tappable questions, recommendations marked.
 - **Keep clasp signed in for the whole session** until he explicitly says to sign out. Don't run
   `clasp logout` or delete `~/.clasprc.json` at the end of a phase. (A new chat is a fresh
   machine, so it needs one sign-in; within one chat, sign in once.)
 - To get RIA's link: read `Links` columns A, B and D (role, rep, active) to find RIA's active
   row, then read **only that row's** `token` cell, and keep the code in a scratch file. Never put
   it in git, logs, commit messages or docs; don't repeat it in chat unless he asks.
+- **His own admin link** (`Links` row with `role` `owner`): read its code only with his OK in that
+  session (he gave it in session 4 for live testing), same handling, delete the scratch copy after.
 
 ## How every phase goes live (the routine)
 1. `npm run check` and `npm run check:browser` green; independent review agent; fixes with
    tests; fresh-clone check; secrets sweep (no real target amounts, no link codes, no
    `.clasprc.json`).
 2. With the owner: clasp sign-in (below) → `npx clasp push --force` → pull back into a scratch
-   folder and compare → `npx clasp update-deployment AKfycbwmWhxLQfpkQRfFIfdv9tZD4CvZfeWEB__YiXnGTSk7-6mlZVZUvLEp2aJDwey0HXaF -d "<note>"`.
+   folder and compare (copy `.clasp.json` there with `rootDir` `.`, and run the **repo's**
+   `node_modules/.bin/clasp pull`: `npx` in the scratch folder has no clasp) → `npx clasp update-deployment AKfycbwmWhxLQfpkQRfFIfdv9tZD4CvZfeWEB__YiXnGTSk7-6mlZVZUvLEp2aJDwey0HXaF -d "<note>"`.
    **Never `create-deployment`** (a new address would break every link sent).
 3. Owner tests on his phone (TEST-named rows); agent reads the tabs through the Google Sheets
    connector (never the `token` column); deletes test rows **only with the owner's OK**, pinned
@@ -110,7 +115,8 @@ matches; `printf '%s\n' '<address>' > "$S/clasp-in"`; delete the log.
   server, and make things feel instant on the phone.
 
 ## Questions for the owner
-None open. Ask the owner's way: **one question at a time** (several only when he's brisk and
+Waiting on him (not business questions): (1) **"delete"** the phase 7 TEST rows once he has looked
+at his admin screen; (2) the go-ahead for the **speed pass** (agent recommended it before launch). Ask the owner's way: **one question at a time** (several only when he's brisk and
 they're independent), tappable options (`AskUserQuestion`), recommended option first and marked
 **(Recommended)**, plain English. He prefers brisk check-ins; don't over-explain routine steps.
 
