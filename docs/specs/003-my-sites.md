@@ -1,7 +1,7 @@
 # 003: My sites + add a site
 
-- **Status:** Draft
-- **Owner approval:** _pending_
+- **Status:** Approved
+- **Owner approval:** approved by the owner on 2026-11-04 (session 3)
 - **Related:** roadmap phase 3 · ADR-0002 (links) · ADR-0004 (private lists, duplicate warning) ·
   [data model](../architecture/data-model.md) → `Sites`, `Activity`, `Lists` ·
   [glossary](../product/glossary.md) · builds on [spec 002](002-private-links.md)

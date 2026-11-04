@@ -27,9 +27,8 @@
 has a working owner link and a test RIA link (both active; leave them). Live cancel check was
 skipped at his request; tests and `npm run check:browser` cover it.
 
-**Spec 003 (my sites + add a site) is a Draft** (`docs/specs/003-my-sites.md`), with the
-owner's answers P3-1 to P3-4 built in. **Waiting for the owner to approve it.** Then write
-`docs/plans/003-my-sites-plan.md` and build like phases 1–2.
+**Spec 003 (my sites + add a site) is Approved** (2026-11-04). Build it with
+`docs/plans/003-my-sites-plan.md`.
 
 Carry forward (phase 3 and later):
 - **Never run `create-deployment` again.** Put new code live with
@@ -70,7 +69,7 @@ link's. Delete the log afterwards. At the end of the session: `npx clasp logout`
   paste them into files.
 
 ## Questions for the owner
-- **Approve spec 003?** (If he wants changes, update the spec first.)
+None open.
 Ask questions the owner's way:
 - One question at a time.
 - Tappable options. Use the multiple-choice question tool if you have one (Claude Code:
