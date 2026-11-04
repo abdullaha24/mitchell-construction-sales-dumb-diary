@@ -358,6 +358,8 @@ function stub() {
   assert.deepEqual(await pills(), ['All areas', 'DHA 4', 'Bahria 1', 'Gulberg 1', 'Saddar 1'],
     'DHA and D.H.A count as one, under the spelling most use; no F-10 (none of his sites); nobody else\'s areas');
   assert.deepEqual(await picked(), ['All areas']);
+  assert.deepEqual(await page.$$eval('#areaRow .pill .n', (els) => els.map((e) => e.textContent)), ['4', '1', '1', '1'],
+    'the count is its own badge, never part of the area name');
   const before = await calls();
   await page.click('#areaRow .pill:has-text("DHA 4")');
   assert.deepEqual(await names(), ['Old Note', 'Trial Site', 'Warm Quote', 'Cold Quote B'], 'his DHA sites, newest first');

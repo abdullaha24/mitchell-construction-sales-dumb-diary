@@ -99,6 +99,10 @@
                scrollbar-width: none; -webkit-overflow-scrolling: touch; }
       .areas::-webkit-scrollbar { display: none; }
       .areas .pill { flex: none; white-space: nowrap; }
+      /* The count is a badge, so "Phase 2" with 3 sites never reads as "Phase 2 3". */
+      .areas .pill .n { display: inline-block; margin-left: 2px; padding: 0 7px; border-radius: 999px;
+                        font-size: 12px; font-weight: 700; background: #e6effb; color: var(--blue); }
+      .areas .pill[aria-pressed=true] .n { background: rgba(255, 255, 255, .25); color: #fff; }
       .sheet-back { position: fixed; inset: 0; background: rgba(31, 41, 51, .45); z-index: 4; }
       .sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; background: #fff; border-radius: 16px 16px 0 0;
                padding: 16px 16px 20px; max-width: 640px; margin: 0 auto; }
@@ -761,7 +765,8 @@
         if (!groups.length) return;
         row.appendChild(pill('All areas', !areaPick, function () { pickArea(''); }));
         groups.forEach(function (g) {
-          var b = pill(g.name + ' ' + g.count, areaPick === g.key, function () { pickArea(areaPick === g.key ? '' : g.key); });
+          var b = pill(g.name + ' ', areaPick === g.key, function () { pickArea(areaPick === g.key ? '' : g.key); });
+          b.appendChild(el('span', String(g.count), 'n'));
           b.setAttribute('data-area', g.key);
           row.appendChild(b);
         });
