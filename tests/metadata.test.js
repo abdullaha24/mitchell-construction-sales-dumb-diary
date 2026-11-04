@@ -75,14 +75,23 @@ test('a missing column → the message naming the tab and column', () => {
   });
 });
 
-test('only metadata.js opens another spreadsheet or uses the Meta-Data ID', () => {
+test('only metadata.js opens Meta-Data, only diary.js opens Sales Diary, nothing else opens a sheet', () => {
+  const opens = /\bopenBy(Id|Url)\b|\bSpreadsheetApp\.open\b/g;
   for (const name of srcFiles()) {
     const source = fs.readFileSync(path.join(SRC_DIR, name), 'utf8');
-    if (name !== 'metadata.js') {
-      assert.ok(!/\bopenBy(Id|Url)\b|\bSpreadsheetApp\.open\b/.test(source), `${name} opens a spreadsheet`);
+    const calls = source.match(opens) || [];
+    if (name === 'metadata.js') {
+      assert.deepEqual(source.match(/openById\(([^)]*)\)/g), ['openById(META_DATA_ID)'], name);
+    } else if (name === 'diary.js') {
+      assert.deepEqual(source.match(/openById\(([^)]*)\)/g), ['openById(SALES_DIARY_ID)'], name);
+    } else {
+      assert.deepEqual(calls, [], `${name} opens a spreadsheet`);
     }
-    if (name !== 'metadata.js' && name !== 'config.js') {
+    if (!['metadata.js', 'config.js'].includes(name)) {
       assert.ok(!source.includes('META_DATA_ID'), `${name} uses META_DATA_ID`);
+    }
+    if (!['diary.js', 'config.js'].includes(name)) {
+      assert.ok(!source.includes('SALES_DIARY_ID'), `${name} uses SALES_DIARY_ID`);
     }
   }
 });

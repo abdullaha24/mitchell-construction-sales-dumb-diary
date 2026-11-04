@@ -35,7 +35,12 @@ test('Sales Diary headers match the data model', () => {
     'value_rs', 'payment_terms', 'lost_reason', 'note', 'next_followup',
   ]);
   assert.deepEqual(headers.Lists, ['list', 'value', 'region', 'added_by', 'active', 'sort']);
-  assert.ok(headers.Sites.includes(loadSrc().get('PHONE_COLUMN')));
+  assert.deepEqual(headers.Links, ['role', 'rep', 'token', 'active', 'issued_at']);
+  const textColumns = plain(loadSrc().get('TEXT_COLUMNS'));
+  assert.deepEqual(textColumns, { Sites: ['contact_phone'], Links: ['token'] });
+  for (const [tab, names] of Object.entries(textColumns)) {
+    for (const name of names) assert.ok(headers[tab].includes(name), `${tab}.${name}`);
+  }
 });
 
 test('starting Lists: 11 categories in order, 5 lost reasons, 4 buyer types, no areas', () => {

@@ -9,6 +9,7 @@
 // - getLastRow() / getLastColumn() are 0 on an empty sheet;
 // - getRange() throws if the range runs past the tab's rows or columns (1000 x 26 when new).
 
+const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 
@@ -211,20 +212,58 @@ function makeSpreadsheet(tabs = {}, options = {}) {
 }
 
 /**
- * Fake `Utilities`. formatDate supports only the patterns the code uses.
+ * Fake `Utilities`. formatDate supports only the patterns the code uses. getUuid gives real
+ * random v4 UUIDs, like Google's; every one made is kept in `_uuids` for tests.
  */
 function makeUtilities() {
+  const uuids = [];
   return {
     formatDate(date, timeZone, pattern) {
-      if (pattern !== 'yyyy-MM') {
-        throw new Error(`fake Utilities.formatDate does not support "${pattern}"`);
-      }
       const parts = new Intl.DateTimeFormat('en-US', {
-        timeZone, year: 'numeric', month: '2-digit',
+        timeZone, year: 'numeric', month: '2-digit', day: 'numeric',
       }).formatToParts(date);
       const part = (type) => parts.find((p) => p.type === type).value;
-      return `${part('year')}-${part('month')}`;
+      if (pattern === 'yyyy-MM') return `${part('year')}-${part('month')}`;
+      if (pattern === 'd MMM yyyy') {
+        const month = new Intl.DateTimeFormat('en-US', { timeZone, month: 'short' }).format(date);
+        return `${part('day')} ${month} ${part('year')}`;
+      }
+      throw new Error(`fake Utilities.formatDate does not support "${pattern}"`);
     },
+    getUuid() {
+      const uuid = crypto.randomUUID();
+      uuids.push(uuid);
+      return uuid;
+    },
+    /** Test helper: every UUID handed out. */
+    _uuids: uuids,
+  };
+}
+
+/**
+ * Fake `LockService`. One script lock. `busy: true` makes waitLock time out, as Google's does
+ * when another run holds the lock.
+ * @param {{ busy?: boolean }} [options]
+ */
+function makeLockService(options = {}) {
+  const events = [];
+  let held = false;
+  const lock = {
+    waitLock(ms) {
+      events.push(`waitLock ${ms}`);
+      if (options.busy) throw new Error('Lock timeout: another process was holding the lock.');
+      held = true;
+    },
+    releaseLock() {
+      events.push('releaseLock');
+      held = false;
+    },
+    hasLock: () => held,
+  };
+  return {
+    getScriptLock: () => lock,
+    /** Test helper: what happened to the lock, in order. */
+    _events: events,
   };
 }
 
@@ -319,4 +358,5 @@ module.exports = {
   makeSpreadsheetApp,
   makeSession,
   makeHtmlService,
+  makeLockService,
 };

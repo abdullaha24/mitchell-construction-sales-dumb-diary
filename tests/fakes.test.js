@@ -3,6 +3,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
   makeSpreadsheet, makeUtilities, makeSpreadsheetApp, makeSession, makeHtmlService,
+  makeLockService,
 } = require('./helpers/fakes');
 
 test('read-only spreadsheet: every write method throws, reads still work', () => {
@@ -28,6 +29,32 @@ test('formatDate: 2026-07-31T19:00:00Z is 1 Aug 2026 in Karachi, so 2026-08', ()
   assert.equal(utilities.formatDate(date, 'Asia/Karachi', 'yyyy-MM'), '2026-08');
   assert.equal(utilities.formatDate(date, 'UTC', 'yyyy-MM'), '2026-07');
   assert.throws(() => utilities.formatDate(date, 'UTC', 'dd/MM/yyyy'), /does not support/);
+});
+
+test('formatDate d MMM yyyy: Karachi day, short English month', () => {
+  const utilities = makeUtilities();
+  assert.equal(utilities.formatDate(new Date('2026-11-04T08:00:00Z'), 'Asia/Karachi', 'd MMM yyyy'), '4 Nov 2026');
+  assert.equal(utilities.formatDate(new Date('2026-09-30T20:00:00Z'), 'Asia/Karachi', 'd MMM yyyy'), '1 Oct 2026');
+  assert.equal(utilities.formatDate(new Date('2026-09-15T12:00:00Z'), 'Asia/Karachi', 'd MMM yyyy'), '15 Sep 2026');
+});
+
+test('getUuid: random v4 UUIDs, all kept for tests', () => {
+  const utilities = makeUtilities();
+  const a = utilities.getUuid();
+  const b = utilities.getUuid();
+  assert.match(a, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+  assert.notEqual(a, b);
+  assert.deepEqual(utilities._uuids, [a, b]);
+});
+
+test('LockService: waitLock and releaseLock are recorded; busy makes waitLock throw', () => {
+  const locks = makeLockService();
+  const lock = locks.getScriptLock();
+  lock.waitLock(10000);
+  assert.equal(lock.hasLock(), true);
+  lock.releaseLock();
+  assert.deepEqual(locks._events, ['waitLock 10000', 'releaseLock']);
+  assert.throws(() => makeLockService({ busy: true }).getScriptLock().waitLock(1), /Lock timeout/);
 });
 
 test('like Google: an empty sheet reads as one blank cell, last row and column 0', () => {

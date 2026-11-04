@@ -13,7 +13,7 @@
 - Values returned to a page (`google.script.run`) must be plain text, numbers, booleans,
   arrays and objects: **no `Date`s** (Google drops them).
 
-## [ ] Step 1: Settings, fakes, and the Links tab
+## [x] Step 1: Settings, fakes, and the Links tab
 - `config.js`: `SALES_DIARY_ID`, `WEB_APP_URL` (ADR-0008), `Links` headers, `TOKEN_COLUMN`.
 - `src/diary.js`: `openSalesDiary_()`, the only place that opens Sales Diary by ID. Test: only
   `metadata.js` and `diary.js` open a spreadsheet by ID, each with its own ID.

@@ -8,6 +8,19 @@
  */
 const META_DATA_ID = '11rcjx1eZA9BqwSTIoK66hrs7M8rYisL12GirSzLyrkc';
 
+/**
+ * The Sales Diary spreadsheet, created in phase 1 (ADR-0008). Holds link codes from phase 2:
+ * never share it.
+ */
+const SALES_DIARY_ID = '1tuyVPDB33x1Vw8JQYashM4PRQSjGjQq8MBs7l4cJn5Y';
+
+/**
+ * The web app's address (ADR-0008): the phase 1 deployment, always updated in place with
+ * `clasp update-deployment`, so links already sent keep working.
+ */
+const WEB_APP_URL = 'https://script.google.com/macros/s/' +
+  'AKfycbwmWhxLQfpkQRfFIfdv9tZD4CvZfeWEB__YiXnGTSk7-6mlZVZUvLEp2aJDwey0HXaF/exec';
+
 /** Tab names in the Meta-Data sheet. */
 const META_TABS = {
   salesmen: 'Rep_Mapping',
@@ -30,6 +43,7 @@ const DIARY_TABS = {
   sites: 'Sites',
   activity: 'Activity',
   lists: 'Lists',
+  links: 'Links',
 };
 
 /**
@@ -48,10 +62,18 @@ const DIARY_HEADERS = {
     'value_rs', 'payment_terms', 'lost_reason', 'note', 'next_followup',
   ],
   Lists: ['list', 'value', 'region', 'added_by', 'active', 'sort'],
+  Links: ['role', 'rep', 'token', 'active', 'issued_at'],
 };
 
-/** The `Sites` column kept as plain text, so phone numbers keep their digits. */
-const PHONE_COLUMN = 'contact_phone';
+/**
+ * Columns set to plain text when setup creates a tab: phone numbers keep their digits, and link
+ * codes are never turned into numbers or dates.
+ * @type {Object<string, string[]>}
+ */
+const TEXT_COLUMNS = {
+  Sites: ['contact_phone'],
+  Links: ['token'],
+};
 
 /**
  * Starting rows for the `Lists` tab, in display order. Setup writes a list only when the tab

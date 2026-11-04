@@ -18,6 +18,7 @@ const ACTIVITY = [
   'value_rs', 'payment_terms', 'lost_reason', 'note', 'next_followup',
 ];
 const LISTS = ['list', 'value', 'region', 'added_by', 'active', 'sort'];
+const LINKS = ['role', 'rep', 'token', 'active', 'issued_at'];
 const CATEGORIES = [
   'Tile Adhesives', 'Waterproofing Job', 'Floor Hardeners', 'Bonding Agents & Sealants',
   'Waterproofing Products', 'Tile Grouts', 'Structural Grouts', 'Restoration & Repair Products',
@@ -40,19 +41,20 @@ const newSpreadsheet = () => makeSpreadsheet({ Sheet1: [] }, { timeZone: 'Americ
 const tabNames = (ss) => ss.getSheets().map((s) => s.getName());
 const valuesOf = (ss, tab) => ss.getSheetByName(tab).getDataRange().getValues();
 
-test('new spreadsheet: creates Sites, Activity and Lists with exact headers', () => {
+test('new spreadsheet: creates Sites, Activity, Lists and Links with exact headers', () => {
   const diary = newSpreadsheet();
   assert.deepEqual(setUp(diary), { problems: [] });
-  assert.deepEqual(tabNames(diary), ['Sites', 'Activity', 'Lists']);
+  assert.deepEqual(tabNames(diary), ['Sites', 'Activity', 'Lists', 'Links']);
   assert.deepEqual(valuesOf(diary, 'Sites'), [SITES]);
   assert.deepEqual(valuesOf(diary, 'Activity'), [ACTIVITY]);
   assert.deepEqual(valuesOf(diary, 'Lists')[0], LISTS);
+  assert.deepEqual(valuesOf(diary, 'Links'), [LINKS]);
 });
 
 test('new spreadsheet: headers are bold and frozen', () => {
   const diary = newSpreadsheet();
   setUp(diary);
-  for (const [tab, headers] of [['Sites', SITES], ['Activity', ACTIVITY], ['Lists', LISTS]]) {
+  for (const [tab, headers] of [['Sites', SITES], ['Activity', ACTIVITY], ['Lists', LISTS], ['Links', LINKS]]) {
     const sheet = diary.getSheetByName(tab);
     assert.equal(sheet.getFrozenRows(), 1, tab);
     for (let c = 1; c <= headers.length; c++) assert.equal(sheet._fontWeight(1, c), 'bold', `${tab} col ${c}`);
@@ -73,6 +75,27 @@ test('new spreadsheet: contact_phone is plain text, and only that column', () =>
   for (const tab of ['Activity', 'Lists']) {
     assert.deepEqual(diary.getSheetByName(tab)._snapshot().numberFormats, {}, tab);
   }
+});
+
+test('new spreadsheet: Links token column is plain text, and only that column', () => {
+  const diary = newSpreadsheet();
+  setUp(diary);
+  const links = diary.getSheetByName('Links');
+  const token = LINKS.indexOf('token') + 1;
+  for (const row of [1, 2, links.getMaxRows()]) assert.equal(links._numberFormat(row, token), '@');
+  for (const column of [1, 2, 4, 5]) assert.equal(links._numberFormat(2, column), undefined, `column ${column}`);
+});
+
+test('an existing sheet from phase 1 just gets the Links tab added', () => {
+  const diary = newSpreadsheet();
+  setUp(diary);
+  diary.deleteSheet(diary.getSheetByName('Links'));
+  const before = diary._snapshot();
+  setUp(diary);
+  const after = diary._snapshot();
+  assert.deepEqual(after.sheets.slice(0, 3), before.sheets);
+  assert.equal(after.sheets[3].name, 'Links');
+  assert.deepEqual(after.sheets[3].values, [LINKS]);
 });
 
 test('new spreadsheet: timezone set to Asia/Karachi', () => {
@@ -112,14 +135,14 @@ test('an existing tab is left exactly as it was, even with other headers', () =>
   const sitesBefore = diary.getSheetByName('Sites')._snapshot();
   setUp(diary);
   assert.deepEqual(diary.getSheetByName('Sites')._snapshot(), sitesBefore);
-  assert.deepEqual(tabNames(diary), ['Sites', 'Activity', 'Lists']);
+  assert.deepEqual(tabNames(diary), ['Sites', 'Activity', 'Lists', 'Links']);
   assert.ok(!diary._writes().some((w) => w.includes('on Sites')), diary._writes().join());
 });
 
 test('a Sheet1 with anything in it is kept', () => {
   const withValue = makeSpreadsheet({ Sheet1: [['', ''], ['', 'owner notes']] });
   setUp(withValue);
-  assert.deepEqual(tabNames(withValue), ['Sheet1', 'Sites', 'Activity', 'Lists']);
+  assert.deepEqual(tabNames(withValue), ['Sheet1', 'Sites', 'Activity', 'Lists', 'Links']);
 
   const withChart = newSpreadsheet();
   withChart.getSheetByName('Sheet1')._addChart();
@@ -135,7 +158,7 @@ test('a Sheet1 with anything in it is kept', () => {
 test('no Sheet1 (already deleted or renamed) is fine', () => {
   const diary = makeSpreadsheet({ Summary: [['kept']] });
   assert.deepEqual(setUp(diary), { problems: [] });
-  assert.deepEqual(tabNames(diary), ['Summary', 'Sites', 'Activity', 'Lists']);
+  assert.deepEqual(tabNames(diary), ['Summary', 'Sites', 'Activity', 'Lists', 'Links']);
 });
 
 test('a list with rows is not refilled; empty lists are, below the last row', () => {

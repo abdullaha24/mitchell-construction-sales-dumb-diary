@@ -128,7 +128,7 @@ test('a full run creates the tabs and shows the summary; Meta-Data is untouched'
   src.sandbox.menuCheckSetup();
   const monthAfter = karachiMonthLabel(new Date());
 
-  assert.deepEqual(diary.getSheets().map((s) => s.getName()), ['Sites', 'Activity', 'Lists']);
+  assert.deepEqual(diary.getSheets().map((s) => s.getName()), ['Sites', 'Activity', 'Lists', 'Links']);
   assert.equal(diary.getSpreadsheetTimeZone(), 'Asia/Karachi');
 
   assert.equal(ui.alerts.length, 1);
@@ -161,7 +161,7 @@ test('a second run changes nothing in the Sales Diary sheet', () => {
 test("Meta-Data can't be opened: tabs are still created, and the pop-up says only that", () => {
   const { src, diary, ui } = world({ metaTabs: null });
   src.sandbox.menuCheckSetup();
-  assert.deepEqual(diary.getSheets().map((s) => s.getName()), ['Sites', 'Activity', 'Lists']);
+  assert.deepEqual(diary.getSheets().map((s) => s.getName()), ['Sites', 'Activity', 'Lists', 'Links']);
   assert.equal(ui.alerts[0].args[1],
     "Can't open the Meta-Data sheet. Check it still exists and your Google account can open it.");
 });

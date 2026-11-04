@@ -12,7 +12,7 @@
  * @returns {{ problems: string[] }} things the owner needs to fix by hand
  */
 function setUpSalesDiary_(diary) {
-  for (const tabName of [DIARY_TABS.sites, DIARY_TABS.activity, DIARY_TABS.lists]) {
+  for (const tabName of [DIARY_TABS.sites, DIARY_TABS.activity, DIARY_TABS.lists, DIARY_TABS.links]) {
     if (!diary.getSheetByName(tabName)) createDiaryTab_(diary, tabName);
   }
 
@@ -31,7 +31,7 @@ function setUpSalesDiary_(diary) {
 
 /**
  * Adds a tab at the end with its header row from the data model, bold and frozen.
- * On `Sites`, the phone column is plain text so `923001234567` keeps its digits.
+ * Columns in TEXT_COLUMNS are plain text (e.g. `923001234567` keeps its digits).
  * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} diary
  * @param {string} tabName
  */
@@ -42,9 +42,8 @@ function createDiaryTab_(diary, tabName) {
   headerRange.setValues([headers]);
   headerRange.setFontWeight('bold');
   sheet.setFrozenRows(1);
-  if (tabName === DIARY_TABS.sites) {
-    const phoneColumn = headers.indexOf(PHONE_COLUMN) + 1;
-    sheet.getRange(1, phoneColumn, sheet.getMaxRows(), 1).setNumberFormat('@');
+  for (const name of TEXT_COLUMNS[tabName] || []) {
+    sheet.getRange(1, headers.indexOf(name) + 1, sheet.getMaxRows(), 1).setNumberFormat('@');
   }
 }
 
@@ -83,13 +82,7 @@ function fillStartingLists_(sheet) {
       newRows.push(row);
     });
   }
-  if (newRows.length > 0) {
-    const firstNewRow = sheet.getLastRow() + 1;
-    // Google refuses to write past the tab's last row, so add rows first if needed.
-    const shortBy = firstNewRow + newRows.length - 1 - sheet.getMaxRows();
-    if (shortBy > 0) sheet.insertRowsAfter(sheet.getMaxRows(), shortBy);
-    sheet.getRange(firstNewRow, 1, newRows.length, width).setValues(newRows);
-  }
+  appendRows_(sheet, newRows);
   return [];
 }
 
