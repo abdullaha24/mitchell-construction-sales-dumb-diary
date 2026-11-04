@@ -61,6 +61,7 @@
 
     <main id="listView">
       <div id="draftBanner" class="banner" hidden>You have a site that isn't saved yet. Tap + New Site to finish it.</div>
+      <div id="noStorage" class="banner" hidden>This phone can't keep unsaved sites. Save each site before closing the app.</div>
       <div id="sites"></div>
     </main>
 
@@ -120,9 +121,22 @@
         if (cls) n.className = cls;
         return n;
       }
-      function emptyForm() {
-        return { name: '', buyerType: '', contactName: '', phone: '', products: [], area: '', newArea: '', addingArea: false, followUp: 'tomorrow', date: '' };
+      // A one-time ID per form, so a save repeated after a lost reply is saved only once.
+      function newSaveId() {
+        var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        var bytes = new Uint8Array(20);
+        (window.crypto || window.msCrypto).getRandomValues(bytes);
+        var id = '';
+        for (var i = 0; i < bytes.length; i++) id += chars[bytes[i] % chars.length];
+        return id;
       }
+      function emptyForm() {
+        return { name: '', buyerType: '', contactName: '', phone: '', products: [], area: '', newArea: '', addingArea: false, followUp: 'tomorrow', date: '', saveId: newSaveId() };
+      }
+      var SAVE_WAIT_MS = 30000;
+      var storageWorks = (function () {
+        try { localStorage.setItem('salesdiary.test', '1'); localStorage.removeItem('salesdiary.test'); return true; } catch (e) { return false; }
+      })();
       function shortDay(key) {
         if (!key) return '';
         var p = key.split('-');
@@ -156,6 +170,7 @@
       function renderList() {
         $('who').textContent = data.rep;
         $('draftBanner').hidden = !hasDraft();
+        $('noStorage').hidden = storageWorks;
         var box = $('sites');
         box.textContent = '';
         if (!data.sites.length) {
@@ -319,20 +334,35 @@
         if (form.followUp === 'date' && !form.date) return problem('Pick a follow-up date.');
         if (!form.phone.trim() && !confirmNoNumber) { confirmNoNumber = true; clearProblem(); renderSave(); return; }
 
+        if (!form.saveId) { form.saveId = newSaveId(); saveDraft(); }
         busy = true; note.hidden = true; renderSave();
         var input = {
           name: form.name, buyerType: form.buyerType, contactName: form.contactName, phone: form.phone,
           products: form.products, area: form.addingArea ? form.newArea : form.area,
-          followUp: form.followUp === 'date' ? form.date : form.followUp,
+          followUp: form.followUp === 'date' ? form.date : form.followUp, saveId: form.saveId,
         };
+        var attempt = save.attempt = (save.attempt || 0) + 1;
+        // If Google never answers, give up waiting; a later answer is still used if it comes.
+        var giveUp = setTimeout(function () {
+          if (attempt !== save.attempt || !busy) return;
+          busy = false; confirmNoNumber = false; renderSave();
+          problem('Not saved: no signal. Tap Save again.');
+        }, SAVE_WAIT_MS);
         google.script.run.withSuccessHandler(function (r) {
+          clearTimeout(giveUp);
           busy = false; confirmNoNumber = false;
           if (!r || !r.ok) { renderSave(); return problem((r && r.message) || 'Something went wrong. Try again.'); }
           var keepK = k;
           data = r; data.k = keepK;
           form = emptyForm(); clearDraft(); phoneCheck = { valid: true };
-          showList(); toast('Saved');
+          showList();
+          var w = r.warning || {};
+          if (w.team) toast('Saved. Someone in the team already works with this contact.');
+          else if (w.mine && w.mine.length) toast('Saved. You already have this number: ' + w.mine.join(', ') + '.');
+          else toast('Saved');
         }).withFailureHandler(function (error) {
+          clearTimeout(giveUp);
+          if (attempt !== save.attempt) return;
           busy = false; confirmNoNumber = false; renderSave();
           problem(readable(error));
         }).repAddSite(k, input);
@@ -347,6 +377,7 @@
       function showForm() {
         var draft = loadDraft();
         form = draft ? Object.assign(emptyForm(), draft) : emptyForm();
+        if (!form.saveId) form.saveId = newSaveId();
         if (!data.buyerTypes.length) form.buyerType = '';
         confirmNoNumber = false; phoneCheck = { valid: true };
         $('phoneNote').hidden = true; $('formNote').hidden = true;
@@ -364,6 +395,9 @@
       $('f-phone').addEventListener('input', function (e) {
         form.phone = e.target.value; confirmNoNumber = false; phoneCheck = { valid: true };
         $('phoneNote').hidden = true; clearProblem(); saveDraft(); renderSave();
+        // Check once he pauses, when it could be a whole number (10+ digits).
+        clearTimeout(checkPhone.timer);
+        if (form.phone.replace(/\D/g, '').length >= 10) checkPhone.timer = setTimeout(checkPhone, 700);
       });
       $('f-phone').addEventListener('change', checkPhone);
       $('f-newarea').addEventListener('input', function (e) { form.newArea = e.target.value; saveDraft(); renderSuggestions(); });

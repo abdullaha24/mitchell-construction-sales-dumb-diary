@@ -99,6 +99,15 @@ test('like Google: a range past the last row or column throws; rows can be added
   assert.equal(sheet.getLastRow(), 1005);
 });
 
+test('like Google: setValues reads text as typed, unless the cell is plain text', () => {
+  const sheet = makeSpreadsheet({ T: [] }).getSheetByName('T');
+  sheet.getRange(1, 1, 1, 5).setValues([['=SUM(1)', '0300', "'=SUM(1)", "'0300", 'plain words']]);
+  assert.deepEqual(sheet.getRange(1, 1, 1, 5).getValues(), [['FORMULA(SUM(1))', 300, '=SUM(1)', '0300', 'plain words']]);
+  sheet.getRange(2, 1).setNumberFormat('@');
+  sheet.getRange(2, 1).setValues([['=SUM(1)']]);
+  assert.equal(sheet.getRange(2, 1).getValues()[0][0], '=SUM(1)');
+});
+
 test('like Google: sheet names are unique and the last tab cannot be deleted', () => {
   const ss = makeSpreadsheet({ Sheet1: [] });
   assert.throws(() => ss.insertSheet('sheet1'), /already exists/);

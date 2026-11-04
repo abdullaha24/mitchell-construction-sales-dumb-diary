@@ -4,7 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { loadSrc } = require('./helpers/load-src');
 const {
-  makeSpreadsheet, makeSpreadsheetApp, makeUtilities, makeLockService, makeHtmlService,
+  makeSpreadsheet, makeSpreadsheetApp, makeUtilities, makeLockService, makeHtmlService, makeCacheService,
 } = require('./helpers/fakes');
 const { META_TIME_ZONE, metaDataTabs } = require('./fixtures/meta-data');
 
@@ -45,6 +45,7 @@ function world({ links, metaTabs = metaDataTabs(), diaryOpens = true, sites } = 
     SpreadsheetApp: { ...app, openById(id) { opened.push(id); return app.openById(id); } },
     Utilities: makeUtilities(),
     LockService: makeLockService(),
+    CacheService: makeCacheService(),
     HtmlService: makeHtmlService(),
   });
   return { doGet: (e) => src.sandbox.doGet(e), opened, diary };

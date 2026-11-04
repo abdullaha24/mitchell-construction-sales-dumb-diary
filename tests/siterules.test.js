@@ -22,7 +22,8 @@ const check = (changes) => plain(s.checkNewSite_({ ...GOOD, ...changes }, CHOICE
 
 test('numbers: every common way of writing a Pakistani number gives the same tidy form', () => {
   for (const raw of ['0300-1234567', '03001234567', '+92 300 1234567', '+923001234567', '0092 300 1234567',
-    '923001234567', '300 1234567', '(0300) 123-4567', ' 0300.1234567 ', 923001234567]) {
+    '923001234567', '300 1234567', '(0300) 123-4567', ' 0300.1234567 ', 923001234567,
+    '+92 0300 1234567', '+92 (0)300 1234567', '0092 0300 1234567', '920300 1234567']) {
     assert.deepEqual(plain(s.tidyPhone_(raw)), { ok: true, phone: '923001234567' }, String(raw));
   }
 });

@@ -30,6 +30,6 @@ on a weak connection). New Site form, two-tap save without a number, duplicate w
 
 ## [x] Step 4: No-number counts in Check setup
 
-## [ ] Step 5: Docs, review, local acceptance
+## [x] Step 5: Docs, review, local acceptance
 
 ## [ ] Step 6: Live (with the owner), then close out

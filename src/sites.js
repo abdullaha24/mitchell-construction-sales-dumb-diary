@@ -46,6 +46,18 @@ function readTab_(diary, tabName) {
 }
 
 /**
+ * Text that Google Sheets must store exactly as it is. A leading apostrophe makes the cell
+ * plain text (the apostrophe is hidden and not read back), so '=…' never becomes a formula
+ * (formula injection: a formula could read other tabs, e.g. everyone's link codes) and '0300'
+ * never becomes the number 300. Use it for every typed or picked text written to a
+ * normal-format cell.
+ * @param {string} text
+ */
+function asText_(text) {
+  return text === '' ? '' : `'${text}`;
+}
+
+/**
  * A row built from { header: value }, as wide as the tab's known columns.
  * @param {Object<string, number>} columns
  * @param {Object<string, any>} values
@@ -165,16 +177,27 @@ function noNumberLines_(sites, salesmen) {
     counts.map((c) => `  ${padRight_(c.rep, width)}${c.none} of ${c.total}`));
 }
 
+/** How long a save's one-time ID is remembered (6 hours, Google's longest). */
+const SAVE_ID_SECONDS = 21600;
+
 /**
  * Saves a checked new site for a salesman, inside the script lock: the `Sites` row, the
  * `created` row in `Activity`, and a new area in `Lists` if needed. Returns the new site ID.
+ * `saveId` is the page's one-time ID for this form: if a save with it already went through
+ * (the reply was lost on a weak signal and he tapped Save again), nothing is saved twice.
  * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} diary
  * @param {{ rep: string, region: string }} salesman
  * @param {NewSite} site
  * @param {Date} now
+ * @param {string} [saveId]
  */
-function saveNewSite_(diary, salesman, site, now) {
+function saveNewSite_(diary, salesman, site, now, saveId) {
   return withScriptLock_(() => {
+    const cache = CacheService.getScriptCache();
+    const cacheKey = saveId ? `save:${salesman.rep}:${saveId}` : '';
+    const already = cacheKey ? cache.get(cacheKey) : null;
+    if (already) return already;
+
     const sites = readTab_(diary, DIARY_TABS.sites);
     const activity = readTab_(diary, DIARY_TABS.activity);
     const lists = readTab_(diary, DIARY_TABS.lists);
@@ -192,24 +215,26 @@ function saveNewSite_(diary, salesman, site, now) {
     const followUp = dayStart_(site.followUp);
 
     appendRows_(sites.sheet, [rowFor_(sites.columns, {
-      site_id: siteId, rep: salesman.rep, region: salesman.region, site_name: site.name,
-      buyer_type: site.buyerType, area, contact_name: site.contactName, contact_phone: site.phone,
-      products: site.products.join(PRODUCTS_SEPARATOR), stage: FIRST_STAGE, next_followup: followUp,
-      created_at: now, updated_at: now,
+      site_id: siteId, rep: asText_(salesman.rep), region: asText_(salesman.region),
+      site_name: asText_(site.name), buyer_type: asText_(site.buyerType), area: asText_(area),
+      contact_name: asText_(site.contactName), contact_phone: site.phone,
+      products: asText_(site.products.join(PRODUCTS_SEPARATOR)), stage: asText_(FIRST_STAGE),
+      next_followup: followUp, created_at: now, updated_at: now,
     })], [sites.columns.contact_phone]);
 
     appendRows_(activity.sheet, [rowFor_(activity.columns, {
-      activity_id: activityId, timestamp: now, rep: salesman.rep, site_id: siteId,
-      action: 'created', to_stage: FIRST_STAGE, next_followup: followUp,
+      activity_id: activityId, timestamp: now, rep: asText_(salesman.rep), site_id: siteId,
+      action: 'created', to_stage: asText_(FIRST_STAGE), next_followup: followUp,
     })]);
 
     if (newArea) {
       const sorts = lists.rows.filter((r) => looseText_(r.list) === 'area').map((r) => Number(r.sort)).filter(isFinite);
       appendRows_(lists.sheet, [rowFor_(lists.columns, {
-        list: 'area', value: area, region: salesman.region, added_by: salesman.rep, active: true,
+        list: 'area', value: asText_(area), region: asText_(salesman.region), added_by: asText_(salesman.rep), active: true,
         sort: (sorts.length ? Math.max(...sorts) : 0) + LIST_SORT_STEP,
       })]);
     }
+    if (cacheKey) cache.put(cacheKey, siteId, SAVE_ID_SECONDS);
     return siteId;
   });
 }

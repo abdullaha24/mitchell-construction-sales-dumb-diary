@@ -32,6 +32,8 @@ function tidyPhone_(raw) {
   if (digits.startsWith('00')) digits = digits.slice(2);
   else if (digits.startsWith('0')) digits = `92${digits.slice(1)}`;
   else if (digits.length === 10 && digits.startsWith('3')) digits = `92${digits}`;
+  // '+92 0300…', '+92 (0)300…', '0092 0300…': the 0 after 92 is a habit, not part of the number.
+  if (digits.startsWith('920')) digits = `92${digits.slice(3)}`;
   const fits = digits.startsWith('923') ? digits.length === 12 : digits.length >= 10 && digits.length <= 15;
   return fits ? { ok: true, phone: digits } : { ok: false };
 }

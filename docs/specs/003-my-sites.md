@@ -41,7 +41,8 @@ Then **Save**. He's back on his list with the new site at the top and *"Saved"*.
     number** (rule recorded here; built in phase 4).
   - The owner sees **how many sites each salesman has with no number** (Check setup now,
     owner screen in phase 7).
-- **Duplicate warning (ADR-0004):** when he finishes typing a number:
+- **Duplicate warning (ADR-0004):** when he pauses after typing a number (and again in the
+  *"Saved"* message, in case he tapped Save first):
   - if **another** salesman has a site with that number: *"Someone in the team already works
     with this contact."* Nothing else is shown. He can still save.
   - if **he** already has it: *"You already have this number: F-11 Commercial Tower."* (his own
@@ -52,8 +53,12 @@ Then **Save**. He's back on his list with the new site at the top and *"Saved"*.
   region show as buttons: *"Did you mean DHA?"*. If what he typed is the same as an existing
   area apart from capitals, dots and spaces ("d.h.a" = "DHA"), the existing one is used, not
   added again.
-- **No signal (owner, P3-3):** *"Not saved: no signal. Tap Save again."* Everything he typed
-  stays on the phone, even if he closes the app, until it's saved. No automatic sending later.
+- **No signal (owner, P3-3):** *"Not saved: no signal. Tap Save again."* (also after 30 seconds
+  with no answer). Everything he typed stays on the phone, even if he closes the app, until it's
+  saved. No automatic sending later. If the save actually reached the sheet and only the answer
+  was lost, tapping Save again **doesn't save it twice** (each form carries a one-time ID).
+  If the phone can't keep drafts at all, his list says so. If the sheet is busy: *"Busy right
+  now. Try again in a moment."* *(Added after review.)*
 - **Link cancelled or he's removed from the salesmen list while using it:** the next save says
   *"This link doesn't work. Ask the owner for a new one."* Nothing is saved.
 
@@ -61,14 +66,16 @@ Then **Save**. He's back on his list with the new site at the top and *"Saved"*.
 - Each new site is a row in the `Sites` tab and a `created` row in `Activity`.
 - New areas appear in `Lists` (`list` = area, his region, `added_by` = his code), so the owner
   can tidy duplicates there.
-- **Check setup** adds: *"Sites with no phone number: RIA 2, AUR 0, …"* (only salesmen with at
-  least one site are listed).
+- **Check setup** adds a *"Sites with no phone number"* section: one line per salesman with at
+  least one site, e.g. *"RIA  2 of 5"* (North, Center, South). *(Built this way: "2 of 5" says
+  more than "2".)*
 
 ## Rules
 
 ### Numbers
 - Stored in **one tidy form** (data model): digits only, Pakistani numbers as `92…`:
-  `0300-1234567`, `+92 300 1234567`, `0092 300 1234567`, `300 1234567` → `923001234567`;
+  `0300-1234567`, `+92 300 1234567`, `0092 300 1234567`, `300 1234567`, `+92 0300 1234567`
+  → `923001234567`;
   landlines too (`042-35761234` → `924235761234`). After tidying, a Pakistani mobile (`92 3…`)
   must be exactly 12 digits and any other number 10–15 digits; otherwise *"Check the number"*.
   *(Tightened while building: a mobile missing a digit or two is caught.)*
@@ -109,6 +116,13 @@ Then **Save**. He's back on his list with the new site at the top and *"Saved"*.
 - **Codes on pages (amends spec 002):** a link code appears only in the owner's Links window and
   on **its own holder's page** (his page needs it to save). Never another person's code.
 - Everything shown on the page is put there as text, never as HTML.
+- **Everything typed or picked is stored in the sheet as plain text** (written with a leading
+  apostrophe, which Sheets hides). Otherwise a "name" like `=TEXTJOIN(…,Links!C:C)` would run
+  as a formula in the owner's sheet and show the salesman everyone's link codes, and `0300`
+  would lose its 0. *(Added after review: this was the one serious finding.)*
+- Only the app's own plain messages reach a salesman; Google's error text (which can name
+  sheets) becomes *"Something went wrong. Try again in a minute."* Replies don't include
+  team-wide site IDs.
 
 ## Data
 - **Reads:** `Links`, `Sites` (his rows; all rows' phones for the yes/no check), `Lists`,

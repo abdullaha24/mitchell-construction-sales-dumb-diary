@@ -19,7 +19,7 @@ try {
 
 const { loadSrc } = require('../helpers/load-src');
 const {
-  makeSpreadsheet, makeSpreadsheetApp, makeUtilities, makeLockService, makeHtmlService,
+  makeSpreadsheet, makeSpreadsheetApp, makeUtilities, makeLockService, makeHtmlService, makeCacheService,
 } = require('../helpers/fakes');
 const { META_TIME_ZONE, metaDataTabs } = require('../fixtures/meta-data');
 
@@ -61,6 +61,7 @@ function buildWorld() {
     SpreadsheetApp: makeSpreadsheetApp({ byId: { [SALES_DIARY_ID]: diary, [META_DATA_ID]: metaData } }),
     Utilities: makeUtilities(),
     LockService: makeLockService(),
+    CacheService: makeCacheService(),
     HtmlService: makeHtmlService(),
   });
   return { s: src.sandbox, diary };
@@ -82,7 +83,11 @@ function stub() {
             return;
           }
           window.__server(prop, JSON.stringify(args)).then(
-            (json) => success && success(JSON.parse(json)),
+            (json) => {
+              // The server did the work, but the reply never reaches the phone.
+              if (window.__loseReply) return failure && failure({ message: 'NetworkError: Connection failure due to HTTP 0' });
+              return success && success(JSON.parse(json));
+            },
             (error) => failure && failure({ message: String(error.message || error).replace(/^Error: /, '') }));
         };
       },
@@ -135,8 +140,8 @@ function stub() {
   await page.click('#f-buyer .pill:has-text("Project Owner")');
 
   // ---- Duplicate warnings: another salesman's number → only "someone in the team". ----
+  // Checked as he types (after a short pause), without leaving the box.
   await page.fill('#f-phone', '+92 300 7654321');
-  await page.dispatchEvent('#f-phone', 'change');
   await page.waitForSelector('#phoneNote:not([hidden])');
   assert.equal(await page.textContent('#phoneNote'), 'Someone in the team already works with this contact.');
   await page.fill('#f-phone', '0300-1234567');
@@ -196,6 +201,30 @@ function stub() {
     ['S000004', 'RIA', 'Askari Heights', 'Project Owner', 'DHA', '', 'Tile Grouts | Mortars, Plasters & Putties', 'Visited / Lead']);
   assert.equal(await page.locator('#draftBanner:not([hidden])').count(), 0);
 
+  // ---- Save tapped straight after typing a team number: the warning still shows. ----
+  await page.click('#newSite');
+  await page.fill('#f-name', 'Quick Save');
+  await page.click('#f-buyer .pill:has-text("Dealer")');
+  await page.fill('#f-phone', '0300 7654321');
+  await page.click('#save');
+  await page.waitForSelector('#toast:has-text("Saved. Someone in the team already works with this contact.")');
+  assert.equal(sitesRows().length, 6);
+
+  // ---- Reply lost on a weak signal, he taps Save again: saved once. ----
+  await page.click('#newSite');
+  await page.fill('#f-name', 'Once Only');
+  await page.click('#f-buyer .pill:has-text("Dealer")');
+  await page.fill('#f-phone', '0321 9998888');
+  await page.evaluate(() => { window.__loseReply = true; });
+  await page.click('#save');
+  await page.waitForSelector('#formNote:has-text("no signal")');
+  assert.equal(sitesRows().length, 7, 'the server did save it');
+  await page.evaluate(() => { window.__loseReply = false; });
+  await page.click('#save');
+  await page.waitForSelector('#toast:has-text("Saved")');
+  assert.equal(sitesRows().length, 7, 'the second tap did not save it again');
+  assert.equal((await page.$$eval('.card .name', (els) => els.map((e) => e.textContent))).filter((n) => n === 'Once Only').length, 1);
+
   // ---- A second site: a new area and a picked date. ----
   await page.click('#newSite');
   assert.equal(await page.inputValue('#f-name'), '', 'a fresh form after saving');
@@ -211,7 +240,7 @@ function stub() {
   await page.fill('#f-date', picked);
   await page.click('#save');
   await page.waitForSelector('#toast:has-text("Saved")');
-  const second = sitesRows()[5];
+  const second = sitesRows()[sitesRows().length - 1];
   assert.equal(second[5], 'Saddar');
   assert.equal(second[7], '923331112222');
   const lists = world.diary.getSheetByName('Lists').getDataRange().getValues();

@@ -221,8 +221,8 @@ test('new and cancel run inside the script lock, saving edits before letting go;
 
   const busy = world({ links: STANDARD_LINKS, busyLock: true });
   const before = busy.diary._snapshot();
-  assert.throws(() => busy.s.newLink_(busy.diary, 'RIA', NOW), /Lock timeout/);
-  assert.throws(() => busy.s.cancelLinks_(busy.diary, 'RIA'), /Lock timeout/);
+  assert.throws(() => busy.s.newLink_(busy.diary, 'RIA', NOW), /Busy right now/);
+  assert.throws(() => busy.s.cancelLinks_(busy.diary, 'RIA'), /Busy right now/);
   assert.deepEqual(busy.diary._snapshot(), before);
 });
 

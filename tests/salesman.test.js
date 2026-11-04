@@ -4,7 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { loadSrc, plain } = require('./helpers/load-src');
 const {
-  makeSpreadsheet, makeSpreadsheetApp, makeUtilities, makeLockService,
+  makeSpreadsheet, makeSpreadsheetApp, makeUtilities, makeLockService, makeCacheService,
 } = require('./helpers/fakes');
 const { META_TIME_ZONE, metaDataTabs } = require('./fixtures/meta-data');
 
@@ -47,7 +47,7 @@ function lists() {
   return rows;
 }
 
-function world({ metaTabs = metaDataTabs(), sites, activity } = {}) {
+function world({ metaTabs = metaDataTabs(), sites, activity, busyLock = false, diaryOpens = true } = {}) {
   const diary = makeSpreadsheet({
     Sites: sites || [
       SITES,
@@ -63,12 +63,13 @@ function world({ metaTabs = metaDataTabs(), sites, activity } = {}) {
       ['rep', 'SJ', CANCELLED_SJ, false, D1], ['rep', 'MUB', MUB, true, D1],
     ],
   }, { name: 'Sales Diary' });
-  const byId = { [SALES_DIARY_ID]: diary };
+  const byId = diaryOpens ? { [SALES_DIARY_ID]: diary } : {};
   if (metaTabs) byId[META_DATA_ID] = makeSpreadsheet(metaTabs, { readOnly: true, timeZone: META_TIME_ZONE, name: 'Meta-Data' });
-  const lockService = makeLockService();
+  const lockService = makeLockService({ busy: busyLock });
   const app = makeSpreadsheetApp({ byId, onFlush: () => lockService._events.push('flush') });
-  const src = loadSrc({ SpreadsheetApp: app, Utilities: makeUtilities(), LockService: lockService });
-  return { s: src.sandbox, diary, lockService };
+  const cacheService = makeCacheService();
+  const src = loadSrc({ SpreadsheetApp: app, Utilities: makeUtilities(), LockService: lockService, CacheService: cacheService });
+  return { s: src.sandbox, diary, lockService, cacheService };
 }
 
 /** Today and tomorrow in Karachi, worked out without src/. */
@@ -172,7 +173,8 @@ test('repAddSite: the exact Sites and Activity rows, who and where from the link
   const tomorrow = karachiDay(1);
   const reply = w.s.repAddSite(RIA, { ...GOOD, rep: 'SH', region: 'South' });
   assert.equal(reply.ok, true);
-  assert.equal(reply.savedId, 'S000004');
+  assert.equal(reply.savedId, undefined, 'the reply never shows team-wide IDs');
+  assert.equal(w.diary.getSheetByName('Sites').getDataRange().getValues()[4][0], 'S000004');
   const sitesRows = w.diary.getSheetByName('Sites').getDataRange().getValues();
   const row = Object.fromEntries(SITES.map((h, i) => [h, sitesRows[4][i]]));
   const followUp = row.next_followup;
@@ -250,9 +252,72 @@ test('IDs are never reused, even when a site row was deleted by hand', () => {
     sites: [SITES, site('S000001', 'RIA', 'North', 'A', '', D1)],
     activity: [ACTIVITY, ['A0000009', D1, 'RIA', 'S000009', 'created', '', 'Visited / Lead', '', '', '', '', D1]],
   });
-  assert.equal(w.s.repAddSite(RIA, GOOD).savedId, 'S000010');
+  w.s.repAddSite(RIA, GOOD);
+  assert.equal(w.diary.getSheetByName('Sites').getDataRange().getValues().pop()[0], 'S000010');
   const act = w.diary.getSheetByName('Activity').getDataRange().getValues();
   assert.equal(act[act.length - 1][0], 'A0000010');
+});
+
+test('typed text is always stored as text: no formulas, no numbers (formula injection)', () => {
+  const w = world();
+  const attack = {
+    ...GOOD, name: '=TEXTJOIN(",",1,Links!C:C)', contactName: '+92 0300', area: '=IMPORTXML("http://x")',
+    products: [],
+  };
+  w.s.repAddSite(RIA, attack);
+  const sitesRow = w.diary.getSheetByName('Sites').getDataRange().getValues()[4];
+  assert.equal(sitesRow[3], '=TEXTJOIN(",",1,Links!C:C)', 'site name kept as text');
+  assert.equal(sitesRow[6], '+92 0300', 'contact name kept as text');
+  assert.equal(sitesRow[5], '=IMPORTXML("http://x")', 'area kept as text');
+  const listRows = w.diary.getSheetByName('Lists').getDataRange().getValues();
+  assert.equal(listRows[listRows.length - 1][1], '=IMPORTXML("http://x")', 'new area kept as text');
+  const everything = JSON.stringify(w.diary._snapshot());
+  assert.ok(!everything.includes('FORMULA('), 'no formula anywhere in the sheet');
+  const reply = JSON.stringify(plain(w.s.repLoad(RIA)));
+  for (const code of [SH, OWNER, CANCELLED_SJ, MUB]) assert.ok(!reply.includes(code));
+  // A name of digits keeps its leading 0.
+  w.s.repAddSite(RIA, { ...GOOD, name: '0300', contactName: '007' });
+  const last = w.diary.getSheetByName('Sites').getDataRange().getValues().pop();
+  assert.deepEqual([last[3], last[6]], ['0300', '007']);
+});
+
+test('the same form saved twice (reply lost on a weak signal) is saved once', () => {
+  const w = world();
+  const first = plain(w.s.repAddSite(RIA, { ...GOOD, saveId: 'abc12345XYZ' }));
+  const again = plain(w.s.repAddSite(RIA, { ...GOOD, saveId: 'abc12345XYZ' }));
+  assert.equal(w.diary.getSheetByName('Sites').getLastRow(), 5, 'one new row, not two');
+  assert.equal(w.diary.getSheetByName('Activity').getLastRow(), 3);
+  assert.deepEqual(again.sites.map((x) => x.id), first.sites.map((x) => x.id));
+  w.s.repAddSite(RIA, { ...GOOD, saveId: 'anotherForm1' });
+  assert.equal(w.diary.getSheetByName('Sites').getLastRow(), 6, 'a new form saves again');
+  // The one-time ID is per salesman: SH can't block RIA's save by guessing it.
+  w.s.repAddSite(SH, { ...GOOD, saveId: 'abc12345XYZ' });
+  assert.equal(w.diary.getSheetByName('Sites').getLastRow(), 7);
+  // A badly shaped ID is ignored (the save still happens).
+  w.s.repAddSite(RIA, { ...GOOD, saveId: 'x' });
+  w.s.repAddSite(RIA, { ...GOOD, saveId: 'x' });
+  assert.equal(w.diary.getSheetByName('Sites').getLastRow(), 9);
+});
+
+test('the save reply repeats the duplicate check (in case Save beat the check while typing)', () => {
+  const w = world();
+  assert.deepEqual(plain(w.s.repAddSite(RIA, { ...GOOD, phone: '0300 7654321' })).warning, { team: true, mine: [] });
+  assert.deepEqual(plain(w.s.repAddSite(RIA, { ...GOOD, phone: '0300 1234567', saveId: 'second001' })).warning,
+    { team: false, mine: ['F-11 Tower'] });
+  assert.deepEqual(plain(w.s.repAddSite(RIA, { ...GOOD, phone: '', saveId: 'third0001' })).warning, { team: false, mine: [] });
+});
+
+test('a busy lock says "Busy right now", not something that reads like no signal', () => {
+  const w = world({ busyLock: true });
+  assert.throws(() => w.s.repAddSite(RIA, GOOD), (e) => e.message === 'Busy right now. Try again in a moment.');
+  assert.deepEqual(w.diary._writes(), []);
+});
+
+test("Google's own error text never reaches a salesman: only our plain messages", () => {
+  const w = world({ diaryOpens: false });
+  for (const call of [() => w.s.repLoad(RIA), () => w.s.repCheckPhone(RIA, '03001234567'), () => w.s.repAddSite(RIA, GOOD)]) {
+    assert.throws(call, (e) => e.message === 'Something went wrong. Try again in a minute.');
+  }
 });
 
 test('saving runs inside the script lock and saves before letting go', () => {

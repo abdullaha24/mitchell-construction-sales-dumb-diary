@@ -23,6 +23,7 @@ const OWNER_ROLE = 'owner';
 const REP_ROLE = 'rep';
 const LINK_PARAM = 'k';
 const LOCK_WAIT_MS = 10000;
+const BUSY_MESSAGE = 'Busy right now. Try again in a moment.';
 
 /**
  * A new link code: two of Google's random IDs joined, dashes removed. 64 letters and digits,
@@ -141,7 +142,11 @@ function whoIsVisiting_(code) {
  */
 function withScriptLock_(work) {
   const lock = LockService.getScriptLock();
-  lock.waitLock(LOCK_WAIT_MS);
+  try {
+    lock.waitLock(LOCK_WAIT_MS);
+  } catch (e) {
+    throw new Error(BUSY_MESSAGE); // Google's own text says "timeout", which reads like no signal
+  }
   try {
     return work();
   } finally {

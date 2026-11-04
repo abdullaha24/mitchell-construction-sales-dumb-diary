@@ -7,7 +7,10 @@
 // - setValues() throws unless the array exactly fits the range;
 // - insertSheet() throws if the name is taken; deleteSheet() refuses the last tab;
 // - getLastRow() / getLastColumn() are 0 on an empty sheet;
-// - getRange() throws if the range runs past the tab's rows or columns (1000 x 26 when new).
+// - getRange() throws if the range runs past the tab's rows or columns (1000 x 26 when new);
+// - setValues() reads text like a person typing it, unless the cell is plain text ('@'):
+//   '=…' becomes a formula (stored as FORMULA(…) so tests can see it), digits become a number
+//   (losing a leading 0), and a leading apostrophe makes the rest plain text (apostrophe hidden).
 
 const crypto = require('node:crypto');
 const fs = require('node:fs');
@@ -16,6 +19,15 @@ const path = require('node:path');
 const SRC_DIR = path.join(__dirname, '..', '..', 'src');
 const DEFAULT_MAX_ROWS = 1000;
 const DEFAULT_MAX_COLUMNS = 26;
+
+/** What Google Sheets stores when setValues writes `value` into a cell with `format`. */
+function asTyped(value, format) {
+  if (typeof value !== 'string' || format === '@') return value;
+  if (value.startsWith("'")) return value.slice(1);
+  if (value.startsWith('=')) return `FORMULA(${value.slice(1)})`;
+  if (/^[+-]?\d+(\.\d+)?$/.test(value.trim())) return Number(value);
+  return value;
+}
 
 function isEmptyCell(value) {
   return value === '' || value === null || value === undefined;
@@ -105,8 +117,9 @@ function makeSpreadsheet(tabs = {}, options = {}) {
           }
           values.forEach((line, i) => line.forEach((v, j) => {
             const r = row + i - 1;
+            const c = column + j - 1;
             while (cells.length <= r) cells.push([]);
-            cells[r][column + j - 1] = v;
+            cells[r][c] = asTyped(v, numberFormats.get(`${r + 1},${c + 1}`));
           }));
           return range;
         },
@@ -381,6 +394,16 @@ function escapeHtml(value) {
   })[ch]);
 }
 
+/** Fake `CacheService`: one script cache; expiry is recorded, not enforced. */
+function makeCacheService() {
+  const store = new Map();
+  const cache = {
+    get: (key) => (store.has(key) ? store.get(key).value : null),
+    put(key, value, seconds) { store.set(key, { value: String(value), seconds }); },
+  };
+  return { getScriptCache: () => cache, _store: store };
+}
+
 /**
  * Fake `HtmlService`. Reads `src/<name>.html`, as Apps Script does for a project file.
  * Templates support only `<?= name ?>` (printed escaped, like Google's), the one form the
@@ -416,4 +439,5 @@ module.exports = {
   makeSession,
   makeHtmlService,
   makeLockService,
+  makeCacheService,
 };
