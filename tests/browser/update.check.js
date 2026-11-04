@@ -153,8 +153,12 @@ function stub() {
   assert.equal(await page.getAttribute('#u-terms .pill:has-text("Credit")', 'aria-pressed'), 'true');
   await page.evaluate(() => { window.__loseReply = true; });
   await save();
-  await page.waitForSelector('#u-problem:has-text("no signal")');
+  await page.waitForSelector('.card.failed');
   assert.equal(row(1).value_rs, 450000, 'the first save did land');
+  await page.click('.card.failed');
+  assert.equal(await page.isVisible('#siteView'), true, 'reopened on the site, as he left it');
+  assert.equal(await page.inputValue('#u-value'), '450000');
+  assert.equal(await page.textContent('#u-problem'), 'Not saved: no signal. Check and tap Save again.');
   await page.fill('#u-value', '600,000');
   await page.evaluate(() => { window.__loseReply = false; });
   await save();

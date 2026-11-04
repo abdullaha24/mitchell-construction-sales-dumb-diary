@@ -84,13 +84,15 @@ function stub() {
             setTimeout(() => failure && failure({ message: 'NetworkError: Connection failure due to HTTP 0' }), 30);
             return;
           }
-          window.__server(prop, JSON.stringify(args)).then(
+          // A slow phone network, when a check asks for one.
+          const go = () => window.__server(prop, JSON.stringify(args)).then(
             (json) => {
               // The server did the work, but the reply never reaches the phone.
               if (window.__loseReply) return failure && failure({ message: 'NetworkError: Connection failure due to HTTP 0' });
               return success && success(JSON.parse(json));
             },
             (error) => failure && failure({ message: String(error.message || error).replace(/^Error: /, '') }));
+          if (window.__delay) setTimeout(go, window.__delay); else go();
         };
       },
     });
@@ -172,15 +174,26 @@ function stub() {
   assert.equal(await page.inputValue('#f-name'), 'Askari Heights', 'draft kept on the phone');
   assert.equal(await page.getAttribute('#f-products .pill:has-text("Tile Grouts")', 'aria-pressed'), 'true');
 
-  // ---- No signal: plain message, nothing lost. ----
+  // ---- No signal: he is back on his list at once; the card says it didn't save; nothing lost. ----
   await page.fill('#f-phone', '0321 5556666');
   await page.evaluate(() => { window.__offline = true; });
   await page.click('#save');
-  await page.waitForSelector('#formNote:has-text("no signal")');
-  assert.equal(await page.textContent('#formNote'), 'Not saved: no signal. Tap Save again.');
-  assert.equal(await page.textContent('#toast'), 'Not saved: no signal. Tap Save again.', 'also shown above Save');
-  assert.equal(await page.inputValue('#f-name'), 'Askari Heights');
+  assert.equal(await page.isVisible('#listView'), true, 'straight back to his list');
+  await page.waitForSelector('.card.failed');
+  assert.equal(await page.textContent('.card.failed .name'), 'Askari Heights');
+  assert.ok((await page.textContent('.card.failed')).includes('Not saved. Tap to try again.'));
+  assert.ok((await page.textContent('.card.failed')).includes('Not saved: no signal.'));
   assert.equal(sitesRows().length, 4, 'nothing saved');
+  // Nothing is lost even if he closes the app: on reopening, the card is still there, not sent.
+  await page.reload();
+  await page.waitForSelector('.card.failed');
+  assert.ok((await page.textContent('.card.failed')).includes('Not saved. Tap to try again.'));
+  assert.equal(sitesRows().length, 4, 'not sent on its own');
+  await page.click('.card.failed');
+  assert.equal(await page.inputValue('#f-name'), 'Askari Heights', 'reopened exactly as he left it');
+  assert.equal(await page.inputValue('#f-phone'), '0321 5556666');
+  assert.equal(await page.textContent('#formNote'), 'Not saved: no signal. Check and tap Save again.');
+  await page.evaluate(() => { window.__offline = false; });
 
   // ---- Without a number: the first tap only asks. ----
   await page.evaluate(() => { window.__offline = false; });
@@ -191,8 +204,14 @@ function stub() {
   assert.equal(await page.locator('#formNote:not([hidden])').count(), 0, 'no stale error while asking');
   assert.equal((await calls()).length, before, 'first tap must not save');
   if (shots) await page.screenshot({ path: path.join(shots, 'app-form.png'), fullPage: true });
+  // On a slow network he is back on his list at once, the site marked "Saving…" until confirmed.
+  await page.evaluate(() => { window.__delay = 800; });
   await page.click('#save');
+  assert.equal(await page.isVisible('#listView'), true, 'no waiting on the Save button');
+  assert.equal(await page.textContent('.card:has-text("Askari Heights") .tag.saving'), 'Saving…');
   await page.waitForSelector('#toast:has-text("Saved")');
+  assert.equal(await page.locator('.tag.saving').count(), 0, '"Saving…" clears once Google confirms');
+  await page.evaluate(() => { window.__delay = 0; });
 
   // ---- Saved: top of his list, in the sheet, draft gone. ----
   assert.deepEqual(await page.$$eval('.card .name', (els) => els.map((e) => e.textContent)),
@@ -219,9 +238,10 @@ function stub() {
   await page.fill('#f-phone', '0321 9998888');
   await page.evaluate(() => { window.__loseReply = true; });
   await page.click('#save');
-  await page.waitForSelector('#formNote:has-text("no signal")');
+  await page.waitForSelector('.card.failed');
   assert.equal(sitesRows().length, 7, 'the server did save it');
   await page.evaluate(() => { window.__loseReply = false; });
+  await page.click('.card.failed');
   await page.click('#save');
   await page.waitForSelector('#toast:has-text("Saved")');
   assert.equal(sitesRows().length, 7, 'the second tap did not save it again');
@@ -247,6 +267,38 @@ function stub() {
   assert.equal(second[7], '923331112222');
   const lists = world.diary.getSheetByName('Lists').getDataRange().getValues();
   assert.deepEqual(lists[lists.length - 1].slice(0, 5), ['area', 'Saddar', 'North', 'RIA', true]);
+
+  // ---- Stage when adding (spec 005): straight to Rate Quoted, in one go. ----
+  await page.click('#newSite');
+  await page.fill('#f-name', 'Quoted Straight Away');
+  await page.click('#f-buyer .pill:has-text("Consultant")');
+  await page.fill('#f-phone', '0345 1112223');
+  assert.equal(await page.getAttribute('#f-stage .pill:has-text("Visited / Lead")', 'aria-pressed'), 'true');
+  await page.click('#f-stage .pill:has-text("Rate Quoted")');
+  assert.equal(await page.isVisible('#f-valueBox'), true);
+  await page.click('#save');
+  assert.equal(await page.textContent('#formNote'), 'Type the total Rs. value.');
+  await page.fill('#f-value', '300,000');
+  await page.click('#f-terms .pill:has-text("Credit")');
+  await page.fill('#f-note', 'WP @ 1,450');
+  await page.click('#save');
+  await page.waitForSelector('#toast:has-text("Saved")');
+  assert.ok((await page.textContent('.card:has-text("Quoted Straight Away")')).includes('Rs. 300,000 · Credit'));
+  const quoted = sitesRows()[sitesRows().length - 1];
+  assert.deepEqual([quoted[3], quoted[9], quoted[10], quoted[11], quoted[14]],
+    ['Quoted Straight Away', 'Rate Quoted', 300000, 'Credit', 'WP @ 1,450']);
+
+  // Won needs the number now, and asks no follow-up.
+  await page.click('#newSite');
+  await page.fill('#f-name', 'Won Straight Away');
+  await page.click('#f-buyer .pill:has-text("Dealer")');
+  await page.click('#f-stage .pill:has-text("Won (Order)")');
+  assert.equal(await page.isHidden('#f-followBox'), true);
+  await page.fill('#f-value', '1,000,000');
+  await page.click('#f-terms .pill:has-text("Cash")');
+  await page.click('#save');
+  assert.equal(await page.textContent('#formNote'), "Type the contact's number: a site at Won (Order) needs one.");
+  await page.click('#cancel');
 
   await browser.close();
   fs.rmSync(dir, { recursive: true, force: true });

@@ -12,7 +12,7 @@
 
 ## [x] Step 2: Stage when adding a site (rules + server)
 
-## [ ] Step 3: The page: instant saves (one at a time, in order) and Stage in + New Site
+## [x] Step 3: The page: instant saves (one at a time, in order) and Stage in + New Site
 
 ## [ ] Step 4: Docs, review, local acceptance
 

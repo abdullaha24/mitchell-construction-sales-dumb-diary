@@ -51,6 +51,9 @@
       [hidden] { display: none !important; }
       .card { cursor: pointer; }
       .card .value { color: var(--ink); font-size: 14px; margin-top: 2px; font-weight: 600; }
+      .tag.saving { background: #eef0f3; color: var(--soft); }
+      .tag.failed { background: #fff4e5; color: var(--orange); font-weight: 700; }
+      .card.failed { border-color: var(--orange); }
       .tag.lost { background: #fde8e8; color: var(--red); }
       .tag.won { background: #e3f5ec; color: var(--green); }
       .site-head { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
@@ -138,10 +141,30 @@
         <div class="pills" id="areaSuggest" style="margin-top:8px"></div>
       </div>
 
+      <div id="f-stageBox">
+        <div class="label">Stage</div>
+        <div class="pills" id="f-stage"></div>
+        <div id="f-valueBox" hidden>
+          <label for="f-value">Total Rs. value</label>
+          <input id="f-value" type="text" inputmode="numeric" maxlength="16" autocomplete="off" placeholder="e.g. 450,000">
+          <div class="label">Cash or Credit</div>
+          <div class="pills" id="f-terms"></div>
+        </div>
+        <div id="f-lostBox" hidden>
+          <div class="label">Why was it lost?</div>
+          <div class="pills" id="f-lost"></div>
+        </div>
+      </div>
+
       <div id="f-followBox">
         <div class="label">Next follow-up</div>
         <div class="pills" id="f-follow"></div>
         <input id="f-date" type="date" hidden style="margin-top:8px">
+      </div>
+
+      <div id="f-noteBox">
+        <label for="f-note">Quick note <span class="opt" id="f-noteOpt">(optional)</span></label>
+        <input id="f-note" type="text" maxlength="200" autocomplete="off" placeholder="e.g. Met Asif, sample next week">
       </div>
 
       <div id="formNote" class="note error" hidden></div>
@@ -158,6 +181,7 @@
       var data = JSON.parse(document.getElementById('data').textContent);
       var k = data.k;
       var DRAFT_KEY = 'salesdiary.draft.' + data.rep;
+      var QUEUE_KEY = 'salesdiary.queue.' + data.rep;
       var FOLLOW = [['tomorrow', 'Tomorrow'], ['3days', '3 days'], ['1week', '1 week'], ['date', 'Pick date']];
       var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       var SAVE_WAIT_MS = 30000;
@@ -167,8 +191,12 @@
       var form = emptyForm();
       var upd = null;
       var confirmNoNumber = false;
-      var busy = false;
       var phoneCheck = { valid: true };
+      // Saves waiting to be sent or confirmed, oldest first (spec 005). Each:
+      // { id, fn, siteId, input, card (what the list shows meanwhile), state, form | upd (to reopen),
+      //   status: 'saving' | 'failed', message }
+      var queue = [];
+      var sending = false;
 
       function $(id) { return document.getElementById(id); }
       function el(tag, text, cls) {
@@ -179,6 +207,7 @@
       }
       function rules() { return data.rules; }
       function has(list, x) { return list.indexOf(x) >= 0; }
+      function clone(x) { return JSON.parse(JSON.stringify(x)); }
       function siteById(id) {
         for (var i = 0; i < data.sites.length; i++) if (data.sites[i].id === id) return data.sites[i];
         return null;
@@ -193,7 +222,9 @@
         return id;
       }
       function emptyForm() {
-        return { name: '', buyerType: '', contactName: '', phone: '', products: [], area: '', newArea: '', addingArea: false, followUp: 'tomorrow', date: '', saveId: newSaveId() };
+        return { name: '', buyerType: '', contactName: '', phone: '', products: [], area: '', newArea: '', addingArea: false,
+          followUp: 'tomorrow', date: '', stage: data.rules.stages[0], value: '', terms: '', lostReason: '', note: '',
+          saveId: newSaveId() };
       }
       var storageWorks = (function () {
         try { localStorage.setItem('salesdiary.test', '1'); localStorage.removeItem('salesdiary.test'); return true; } catch (e) { return false; }
@@ -210,6 +241,7 @@
         return p ? '+' + p : '';
       }
       function rs(n) { return 'Rs. ' + String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+      function digitsOf(v) { return String(v || '').replace(/^\s*rs\.?/i, '').replace(/[,\s]/g, ''); }
       function toast(text, isError) {
         var t = $('toast');
         t.textContent = text;
@@ -223,6 +255,11 @@
         var d = new Date(Date.UTC(p[0], p[1] - 1, p[2] + days));
         return d.toISOString().slice(0, 10);
       }
+      function followKey(choice, date, keepKey) {
+        if (choice === 'keep') return keepKey;
+        if (choice === 'date') return date;
+        return addDays(data.today, { tomorrow: 1, '3days': 3, '1week': 7 }[choice] || 1);
+      }
       function pill(text, pressed, onTap) {
         var b = el('button', text, 'pill');
         b.type = 'button';
@@ -231,7 +268,7 @@
         return b;
       }
 
-      // ---- Drafts kept on the phone until saved (spec 003 / 004, no signal) ----
+      // ---- Drafts kept on the phone until saved (specs 003-005, no signal) ----
       function store(key, value) {
         try { if (value === null) localStorage.removeItem(key); else localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* storage blocked */ }
       }
@@ -246,14 +283,15 @@
         return !!(d && (d.name || d.contactName || d.phone || d.newArea || (d.products && d.products.length)));
       }
 
-      // ---- Sending a save: one way for all three forms ----
+      // ---- Instant saves: a queue sent one at a time, in order (spec 005) ----
+      function saveQueue() { store(QUEUE_KEY, queue); }
       function readable(error) {
         var message = (error && error.message) || String(error || '');
         if ((typeof navigator !== 'undefined' && navigator.onLine === false) ||
             /network|connection|HTTP 0|failed to fetch|timed? ?out/i.test(message)) {
-          return 'Not saved: no signal. Tap Save again.';
+          return 'Not saved: no signal.';
         }
-        return message.replace(/^(Exception|Error):\s*/, '') || 'Something went wrong. Try again.';
+        return message.replace(/^(Exception|Error):\s*/, '') || 'Something went wrong.';
       }
       function savedToast(r) {
         var w = r.warning || {};
@@ -262,43 +300,114 @@
         else if (w.mine && w.mine.length) toast('Saved. You already have this number: ' + w.mine.join(', ') + '.');
         else toast('Saved');
       }
-      // Calls the server; `problem` shows a message; `done` gets a good reply.
-      function send(fn, args, problem, done) {
-        busy = true; renderSave();
-        var attempt = send.attempt = (send.attempt || 0) + 1;
-        // If Google never answers, give up waiting; a later answer is still used if it comes.
-        var giveUp = setTimeout(function () {
-          if (attempt !== send.attempt || !busy) return;
-          busy = false; confirmNoNumber = false; renderSave();
-          problem('Not saved: no signal. Tap Save again.');
-        }, SAVE_WAIT_MS);
-        var run = google.script.run.withSuccessHandler(function (r) {
-          clearTimeout(giveUp);
-          if (attempt !== send.attempt) {
-            // A late answer to a save he has since given up on or replaced: keep the fresh list,
-            // but don't move him or touch what he is typing now.
-            if (r && r.ok) { var oldK = k; data = r; data.k = oldK; if (screen === 'list') renderList(); }
-            return;
-          }
-          busy = false; confirmNoNumber = false;
-          if (!r || !r.ok) { renderSave(); return problem((r && r.message) || 'Something went wrong. Try again.'); }
-          var keepK = k;
-          data = r; data.k = keepK;
-          done(r);
-        }).withFailureHandler(function (error) {
-          clearTimeout(giveUp);
-          if (attempt !== send.attempt) return;
-          busy = false; confirmNoNumber = false; renderSave();
-          problem(readable(error));
-        });
-        run[fn].apply(run, args);
+      // Puts a save in the queue and shows its result in his list at once.
+      function enqueue(entry) {
+        entry.status = 'saving';
+        entry.message = '';
+        queue.push(entry);
+        saveQueue();
+        showCard(entry);
+        sendNext();
       }
+      // The list shows what he just saved straight away (marked "Saving…" until Google confirms).
+      function showCard(entry) {
+        var card = clone(entry.card);
+        var at = -1;
+        for (var i = 0; i < data.sites.length; i++) if (data.sites[i].id === card.id) at = i;
+        if (at >= 0) data.sites[at] = card; else data.sites.unshift(card);
+      }
+      function entryFor(siteId) {
+        for (var i = queue.length - 1; i >= 0; i--) if (queue[i].card.id === siteId) return queue[i];
+        return null;
+      }
+      function sendNext() {
+        if (sending) return;
+        var entry = null;
+        for (var i = 0; i < queue.length; i++) if (queue[i].status === 'saving') { entry = queue[i]; break; }
+        if (!entry) return;
+        sending = true;
+        var done = false;
+        function finish(ok, r, message) {
+          if (done) return;
+          done = true;
+          sending = false;
+          clearTimeout(giveUp);
+          if (ok) {
+            queue.splice(queue.indexOf(entry), 1);
+            // The server's card replaces what he saw (a new site gets its real ID).
+            var at = -1;
+            for (var j = 0; j < data.sites.length; j++) if (data.sites[j].id === entry.card.id) at = j;
+            if (at >= 0) data.sites[at] = r.site; else data.sites.unshift(r.site);
+            if (r.areas) data.areas = r.areas;
+            if (entry.draftKey) store(entry.draftKey, null);
+            savedToast(r);
+          } else {
+            entry.status = 'failed';
+            entry.message = message;
+          }
+          saveQueue();
+          if (screen === 'list') renderList();
+          sendNext();
+        }
+        // If Google never answers, show it as not saved; he can try again (saved once at most).
+        var giveUp = setTimeout(function () { finish(false, null, 'Not saved: no signal.'); }, SAVE_WAIT_MS);
+        var run = google.script.run
+          .withSuccessHandler(function (r) {
+            if (r && r.ok) finish(true, r, '');
+            else finish(false, null, (r && r.message) || 'Something went wrong.');
+          })
+          .withFailureHandler(function (error) { finish(false, null, readable(error)); });
+        if (entry.fn === 'repAddSite') run.repAddSite(k, entry.input);
+        else if (entry.fn === 'repUpdateSite') run.repUpdateSite(k, entry.siteId, entry.input);
+        else run.repEditSite(k, entry.siteId, entry.input);
+      }
+      // Tapping a card that didn't save reopens it exactly as he left it, with the reason.
+      function retry(entry) {
+        queue.splice(queue.indexOf(entry), 1);
+        saveQueue();
+        if (entry.fn === 'repAddSite') {
+          for (var i = 0; i < data.sites.length; i++) if (data.sites[i].id === entry.card.id) { data.sites.splice(i, 1); break; }
+          store(DRAFT_KEY, entry.form);
+          showForm('');
+        } else if (entry.fn === 'repEditSite') {
+          if (entry.before) restoreCard(entry.before);
+          store(DRAFT_KEY + '.edit.' + entry.siteId, entry.form);
+          showSite(entry.siteId);
+          showForm(entry.siteId);
+        } else {
+          if (entry.before) restoreCard(entry.before);
+          store(updKey(entry.siteId), entry.upd);
+          showSite(entry.siteId);
+        }
+        problemHere(entry.message + ' Check and tap Save again.');
+      }
+      function restoreCard(card) {
+        for (var i = 0; i < data.sites.length; i++) if (data.sites[i].id === card.id) { data.sites[i] = clone(card); return; }
+      }
+      function problemHere(text) {
+        var box = screen === 'site' ? $('u-problem') : $('formNote');
+        box.textContent = text; box.hidden = false; toast(text, true);
+      }
+      // Saves left over from last time (the app was closed while sending): shown, not sent.
+      function loadQueue() {
+        var stored = null;
+        try { stored = JSON.parse(localStorage.getItem(QUEUE_KEY) || 'null'); } catch (e) { stored = null; }
+        if (!Array.isArray(stored)) return;
+        stored.forEach(function (entry) {
+          if (!entry || !entry.card) return;
+          entry.status = 'failed';
+          if (!entry.message) entry.message = 'Not sent: the app was closed.';
+          queue.push(entry);
+          showCard(entry);
+        });
+      }
+
       function renderSave() {
         var save = $('save');
         var asking = screen === 'form' && mode.kind === 'new' && confirmNoNumber && !form.phone.trim();
-        save.textContent = busy ? 'Saving…' : (asking ? 'Save without a number?' : 'Save');
-        save.className = 'big' + (asking && !busy ? ' warn' : '');
-        save.disabled = busy;
+        save.textContent = asking ? 'Save without a number?' : 'Save';
+        save.className = 'big' + (asking ? ' warn' : '');
+        save.disabled = false;
       }
       function clearProblem() {
         $('formNote').hidden = true;
@@ -318,9 +427,15 @@
           return;
         }
         data.sites.forEach(function (s) {
-          var card = el('div', undefined, 'card');
+          var entry = entryFor(s.id);
+          var card = el('div', undefined, 'card' + (entry && entry.status === 'failed' ? ' failed' : ''));
           card.setAttribute('role', 'button');
-          card.addEventListener('click', function () { showSite(s.id); });
+          card.addEventListener('click', function () {
+            var e = entryFor(s.id);
+            if (e && e.status === 'failed') return retry(e);
+            if (e && e.fn === 'repAddSite') return toast('Still saving. One moment.');
+            showSite(s.id);
+          });
           card.appendChild(el('div', s.name, 'name'));
           var meta = [s.area, s.buyerType].filter(Boolean).join(' · ');
           if (meta) card.appendChild(el('div', meta, 'meta'));
@@ -328,6 +443,11 @@
           if (s.followUp) card.appendChild(el('div', 'Follow up: ' + shortDay(s.followUp), 'meta'));
           card.appendChild(el('span', s.stage, 'tag' + stageClass(s.stage)));
           if (!s.phone) card.appendChild(el('span', 'No number yet', 'tag nonum'));
+          if (entry && entry.status === 'saving') card.appendChild(el('span', 'Saving…', 'tag saving'));
+          if (entry && entry.status === 'failed') {
+            card.appendChild(el('span', 'Not saved. Tap to try again.', 'tag failed'));
+            card.appendChild(el('div', entry.message, 'meta'));
+          }
           box.appendChild(card);
         });
       }
@@ -338,7 +458,6 @@
       }
 
       // ---- Site screen: details and Update (spec 004) ----
-      // A site that already has a date from today on keeps it unless he picks another.
       function keepsDate(s) { return !!s.followUp && s.followUp >= data.today; }
       function emptyUpdate(s) {
         return { stage: s.stage, value: s.value ? String(s.value) : '', terms: s.terms,
@@ -398,36 +517,47 @@
       // Any change makes it a new save: a corrected resend is saved, not taken for a repeat.
       function updTouched() { upd.saveId = newSaveId(); clearProblem(); store(updKey(openId), upd); }
       function updChanged() { updTouched(); renderUpdate(); }
+      // The same checks the server makes, so a save rarely comes back refused.
+      function stageProblem(st, value, terms, lostReason, note, followUp, date, hasNumber, numberWord) {
+        var r = rules();
+        if (has(r.valueStages, st)) {
+          var digits = digitsOf(value);
+          if (!/^\d+$/.test(digits) || Number(digits) < 1) return 'Type the total Rs. value.';
+          if (!terms) return 'Tap Cash or Credit.';
+        }
+        if (st === r.lostStage) {
+          if (!lostReason) return 'Tap a lost reason.';
+          if (/^other$/i.test(lostReason) && !String(note).trim()) return 'Write a short note for Other.';
+        }
+        if (has(r.numberStages, st) && !hasNumber) return numberWord;
+        if (!has(r.closedStages, st) && followUp === 'date' && !date) return 'Pick a follow-up date.';
+        return '';
+      }
       function saveUpdate() {
-        if (busy) return;
         var s = siteById(openId);
         var r = rules();
         var box = $('u-problem');
         function problem(text) { box.textContent = text; box.hidden = false; toast(text, true); }
-        var digits = String(upd.value).replace(/^\s*rs\.?/i, '').replace(/[,\s]/g, '');
-        if (has(r.valueStages, upd.stage)) {
-          if (!/^\d+$/.test(digits) || Number(digits) < 1) return problem('Type the total Rs. value.');
-          if (!upd.terms) return problem('Tap Cash or Credit.');
-        }
-        if (upd.stage === r.lostStage) {
-          if (!upd.lostReason) return problem('Tap a lost reason.');
-          if (/^other$/i.test(upd.lostReason) && !upd.note.trim()) return problem('Write a short note for Other.');
-        }
-        if (has(r.numberStages, upd.stage) && !s.phone && !upd.phone.trim()) {
-          return problem("Add the contact's number to move this site to " + upd.stage + '.');
-        }
-        if (!has(r.closedStages, upd.stage) && upd.followUp === 'date' && !upd.date) return problem('Pick a follow-up date.');
+        var trouble = stageProblem(upd.stage, upd.value, upd.terms, upd.lostReason, upd.note, upd.followUp, upd.date,
+          !!s.phone || !!upd.phone.trim(), "Add the contact's number to move this site to " + upd.stage + '.');
+        if (trouble) return problem(trouble);
         clearProblem();
-        var followUp = upd.followUp === 'date' ? upd.date : upd.followUp === 'keep' ? s.followUp : upd.followUp;
+        var followUp = has(r.closedStages, upd.stage) ? '' : followKey(upd.followUp, upd.date, s.followUp);
         var input = {
           stage: upd.stage, value: upd.value, terms: upd.terms, lostReason: upd.lostReason,
-          followUp: followUp, note: upd.note, phone: upd.phone, saveId: upd.saveId,
+          followUp: upd.followUp === 'keep' ? s.followUp : upd.followUp === 'date' ? upd.date : upd.followUp,
+          note: upd.note, phone: upd.phone, saveId: upd.saveId,
         };
-        var id = openId;
-        send('repUpdateSite', [k, id, input], problem, function (reply) {
-          store(updKey(id), null);
-          showList(); savedToast(reply);
-        });
+        var card = clone(s);
+        card.stage = upd.stage;
+        if (has(r.valueStages, upd.stage)) { card.value = Number(digitsOf(upd.value)); card.terms = upd.terms; }
+        card.lostReason = upd.stage === r.lostStage ? upd.lostReason : '';
+        card.followUp = followUp;
+        if (upd.note.trim()) card.note = upd.note.trim();
+        if (upd.phone.trim()) card.phone = upd.phone.trim();
+        enqueue({ id: upd.saveId, fn: 'repUpdateSite', siteId: openId, input: input, card: card, before: clone(s),
+          upd: clone(upd), draftKey: updKey(openId) });
+        showList();
       }
       function checkUpdPhone() {
         var typed = upd.phone.trim();
@@ -448,9 +578,11 @@
         note.hidden = !lines.length;
       }
 
-      // ---- Details form: + New Site and Edit details ----
+      // ---- Details form: + New Site (with Stage, spec 005) and Edit details ----
       function renderForm() {
-        $('formTitle').textContent = mode.kind === 'edit' ? 'Edit details' : 'New site';
+        var r = rules();
+        var isNew = mode.kind === 'new';
+        $('formTitle').textContent = isNew ? 'New site' : 'Edit details';
         $('f-name').value = form.name;
         $('f-contact').value = form.contactName;
         $('f-phone').value = form.phone;
@@ -484,7 +616,24 @@
         $('newAreaBox').hidden = !form.addingArea;
         renderSuggestions();
 
-        $('f-followBox').hidden = mode.kind === 'edit';
+        $('f-stageBox').hidden = !isNew;
+        var stages = $('f-stage'); stages.textContent = '';
+        r.stages.forEach(function (st) {
+          stages.appendChild(pill(st, form.stage === st, function () { form.stage = st; changed(); }));
+        });
+        $('f-valueBox').hidden = !has(r.valueStages, form.stage);
+        $('f-value').value = form.value;
+        var terms = $('f-terms'); terms.textContent = '';
+        r.paymentTerms.forEach(function (t) {
+          terms.appendChild(pill(t, form.terms === t, function () { form.terms = t; changed(); }));
+        });
+        $('f-lostBox').hidden = form.stage !== r.lostStage;
+        var lost = $('f-lost'); lost.textContent = '';
+        data.lostReasons.forEach(function (reason) {
+          lost.appendChild(pill(reason, form.lostReason === reason, function () { form.lostReason = reason; changed(); }));
+        });
+
+        $('f-followBox').hidden = !isNew || has(r.closedStages, form.stage);
         var follow = $('f-follow'); follow.textContent = '';
         FOLLOW.forEach(function (f) {
           follow.appendChild(pill(f[1], form.followUp === f[0], function () { form.followUp = f[0]; changed(); }));
@@ -493,6 +642,10 @@
         $('f-date').min = data.today;
         $('f-date').max = addDays(data.today, 365);
         $('f-date').value = form.date;
+        $('f-noteBox').hidden = !isNew;
+        $('f-note').value = form.note;
+        var noteNeeded = form.stage === r.lostStage && /^other$/i.test(form.lostReason || '');
+        $('f-noteOpt').textContent = noteNeeded ? '(needed for Other)' : '(optional)';
         renderSave();
       }
       // In Edit details any change makes it a new save (a corrected resend is saved). A new site
@@ -555,39 +708,55 @@
       }
 
       function saveForm() {
-        if (busy) return;
+        var r = rules();
         var note = $('formNote');
         // Shown under the form and as a pop-up just above Save, which he may be looking at.
         function problem(text) { note.textContent = text; note.hidden = false; toast(text, true); }
         if (!form.name.trim()) return problem('Type the site name.');
         if (!form.buyerType) return problem('Tap a buyer type.');
         if (phoneCheck.valid === false && form.phone.trim()) return problem('Check the number.');
-        if (mode.kind === 'edit') {
-          var site = siteById(mode.siteId);
+        var isNew = mode.kind === 'new';
+        var site = isNew ? null : siteById(mode.siteId);
+        if (!isNew) {
           if (site && site.phone && !form.phone.trim()) return problem("A site's number can be changed, not removed.");
         } else {
-          if (form.followUp === 'date' && !form.date) return problem('Pick a follow-up date.');
+          var trouble = stageProblem(form.stage, form.value, form.terms, form.lostReason, form.note, form.followUp, form.date,
+            !!form.phone.trim(), "Type the contact's number: a site at " + form.stage + ' needs one.');
+          if (trouble) return problem(trouble);
           if (!form.phone.trim() && !confirmNoNumber) { confirmNoNumber = true; clearProblem(); renderSave(); return; }
         }
         if (!form.saveId) { form.saveId = newSaveId(); saveDraft(); }
         note.hidden = true;
+        var area = form.addingArea ? form.newArea.trim() : form.area;
         var input = {
           name: form.name, buyerType: form.buyerType, contactName: form.contactName, phone: form.phone,
-          products: form.products, area: form.addingArea ? form.newArea : form.area, saveId: form.saveId,
+          products: form.products, area: area, saveId: form.saveId,
         };
-        var key = formKey();
-        if (mode.kind === 'edit') {
-          var id = mode.siteId;
-          send('repEditSite', [k, id, input], problem, function (reply) {
-            store(key, null); phoneCheck = { valid: true };
-            showSite(id); savedToast(reply);
-          });
-        } else {
+        var card;
+        if (isNew) {
           input.followUp = form.followUp === 'date' ? form.date : form.followUp;
-          send('repAddSite', [k, input], problem, function (reply) {
-            form = emptyForm(); store(key, null); phoneCheck = { valid: true };
-            showList(); savedToast(reply);
-          });
+          input.stage = form.stage; input.value = form.value; input.terms = form.terms;
+          input.lostReason = form.lostReason; input.note = form.note;
+          var closed = has(r.closedStages, form.stage);
+          card = { id: 'new-' + form.saveId, name: form.name.trim(), area: area, buyerType: form.buyerType,
+            stage: form.stage, value: has(r.valueStages, form.stage) ? Number(digitsOf(form.value)) : null,
+            terms: has(r.valueStages, form.stage) ? form.terms : '', lostReason: form.stage === r.lostStage ? form.lostReason : '',
+            followUp: closed ? '' : followKey(form.followUp, form.date, ''), phone: form.phone.trim(),
+            contactName: form.contactName.trim(), products: form.products.slice(), note: form.note.trim(), created: data.today };
+          var saved = clone(form);
+          form = emptyForm(); store(DRAFT_KEY, null); phoneCheck = { valid: true };
+          enqueue({ id: saved.saveId, fn: 'repAddSite', input: input, card: card, form: saved, draftKey: null });
+          showList();
+        } else {
+          var id = mode.siteId;
+          card = clone(site);
+          card.name = form.name.trim(); card.buyerType = form.buyerType; card.contactName = form.contactName.trim();
+          card.phone = form.phone.trim() || site.phone; card.products = form.products.slice(); card.area = area;
+          var key = formKey();
+          enqueue({ id: form.saveId, fn: 'repEditSite', siteId: id, input: input, card: card, before: clone(site),
+            form: clone(form), draftKey: key });
+          phoneCheck = { valid: true };
+          showSite(id);
         }
       }
 
@@ -656,7 +825,9 @@
       });
       $('f-phone').addEventListener('change', checkPhone);
       $('f-newarea').addEventListener('input', function (e) { form.newArea = e.target.value; touched(); renderSuggestions(); });
-      $('f-date').addEventListener('change', function (e) { form.date = e.target.value; saveDraft(); });
+      $('f-date').addEventListener('change', function (e) { form.date = e.target.value; touched(); });
+      $('f-value').addEventListener('input', function (e) { form.value = e.target.value; clearProblem(); touched(); });
+      $('f-note').addEventListener('input', function (e) { form.note = e.target.value; clearProblem(); touched(); });
 
       $('u-value').addEventListener('input', function (e) { upd.value = e.target.value; updTouched(); });
       $('u-note').addEventListener('input', function (e) { upd.note = e.target.value; updTouched(); });
@@ -668,6 +839,7 @@
         if (upd.phone.replace(/\D/g, '').length >= 10) checkUpdPhone.timer = setTimeout(checkUpdPhone, 700);
       });
 
+      loadQueue();
       showList();
     </script>
   </body>
