@@ -126,7 +126,7 @@ owner's request; TEST rows deleted afterwards with his OK):
 - [x] Today's Chase: a TEST site moved to 3 days ago showed first, red edge, "1 Nov · 3 days late";
       one due today showed "Today"; the tab count was red. Updating the late one to 3 days took it
       off the list at once (confirmed by Google 2.4 s later).
-- [x] The target shown (Rs. 13,800,000) matches RIA's November 2026 row in `Rep-Targets`.
+- [x] The target shown matches RIA's November 2026 row in `Rep-Targets` (amount read live, kept out of git: owner S3-1).
 - [x] Search found TEST sites by name, phone (0300… and 92…), area and stage; Hot Pipeline had the
       Rs. 500,000 quote first. Saves: back on the list in ~0.3 s, confirmed in 2–5 s.
 - [x] Found live and fixed (version 7): a long target line pushed "+ New Site" onto two lines on a

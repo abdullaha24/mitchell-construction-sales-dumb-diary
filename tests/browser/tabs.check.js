@@ -163,7 +163,7 @@ const noSideways = async (page, what) =>
   // the longest month and an 8-digit target.
   await page.evaluate(() => {
     const t = document.querySelector('#target span');
-    t.textContent = 'Rs. 13,800,000';
+    t.textContent = 'Rs. 98,765,432'; // made up: real targets stay out of git (owner S3-1)
     t.parentNode.firstChild.textContent = 'September target: ';
   });
   assert.equal(await page.evaluate(() => document.getElementById('newSite').getClientRects().length), 1);
