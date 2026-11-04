@@ -10,6 +10,7 @@ Run them with `npm test` (or `npm run check` for type check + tests). Node's bui
 | `helpers/fakes.js` | Minimal fakes for `SpreadsheetApp`, `Session`, `HtmlService`, `Utilities`. Fake spreadsheets are plain tables; a **read-only** one (used for Meta-Data) throws on any write. Where the code depends on Google's behaviour, the fakes copy it. |
 | `fixtures/meta-data.js` | The live Meta-Data sheet's **shape** with **made-up amounts**. The owner's real targets never go in git. |
 | `*.test.js` | One file per `src` area, plus `fakes.test.js` and `load-src.test.js`. |
+| `browser/links-window.check.js` | `npm run check:browser`: drives `src/Links.html` in Chromium with a stand-in for `google.script.run`. Not part of `npm test` (needs Playwright). |
 
 Rule: new logic gets tests; new server functions get a test that a salesman only sees his own
 data (ADR-0004).

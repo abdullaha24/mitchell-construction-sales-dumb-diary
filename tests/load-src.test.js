@@ -77,3 +77,17 @@ test('no top-level function name is defined in two places', () => {
   const duplicates = [...seen].filter(([, files]) => files.length > 1);
   assert.deepEqual(duplicates, []);
 });
+
+test('the manifest: Pakistan time, V8, runs as the owner, open to anyone with a link (no sign-in)', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const { SRC_DIR } = require('./helpers/load-src');
+  const manifest = JSON.parse(fs.readFileSync(path.join(SRC_DIR, 'appsscript.json'), 'utf8'));
+  assert.deepEqual(manifest, {
+    timeZone: 'Asia/Karachi',
+    runtimeVersion: 'V8',
+    exceptionLogging: 'STACKDRIVER',
+    // ANYONE_ANONYMOUS, never ANYONE: ANYONE forces a Google sign-in salesmen don't have (ADR-0002).
+    webapp: { executeAs: 'USER_DEPLOYING', access: 'ANYONE_ANONYMOUS' },
+  });
+});

@@ -13,10 +13,13 @@ All files share **one global scope** in Apps Script, so:
 
 | File | Holds |
 | --- | --- |
-| `appsscript.json` | Manifest: Pakistan timezone, V8, web app runs as the owner, "only myself" in phase 1. |
-| `config.js` | Fixed settings: Meta-Data ID (ADR-0007), tab names, Sales Diary headers, starting `Lists` values. |
+| `appsscript.json` | Manifest: Pakistan time, V8, web app runs as the owner, open to anyone with a link (`ANYONE_ANONYMOUS`). |
+| `config.js` | Fixed settings: Meta-Data and Sales Diary IDs, web address (ADR-0007, ADR-0008), tab names, headers, starting `Lists` values. |
 | `rules.js` | Plain logic, no spreadsheet access: columns by name, months, Rs., reading salesmen and targets, the Check setup summary. |
 | `metadata.js` | The **only** code that opens the Meta-Data sheet. Read only. |
-| `setup.js` | Creates missing Sales Diary tabs and fills the starting `Lists`. |
-| `menu.js` | `onOpen` (adds the menu) and `menuCheckSetup` (Sales Diary → Check setup). |
-| `webapp.js`, `Index.html` | `doGet` and the placeholder page (phase 1: no data). |
+| `diary.js` | The **only** code that opens the Sales Diary sheet by ID; adding rows at the bottom. |
+| `setup.js` | Creates missing Sales Diary tabs (including `Links`) and fills the starting `Lists`. |
+| `links.js` | Link codes: make, look up (who is visiting), new and cancel, inside a lock. |
+| `menu.js` | `onOpen` (the Sales Diary menu) and `menuCheckSetup`. |
+| `linkswindow.js`, `Links.html` | The owner's Links window and the three `owner…` functions it calls. |
+| `webapp.js`, `Page.html` | `doGet`: "Hello, RIA" / "Hello, owner" / "This link doesn't work" / "Something went wrong". |
