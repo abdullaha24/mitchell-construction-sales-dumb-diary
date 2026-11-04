@@ -24,9 +24,8 @@ Read before any product or UI work:
 
 ## Status
 
-Phase 0 (planning) done. **Phase 1 (foundations, spec 001) is built and tested locally** but
-**not live yet**: build step 8 (clasp sign-in, create the sheet, deploy) needs the owner present.
-See `docs/plans/handoff.md`.
+Phase 0 (planning) and **phase 1 (foundations, spec 001) are done and live** (2026-11-04).
+Next: the phase 2 spec (private links). See `docs/plans/handoff.md` for IDs and the deployment.
 
 ## Commands
 

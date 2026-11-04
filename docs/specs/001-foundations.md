@@ -1,8 +1,7 @@
 # 001: Foundations
 
-- **Status:** In progress. Build steps 1–7 (local) done 2026-11-04; step 8 (live, with the owner) next.
-  Approved v2 after adversarial review and owner answers; v2.1 adds the build clarifications
-  marked *(v2.1)* below, none of which changes what the owner sees in a normal run.
+- **Status:** Done (live 2026-11-04, session 3). v2.1: build clarifications are marked *(v2.1)*
+  below; none changes what the owner sees in a normal run.
 - **Owner approval:** approved by the owner on 2026-11-04 (session 2)
 - **Related:** roadmap phase 1 · ADR-0001 (Sheets + Apps Script) · ADR-0003 (tooling) ·
   ADR-0005 (two sheets) · ADR-0007 (Meta-Data ID in code) ·
@@ -271,19 +270,19 @@ Checked locally by the agent:
 - [x] `AGENTS.md` has a `## Commands` section with these commands, and its *Status* is updated.
 
 Checked live with the owner:
-- [ ] The Sales Diary sheet is in the owner's Drive with **Sites**, **Activity**, **Lists**,
+- [x] The Sales Diary sheet is in the owner's Drive with **Sites**, **Activity**, **Lists**,
       headers exactly as in the data model; Lists holds the 11 categories in order, the 5 lost
       reasons and the 4 buyer types; no `Sheet1`.
-- [ ] Tapping **Check setup** again changes nothing in the sheet.
-- [ ] The summary shows the 7 salesmen in the right regions, this month's targets matching
+- [x] Tapping **Check setup** again changes nothing in the sheet.
+- [x] The summary shows the 7 salesmen in the right regions, this month's targets matching
       `Rep-Targets` (spot-check SJ, SM, IB), the region targets including House / office sales,
       and "Nothing to fix."
-- [ ] Meta-Data's version history shows **no edits** at the times Check setup was run. (The
+- [x] Meta-Data's version history shows **no edits** at the times Check setup was run. (The
       script runs as the owner, so check the times, not the name.)
-- [ ] The web address opens the placeholder page for the owner, and does **not** open in a
+- [x] The web address opens the placeholder page for the owner, and does **not** open in a
       private browser window.
-- [ ] `npx clasp status` lists only `appsscript.json`, the `.js` files and `Index.html`.
-- [ ] `npx clasp logout` was run at the end of the session.
+- [x] `npx clasp status` lists only `appsscript.json`, the `.js` files and `Index.html`.
+- [x] `npx clasp logout` was run at the end of the session.
 
 ## Out of scope
 - The `Links` tab, link codes, owner link and owner screen (phases 2 and 7).

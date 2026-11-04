@@ -116,7 +116,7 @@
 
 ## Step 8: live setup (with the owner, in one sitting)
 
-### [ ] Step 8: Put it live
+### [x] Step 8: Put it live
 1. **Owner:** turns on the Apps Script API at `script.google.com/home/usersettings`.
 2. **Agent:** `npx clasp login --no-localhost`. **Owner:** opens the printed link, signs in,
    pastes back the code. If this fails from the cloud machine, stop: switch to the owner running
@@ -138,7 +138,7 @@
 - **Done when:** the spec's *Checked live* boxes are all true.
 - Commit: "Phase 1 live: Sales Diary sheet created, web app deployed".
 
-## Step 9: Close out
+## [x] Step 9: Close out
 - Spec status → `Done`; roadmap phase 1 → ✅; `handoff.md` → next is the phase 2 spec (links).
   The handoff must carry forward: the deployment ID (always `update-deployment`, never a second
   `create-deployment`), `ANYONE_ANONYMOUS` for phase 2, and that phase 2 decides how the web app

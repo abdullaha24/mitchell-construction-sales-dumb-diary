@@ -10,7 +10,7 @@ He logs visits, quotes, wins and losses in a couple of taps. Everything lands in
 and the owner gets his own screen: pipeline by salesman and region, who worked today, what's
 overdue or going cold, and why deals were lost.
 
-**Status:** phase 1 (foundations) is built and tested locally; it is not live yet.
+**Status:** phase 1 (foundations) is live: the Sales Diary sheet exists and its Check setup menu works. Salesmen see nothing yet; phase 2 (private links) is next.
 
 ## Read more
 
