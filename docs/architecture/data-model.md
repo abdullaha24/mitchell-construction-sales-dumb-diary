@@ -95,11 +95,11 @@ salesman's link works only while his `rep` is still in Meta-Data `Rep_Mapping`.
 | `contact_phone` | 923001234567 | Stored in **one tidy form** (spec 003): digits only, Pakistani numbers as `92…` (a mobile is exactly 12 digits). Blank allowed, but the app nudges against it and the owner sees counts. Used for Call/WhatsApp and the duplicate warning. Written as plain text (the app sets each new cell to text first). |
 | `products` | Tile Adhesives \| Tile Grouts | Product **categories** from `Lists`, joined by ` \| ` (names can contain commas). In `Lists` order. |
 | `stage` | Rate Quoted | One of the five glossary stages. |
-| `value_rs` | 450000 | Latest quoted or won value. Set at Rate Quoted / Won. |
-| `payment_terms` | Credit | Cash / Credit. Set at Rate Quoted / Won. |
-| `lost_reason` | Other | Required when stage = Lost / Dead. |
-| `next_followup` | 2026-11-06 | A date: midnight Pakistan time. Set when the site is added (Tomorrow by default). Drives *Today's Chase*. |
-| `last_note` | Waiting for consultant | Shown on the card. Required if lost reason is Other. |
+| `value_rs` | 450000 | The **total** quote / order value in whole Rs. (owner P4-1), a number 1 to 1,000,000,000. Required at Rate Quoted and Won (Order); kept when the site moves to another stage (latest quoted or won value). Only Won sites count as won. |
+| `payment_terms` | Credit | `Cash` or `Credit`. Required with a value. |
+| `lost_reason` | Other | An active `lost_reason` from `Lists`. Required at Lost / Dead; cleared when the site moves to any other stage. |
+| `next_followup` | 2026-11-06 | A date: midnight Pakistan time. Set when the site is added (Tomorrow by default). Drives *Today's Chase*. Blank at Won (Order) and Lost / Dead (owner P4-3). |
+| `last_note` | Waiting for consultant | The latest quick note (up to 200 letters); kept until a new one is written. Required if the lost reason is Other. |
 | `created_at` | | Server timestamp. |
 | `updated_at` | | Server timestamp. Drives "going cold" (7 days). |
 
@@ -112,7 +112,7 @@ One row per change. **Never edited or deleted by the app.**
 | `timestamp` | | Server time. |
 | `rep` | RIA | Who made the change. |
 | `site_id` | `S000123` | |
-| `action` | stage_change | e.g. `created`, `stage_change`, `note`, `snooze`, `followup_set`. |
+| `action` | stage_change | `created` (new site), `stage_change` (with `from_stage` / `to_stage`), `update` (same stage: value, note or follow-up), `details` (Edit details: `note` lists what changed, with the old → new number). |
 | `from_stage` | Sample / Trial | Blank if not a stage change. |
 | `to_stage` | Rate Quoted | |
 | `value_rs` | 450000 | If given. |
