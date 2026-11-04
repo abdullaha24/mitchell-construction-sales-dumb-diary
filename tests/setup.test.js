@@ -181,6 +181,15 @@ test('Lists columns are found by name: reordered and extra columns are respected
   assert.deepEqual(rows[20], [40, 'Dealer', '', 'buyer_type', true, 'owner', '', '']);
 });
 
+test('a nearly full Lists tab gets more rows before the starting lists are added', () => {
+  const areas = Array.from({ length: 994 }, (_, i) => ['area', `Area ${i}`, 'North', 'RIA', true, 10]);
+  const diary = makeSpreadsheet({ Lists: [LISTS, ...areas] }); // rows 1-995 of 1000
+  setUp(diary);
+  const lists = diary.getSheetByName('Lists');
+  assert.equal(lists.getMaxRows(), 995 + 20);
+  assert.deepEqual(valuesOf(diary, 'Lists').slice(995), ALL_STARTING_ROWS);
+});
+
 test('Lists missing a column: nothing is written there, and it is reported', () => {
   const diary = makeSpreadsheet({ Lists: [['list', 'value', 'region', 'added_by', 'active']] });
   const listsBefore = diary.getSheetByName('Lists')._snapshot();

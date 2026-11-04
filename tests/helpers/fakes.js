@@ -6,7 +6,8 @@
 // - getValues() returns a full rectangle, blanks as '';
 // - setValues() throws unless the array exactly fits the range;
 // - insertSheet() throws if the name is taken; deleteSheet() refuses the last tab;
-// - getLastRow() / getLastColumn() are 0 on an empty sheet.
+// - getLastRow() / getLastColumn() are 0 on an empty sheet;
+// - getRange() throws if the range runs past the tab's rows or columns (1000 x 26 when new).
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -73,6 +74,9 @@ function makeSpreadsheet(tabs = {}, options = {}) {
       for (const [k, v] of Object.entries({ row, column, numRows, numColumns })) {
         if (!Number.isInteger(v) || v < 1) throw new Error(`getRange: bad ${k} ${v}`);
       }
+      if (row + numRows - 1 > maxRows || column + numColumns - 1 > maxColumns) {
+        throw new Error('The coordinates of the range are outside the dimensions of the sheet.');
+      }
       const eachCell = (fn) => {
         for (let r = row; r < row + numRows; r++) {
           for (let c = column; c < column + numColumns; c++) fn(r, c);
@@ -103,8 +107,6 @@ function makeSpreadsheet(tabs = {}, options = {}) {
             while (cells.length <= r) cells.push([]);
             cells[r][column + j - 1] = v;
           }));
-          maxRows = Math.max(maxRows, row + numRows - 1);
-          maxColumns = Math.max(maxColumns, column + numColumns - 1);
           return range;
         },
         setFontWeight(weight) {
@@ -134,6 +136,14 @@ function makeSpreadsheet(tabs = {}, options = {}) {
         return sheet;
       },
       getRange: makeRange,
+      insertRowsAfter(afterPosition, howMany) {
+        write(`insertRowsAfter on ${name}`);
+        if (afterPosition !== maxRows) {
+          throw new Error('fake insertRowsAfter only supports adding rows at the end');
+        }
+        maxRows += howMany;
+        return sheet;
+      },
       getCharts: () => charts.slice(),
       getImages: () => images.slice(),
       /** Test helper: puts a chart on this tab (no cell values change). */

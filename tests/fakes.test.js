@@ -52,6 +52,18 @@ test('like Google: setValues must exactly fit the range', () => {
   assert.deepEqual(sheet.getDataRange().getValues(), [['', '', ''], ['', 'x', 'y']]);
 });
 
+test('like Google: a range past the last row or column throws; rows can be added at the end', () => {
+  const sheet = makeSpreadsheet({ T: [] }).getSheetByName('T');
+  assert.equal(sheet.getMaxRows(), 1000);
+  assert.equal(sheet.getMaxColumns(), 26);
+  assert.throws(() => sheet.getRange(1000, 1, 2, 1), /outside the dimensions/);
+  assert.throws(() => sheet.getRange(1, 26, 1, 2), /outside the dimensions/);
+  sheet.insertRowsAfter(1000, 5);
+  assert.equal(sheet.getMaxRows(), 1005);
+  sheet.getRange(1005, 1).setValues([['last']]);
+  assert.equal(sheet.getLastRow(), 1005);
+});
+
 test('like Google: sheet names are unique and the last tab cannot be deleted', () => {
   const ss = makeSpreadsheet({ Sheet1: [] });
   assert.throws(() => ss.insertSheet('sheet1'), /already exists/);

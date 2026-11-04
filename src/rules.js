@@ -33,6 +33,12 @@
  * }} MetaDataTables
  */
 
+/**
+ * How far a number may be from a whole number and still count as one. A formula can give
+ * 13799999.999999998 for a cell that shows 13,800,000; getValues() returns the raw number.
+ */
+const WHOLE_NUMBER_TOLERANCE = 1e-6;
+
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
@@ -150,14 +156,18 @@ function currentMonthKey_(now) {
 
 /**
  * An amount cell as whole rupees, or null if it isn't a whole number of zero or more.
- * Accepts a number, or text such as `13,800,000` or `Rs. 13,800,000` (commas, a leading
- * `Rs.` and spaces are removed).
+ * Accepts a number (within WHOLE_NUMBER_TOLERANCE of a whole number, so formula results
+ * count), or text such as `12,345,000` or `Rs. 12,345,000` (commas, a leading `Rs.` and
+ * spaces are removed).
  * @param {any} value
  * @returns {number | null}
  */
 function parseRs_(value) {
   if (typeof value === 'number') {
-    return Number.isSafeInteger(value) && value >= 0 ? value + 0 : null; // + 0 turns -0 into 0
+    if (!isFinite(value)) return null;
+    const whole = Math.round(value);
+    if (Math.abs(value - whole) > WHOLE_NUMBER_TOLERANCE) return null;
+    return Number.isSafeInteger(whole) && whole >= 0 ? whole + 0 : null; // + 0 turns -0 into 0
   }
   if (typeof value !== 'string') return null;
   const digits = value.trim().replace(/^rs\.?/i, '').replace(/[,\s]/g, '');
@@ -179,7 +189,7 @@ function badAmountReason_(value) {
 }
 
 /**
- * `13800000` → `Rs. 13,800,000`. Built by hand so it doesn't depend on the server's locale.
+ * `12345000` → `Rs. 12,345,000`. Built by hand so it doesn't depend on the server's locale.
  * @param {number} amount whole rupees
  */
 function formatRs_(amount) {
@@ -214,6 +224,13 @@ function readSalesmen_(values, tabName) {
       continue;
     }
     const rep = tidyCode_(repCell);
+    // The first row for a salesman is the one that counts, even if it has a problem.
+    if (firstRow[rep]) {
+      problems.push(`${tabName} row ${row}: ${rep} is listed again (first in row ` +
+        `${firstRow[rep]}). Only row ${firstRow[rep]} counts.`);
+      continue;
+    }
+    firstRow[rep] = row;
     if (isBlank_(regionCell)) {
       problems.push(`${tabName} row ${row}: ${rep} has no Region.`);
       continue;
@@ -224,12 +241,6 @@ function readSalesmen_(values, tabName) {
         `${joinWords_(REGIONS, 'or')}. ${rep} is left out until it's fixed.`);
       continue;
     }
-    if (firstRow[rep]) {
-      problems.push(`${tabName} row ${row}: ${rep} is listed again (first in row ` +
-        `${firstRow[rep]}). Row ${firstRow[rep]} is used.`);
-      continue;
-    }
-    firstRow[rep] = row;
     salesmen.push({ rep, region, row });
   }
   return { ok: true, salesmen, problems };
@@ -296,6 +307,8 @@ function readTargets_(values, options) {
         `${badAmountReason_(targetCell)}.`);
       continue;
     }
+    // 0 means no target, the same as a missing row, so it never makes a duplicate either.
+    if (amount === 0) continue;
     const id = `${key}|${month}`;
     if (byKeyAndMonth[id]) byKeyAndMonth[id].rows.push(row);
     else byKeyAndMonth[id] = { key, month, amount, rows: [row] };
@@ -308,7 +321,7 @@ function readTargets_(values, options) {
       problems.push(`${tabName} rows ${joinWords_(entry.rows.map(String), 'and')}: ` +
         `${entry.key} has ${entry.rows.length} targets for ${monthLabel_(entry.month)}. ` +
         `Until only one is left, ${entry.key} has no target that month.`);
-    } else if (entry.amount > 0) {
+    } else {
       amounts[id] = entry.amount;
     }
   }

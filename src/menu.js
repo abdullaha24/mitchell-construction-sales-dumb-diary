@@ -3,8 +3,10 @@
 //
 // SAFETY: a web page can call any function whose name doesn't end in `_` (google.script.run),
 // and the web app runs as the owner. So menuCheckSetup refuses to run unless a signed-in person
-// is running it as themselves, which is true when the owner taps the menu and never true for a
-// web app visitor. See spec 001 → "Safety rules for all code".
+// is running it as themselves. That is true when the owner taps the menu, and false for every
+// web app visitor except the owner himself while signed in to his Google account. (If he ever
+// triggered it from a page, setup would only add what's missing, and showing the pop-up would
+// fail.) See spec 001 → "Safety rules for all code".
 
 /**
  * Adds the Sales Diary menu when the sheet opens. No signed-in check here: it only adds the

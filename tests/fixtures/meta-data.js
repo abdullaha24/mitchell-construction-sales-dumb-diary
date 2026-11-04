@@ -25,7 +25,7 @@ const MONTHS = Array.from({ length: 12 }, (_, i) => [i < 6 ? 2026 : 2027, ((6 + 
 
 /** Made-up amounts: a base per code, plus 10,000 per month after July 2026. */
 const BASE = {
-  RIA: 1100000, SH: 1200000, AUR: 1300000, WAK: 1400000, MUB: 1500000,
+  RIA: 1100000, SH: 1200000, AUR: 1300000, WAK: 1400000, MUB: 1550000,
   SJ: 1600000, IB: 1700000, SM: 1800000,
   North: 2100000, Center: 2200000, South: 2300000, UNASSIGNED: 2400000,
 };

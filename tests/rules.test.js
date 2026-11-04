@@ -115,6 +115,16 @@ test('salesmen: the same Rep twice is listed and the first row is used', () => {
   assert.match(read.problems[0], /^Rep_Mapping row 4: RIA .*row 2/);
 });
 
+test('salesmen: the first row counts even when it has a problem', () => {
+  const read = readSalesmen_([
+    ['Rep', 'Region'], ['RIA', 'East'], ['SH', 'Center'], ['RIA', 'North'],
+  ], 'Rep_Mapping');
+  assert.deepEqual(plain(read.salesmen.map((s) => s.rep)), ['SH']);
+  assert.equal(read.problems.length, 2);
+  assert.match(read.problems[0], /^Rep_Mapping row 2: RIA's region 'East'/);
+  assert.match(read.problems[1], /^Rep_Mapping row 4: RIA is listed again \(first in row 2\)/);
+});
+
 test('salesmen: a missing column fails with the message', () => {
   const read = readSalesmen_([['Rep', 'Area']], 'Rep_Mapping');
   assert.deepEqual(plain(read), { ok: false, message: "Rep_Mapping has no 'Region' column in row 1." });
@@ -163,18 +173,28 @@ test('months: labels and "this month" in Pakistan time', () => {
 // ---------------------------------------------------------------------------------- Amounts
 
 test('amounts: number, comma text and Rs. text all read as whole rupees', () => {
-  for (const ok of [13800000, '13800000', '13,800,000', 'Rs. 13,800,000', 'rs 13,800,000',
-    'Rs.13800000', ' 13 800 000 ']) {
-    assert.equal(parseRs_(ok), 13800000, `should read ${ok}`);
+  for (const ok of [12345000, '12345000', '12,345,000', 'Rs. 12,345,000', 'rs 12,345,000',
+    'Rs.12345000', ' 12 345 000 ']) {
+    assert.equal(parseRs_(ok), 12345000, `should read ${ok}`);
   }
   assert.equal(parseRs_(0), 0);
   assert.equal(parseRs_('0'), 0);
   assert.ok(Object.is(parseRs_(-0), 0));
 });
 
+test('amounts: formula results a hair off a whole number count as that number', () => {
+  // getValues() gives the raw number: =7000000*1.1 shows 7,700,000 in the sheet.
+  assert.notEqual(7000000 * 1.1, 7700000);
+  assert.equal(parseRs_(7000000 * 1.1), 7700000);
+  assert.notEqual(3000000 * 1.15, 3450000);
+  assert.equal(parseRs_(3000000 * 1.15), 3450000);
+  assert.equal(parseRs_(1.00001), null);
+  assert.equal(parseRs_(1234.5), null);
+});
+
 test('amounts: not a whole number of 0 or more is refused', () => {
   for (const bad of ['abc', -5, '-5', 1.5, '1.5', '', true, null, undefined, NaN, Infinity,
-    'Rs.', '13,800,000 Rs', 2 ** 60, new Date(2026, 0, 1)]) {
+    'Rs.', '12,345,000 Rs', 2 ** 60, new Date(2026, 0, 1)]) {
     assert.equal(parseRs_(bad), null, `should refuse ${String(bad)}`);
   }
 });
@@ -201,9 +221,22 @@ test('amounts: a target of 0 means no target', () => {
   assert.equal(targetFor_(read.amounts, 'RIA', '2026-11'), null);
 });
 
+test('amounts: a 0 row is like a missing row, so it never makes a duplicate', () => {
+  const read = readTargets_([
+    ['Rep', 'Month', 'Target'],
+    ['RIA', '2026-11', 0],
+    ['RIA', '2026-11', 700],
+    ['SH', '2026-11', '0'],
+    ['SH', '2026-11', 0],
+  ], repOptions(['RIA', 'SH']));
+  assert.deepEqual(plain(read.problems), []);
+  assert.equal(targetFor_(read.amounts, 'RIA', '2026-11'), 700);
+  assert.equal(targetFor_(read.amounts, 'SH', '2026-11'), null);
+});
+
 test('amounts: formatting', () => {
-  assert.equal(formatRs_(13800000), 'Rs. 13,800,000');
-  assert.equal(formatRs_(1500000), 'Rs. 1,500,000');
+  assert.equal(formatRs_(12345000), 'Rs. 12,345,000');
+  assert.equal(formatRs_(2500000), 'Rs. 2,500,000');
   assert.equal(formatRs_(1000), 'Rs. 1,000');
   assert.equal(formatRs_(999), 'Rs. 999');
   assert.equal(formatRs_(0), 'Rs. 0');

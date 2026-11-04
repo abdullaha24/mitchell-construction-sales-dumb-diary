@@ -84,7 +84,11 @@ function fillStartingLists_(sheet) {
     });
   }
   if (newRows.length > 0) {
-    sheet.getRange(sheet.getLastRow() + 1, 1, newRows.length, width).setValues(newRows);
+    const firstNewRow = sheet.getLastRow() + 1;
+    // Google refuses to write past the tab's last row, so add rows first if needed.
+    const shortBy = firstNewRow + newRows.length - 1 - sheet.getMaxRows();
+    if (shortBy > 0) sheet.insertRowsAfter(sheet.getMaxRows(), shortBy);
+    sheet.getRange(firstNewRow, 1, newRows.length, width).setValues(newRows);
   }
   return [];
 }

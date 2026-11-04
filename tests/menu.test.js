@@ -75,7 +75,7 @@ test('no top-level const, let or var holds a function (would dodge the check abo
 });
 
 const REFUSALS = [
-  ['nobody signed in (a web app visitor)', '', OWNER],
+  ['nobody signed in (a web app visitor who is not the owner)', '', OWNER],
   ['both emails blank', '', ''],
   ['the script runs as someone else', 'salesman@example.com', OWNER],
 ];
