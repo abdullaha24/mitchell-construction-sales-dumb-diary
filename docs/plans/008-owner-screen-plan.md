@@ -83,5 +83,5 @@
   Update (`queue.check.js` case M: its retry says "Saved" and shows its new area). Known limit noted:
   a lost reply retried unchanged after midnight can be refused once.
 
-## [ ] Step 5: Live (coordinator)
+## [x] Step 5: Live (coordinator)
 - Push and update the deployment; owner tests on his phone; TEST rows cleaned up with his OK.

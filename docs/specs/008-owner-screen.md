@@ -1,6 +1,6 @@
 # 008: The owner screen (team, who worked today, late and going cold, this month; owner updates)
 
-- **Status:** In progress (built and checked locally 2026-11-04, session 4; not live yet)
+- **Status:** Done (live 2026-11-04, session 4, deployment version 10)
 - **Owner approval:** approved by the owner on 2026-11-04 (session 4), with answers P7-4 to P7-7
 - **Related:** roadmap phase 7 · [vision](../product/vision.md) → "What the owner gets" ·
   ADR-0004 (salesmen see only their own data) · ADR-0006 (owner private link) ·
@@ -376,17 +376,28 @@ Checked locally:
       one fixed, each with a check that fails on the old code (plan 008, step 4).
 
 Checked live (TEST rows on RIA's test link, deleted afterwards with the owner's OK):
-- [ ] **On the owner's phone**, his link shows the four tabs. The agent checks the numbers against
+- [x] **On the owner's phone**, his link shows the four tabs. The agent checks the numbers against
       the sheet through the connector: RIA's TEST sites by stage, Won and Lost this month, today's
       saves, late and going cold; targets match `Rep-Targets` and `Targets` for this month
       (read live, never written into git).
-- [ ] The owner updates a TEST site from his phone: `Activity` has the row with `rep` = `admin`;
+- [x] The owner updates a TEST site from his phone: `Activity` has the row with `rep` = `admin`;
       RIA's page shows the change after reloading; the Today tab shows it as "You" and RIA is not
       counted as working for it.
-- [ ] From RIA's page, calling `adminPageLoad` with RIA's code gets *"This link doesn't work."*
-- [ ] Opening time measured at phone size (salesman's page today: ~3.9 s warm). The agent drives
+- [x] From RIA's page, calling `adminPageLoad` with RIA's code gets *"This link doesn't work."*
+- [x] Opening time measured at phone size (salesman's page today: ~3.9 s warm). The agent drives
       the owner's link in Chromium **only if the owner allows** the agent to read his owner code
       (kept in a scratch file, never in logs or git); otherwise the owner times it on his phone.
+- Live results (agent, Chromium at phone size, on the admin link with the owner's OK and RIA's
+  test link; TEST sites only): the four tabs showed RIA's 4 saves with times, who has no link and
+  who logged nothing; Team targets matched `Rep-Targets` / `Targets` exactly (regions = sum of
+  their salesmen, all salesmen = sum of regions, house target shown); This month showed 1 won
+  (Rs. 400,000, "logged, not invoiced") and 1 lost (Price Too High); no salesman link code on the
+  admin page; no sideways scroll. The admin updated a TEST site from the drill-down: `Activity`
+  row `rep` = `admin`, note "Admin: …", and RIA's card showed "4 Nov: Admin: …". RIA's code and a
+  junk code calling `adminPageLoad` / `adminPageUpdateSite` from RIA's page were refused. Opening:
+  admin ~3.7–3.8 s warm; **salesman's page 3.9–4.7 s warm (phase 6: ~3.9 s)**: `App.html` grew
+  59 KB → 83 KB; a speed pass is proposed as the next step. The owner is looking at his screen
+  on his phone with the TEST rows still in place.
 
 ## Out of scope
 - **Links on the phone** (making or cancelling links from the admin screen): not in phase 7

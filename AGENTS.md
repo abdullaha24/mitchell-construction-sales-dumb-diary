@@ -24,9 +24,8 @@ Read before any product or UI work:
 
 ## Status
 
-Phases 0–6 are **done and live** (specs 001–007, deployment version 9). Phase 7 (spec 008, the
-owner's screen, shown to people as **Admin**) is **built and checked locally**, not yet live.
-Current state, next step and IDs: `docs/plans/handoff.md`.
+Phases 0–7 are **done and live** (specs 001–008, deployment version 10). Next: a speed pass on the
+salesman's page, then launch (phase 8). Current state, next step and IDs: `docs/plans/handoff.md`.
 
 ## Commands
 
