@@ -38,6 +38,7 @@ Node 22 or newer. All checks run locally with no Google account.
 | `npm run typecheck` | `tsc -p .`: type-checks `src/` (plain JS with JSDoc). |
 | `npm run check` | Type check, then tests. **Must pass before every commit.** |
 | `npm run check:browser` | Drives the owner's Links window and the salesman's page in Chromium (the page runs against the real server code and fake sheets). Needs Playwright; skips if it isn't installed. Run it when any `.html` changes. |
+| `npm run guide` | Rebuilds the salesmen's PDF user guide (`docs/guide/`) from fresh screenshots on fake data. Needs Playwright. Rerun when the salesman's page looks different. |
 | `npx clasp push --force` | Sends `src/` to Apps Script. Always `--force`: without it, in a non-interactive shell clasp **silently skips** the push. Git is the source of truth. |
 | `npx clasp show-file-status` | Lists the files a push would send (should be `appsscript.json`, the `.js` files and the `.html` files in `src/`). |
 | `npx clasp create-deployment -d "<note>"` | Creates the web app. **Once only**: each run makes a new address. |
@@ -70,10 +71,11 @@ Code rules that tests enforce (the tests are the source of truth; keep this list
 | `docs/specs/` | One spec per feature, written **before** the code. Copy `_template.md`. |
 | `docs/architecture/` | How the system fits together, and the Google Sheet data model. |
 | `docs/decisions/` | ADRs: one file per significant decision. Copy `_template.md`. |
+| `docs/guide/` | The salesmen's PDF user guide (built by `npm run guide`; don't edit by hand). |
 | `docs/plans/` | `handoff.md` (start here), roadmap, step-by-step build plans. |
 | `src/` | Apps Script source (server code + HTML); clasp's `rootDir`. What each file holds: `src/README.md`. |
 | `tests/` | Automated tests (no Google account needed) and browser checks; see `tests/README.md`. |
-| `scripts/` | Helper scripts for setup and deploy. |
+| `scripts/` | Helper scripts; `scripts/README.md` lists them (e.g. the user guide builder). |
 
 ## How to work
 

@@ -15,7 +15,7 @@
 | **5. Focus tabs + target** | Today's Chase, Hot Pipeline, All My Parties with search; his monthly target shown ([spec 006](../specs/006-focus-tabs.md)) | ✅ Done (2026-11-04, version 7): Today's Chase correct for late and today; target matches `Rep-Targets`; search and Hot Pipeline checked live |
 | **6. Site card helpers + areas** | Call / WhatsApp buttons, last-spoken line, going cold at 7 days, snooze, area filter ([spec 007](../specs/007-card-helpers-areas.md)) | ✅ Done (2026-11-04, version 9): Call and WhatsApp open on the owner's phone; the area filter shows only his sites in that area |
 | **7. Owner screen** | Pipeline by salesman/region with targets next to Won Rs. ("logged, not invoiced") and the house / office sales target, who worked today, overdue + going cold, won/lost + lost reasons; the owner can Update sites ([spec 008](../specs/008-owner-screen.md); shown to people as **Admin**) | ✅ Done (2026-11-04, version 10): the admin (owner) screen is live on his link; numbers checked against Meta-Data; admin updates show as "Admin: …" |
-| **8. Launch** | Links sent to all 7; short how-to for salesmen; watch the first week closely | All 7 have logged at least one site |
+| **8. Launch** | Links sent to all 7; short how-to for salesmen (PDF guide drafted, `docs/guide/`); watch the first week closely | All 7 have logged at least one site |
 | **Later** | Dealer repeat orders · payment recovery (ugrahi) · achieved vs target for salesmen · Urdu labels | Owner decides order |
 
 **Owner to-dos before launch:** none left. Categories, targets and the salesmen list were

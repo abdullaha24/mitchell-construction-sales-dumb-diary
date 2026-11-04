@@ -1,6 +1,6 @@
 # Handoff: start here
 
-> Updated 2026-11-04, end of session 4 (phases 5, 6 and 7). **Every session: read this first, and update it before
+> Updated 2026-11-05, session 5 (the salesmen's PDF user guide). Session 4 did phases 5, 6 and 7. **Every session: read this first, and update it before
 > you finish.** Then read `AGENTS.md` (rules, commands) if you haven't.
 
 ## Where we are
@@ -37,6 +37,17 @@ Specs 001–008 **Done**; plans 001–008 ticked; ADR-0009 and ADR-0010 Accepted
   3.9–4.7 s, up from ~3.9 s** after phase 6 (`App.html` 59 KB → 83 KB, mostly the save-queue /
   two-people logic). After Save, back on the list in ~0.3 s; Google confirms in 2–5 s.
 
+### Salesmen's user guide (session 5)
+`docs/guide/sales-diary-guide.pdf`: A5, 12 pages, one idea per page, a screenshot with numbered
+circles and a few big plain words (open your link, home screen, the 3 lists, a card, Snooze, New
+Site, Update, Rate / Won / Lost, Saving… and orange, every day). Pictures come from the real
+salesman page on **fake data** (pretend salesman `DEMO`, pretend sites, no real link code), so
+nothing private is in it. Rebuild with `npm run guide` whenever the salesman's page looks
+different (e.g. after the speed pass, if anything visible changes); words live in
+`scripts/guide/build.js`, see `scripts/README.md`. Sent to the owner for a look; not yet sent to
+salesmen. It says "Admin sends you your own link" (no channel named: the owner hasn't said how
+links will go out).
+
 ## Next: a speed pass, then launch (phase 8)
 1. **Speed pass (recommended before launch; owner's top priority is speed on cheap phones):**
    measure where the salesman's open time goes (server time vs page size vs page script), then
@@ -44,8 +55,8 @@ Specs 001–008 **Done**; plans 001–008 ticked; ADR-0009 and ADR-0010 Accepted
    from the served HTML at push time, defer code only needed on Update/forms, check the page data
    size). Target: back to ≤ ~3.9 s warm, with a check that pins the served page size. Spec it
    briefly (spec 009) and get the owner's OK as usual.
-2. **Phase 8, launch** (roadmap): links for all 7 salesmen, a short how-to (WhatsApp-friendly,
-   plain words), cancel the RIA / SJ test links, empty TEST data, watch the first week.
+2. **Phase 8, launch** (roadmap): links for all 7 salesmen, the how-to (PDF guide done, above;
+   owner's feedback pending), cancel the RIA / SJ test links, empty TEST data, watch the first week.
 
 Known limits kept on purpose (documented in specs 006 / 008): a phone clock changed while the app
 is open can make "today" off until reload; a lost reply retried unchanged after midnight, or a
@@ -116,7 +127,8 @@ matches; `printf '%s\n' '<address>' > "$S/clasp-in"`; delete the log.
 
 ## Questions for the owner
 Waiting on him (not business questions): (1) **"delete"** the phase 7 TEST rows once he has looked
-at his admin screen; (2) the go-ahead for the **speed pass** (agent recommended it before launch). Ask the owner's way: **one question at a time** (several only when he's brisk and
+at his admin screen; (2) the go-ahead for the **speed pass** (agent recommended it before launch);
+(3) his OK or changes on the **user guide PDF** (session 5). Ask the owner's way: **one question at a time** (several only when he's brisk and
 they're independent), tappable options (`AskUserQuestion`), recommended option first and marked
 **(Recommended)**, plain English. He prefers brisk check-ins; don't over-explain routine steps.
 
