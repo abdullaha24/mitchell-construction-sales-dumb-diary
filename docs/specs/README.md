@@ -20,4 +20,4 @@ Status values: `Draft` → `Approved` → `In progress` → `Done` (or `Dropped`
 | [003](003-my-sites.md) | My sites + add a site (numbers stay in the system, duplicate warning, areas) | Done |
 | [004](004-update-site.md) | Update a site: stage, Rs. value + Cash / Credit, lost reason, follow-up, note; edit details | Done |
 | [005](005-faster-saves.md) | Instant saves, faster server, stage when adding a site (phase 4b) | Done |
-| [006](006-focus-tabs.md) | Focus tabs: Today's Chase, Hot Pipeline, All My Parties with search; his monthly target | In progress |
+| [006](006-focus-tabs.md) | Focus tabs: Today's Chase, Hot Pipeline, All My Parties with search; his monthly target | Done |

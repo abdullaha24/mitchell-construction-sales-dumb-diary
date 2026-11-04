@@ -1,6 +1,6 @@
 # 006: Focus tabs (Today's Chase, Hot Pipeline, All My Parties) and his target
 
-- **Status:** In progress (built and checked locally; live test next)
+- **Status:** Done (live 2026-11-04, session 4, deployment version 7)
 - **Owner approval:** approved by the owner on 2026-11-04 (session 4)
 - **Related:** roadmap phase 5 · [vision](../product/vision.md) → Home screen · ADR-0004 (his own
   data only) · ADR-0005 (Meta-Data read only) · [glossary](../product/glossary.md) → App screens ·
@@ -121,11 +121,16 @@ Checked locally:
       independent review: nothing serious; three small findings fixed with checks (a saved site keeps
       its place in the list; short number searches; the empty-tab message under a failed save).
 
-Checked live with the owner:
-- [ ] On his phone: Today's Chase is correct for overdue and today (TEST sites with past, today's
-      and future dates).
-- [ ] The target shown matches `Rep-Targets` for this month.
-- [ ] Search finds a TEST site by name, area and phone.
+Checked live (2026-11-04, the agent drove RIA's test link in Chromium at phone size, at the
+owner's request; TEST rows deleted afterwards with his OK):
+- [x] Today's Chase: a TEST site moved to 3 days ago showed first, red edge, "1 Nov · 3 days late";
+      one due today showed "Today"; the tab count was red. Updating the late one to 3 days took it
+      off the list at once (confirmed by Google 2.4 s later).
+- [x] The target shown (Rs. 13,800,000) matches RIA's November 2026 row in `Rep-Targets`.
+- [x] Search found TEST sites by name, phone (0300… and 92…), area and stage; Hot Pipeline had the
+      Rs. 500,000 quote first. Saves: back on the list in ~0.3 s, confirmed in 2–5 s.
+- [x] Found live and fixed (version 7): a long target line pushed "+ New Site" onto two lines on a
+      360 px phone; now one line, checked in `tabs.check.js`.
 
 ## Out of scope
 - Achieved vs target for salesmen (owner, Q12c; later).

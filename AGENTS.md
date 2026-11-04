@@ -24,8 +24,8 @@ Read before any product or UI work:
 
 ## Status
 
-Phases 0–4b are **done and live** (specs 001–005, deployment version 5). Phase 5 (spec 006: focus
-tabs + his target) is **built and checked locally**, waiting to go live with the owner. Current state, next step and IDs: `docs/plans/handoff.md`.
+Phases 0–5 are **done and live** (specs 001–006, deployment version 7). Next: the phase 6 spec
+(site card helpers + areas). Current state, next step and IDs: `docs/plans/handoff.md`.
 
 ## Commands
 

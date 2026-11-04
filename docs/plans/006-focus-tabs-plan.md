@@ -25,6 +25,6 @@
 - Data model (kept targets), AGENTS.md, src/README.md, roadmap, handoff.
 - Independent review agent; fixes with tests; fresh-clone check; secrets sweep.
 
-## [ ] Step 4: Live with the owner
+## [x] Step 4: Live with the owner
 - Push, update the deployment (same address), owner tests TEST sites on his phone, clean up with
   his OK, clasp logout.
