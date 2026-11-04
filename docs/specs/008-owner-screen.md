@@ -140,12 +140,13 @@ P7-3), and the history shows it was him.
 - **On the salesman's phone:** the site shows the owner's change the next time his page loads
   (opening the app, or a save's reply). A note he wrote shows there as **"Admin: …"** (owner,
   P7-4), e.g. *"5 Nov: Admin: call him Friday, he's ready"*.
-- **Two people, one site:** if the salesman saved a change to the site after the owner's screen
-  was loaded (or the other way round), the later save is **refused, not merged**: *"This site
-  was changed a moment ago. Here it is now: check it and save again."* (the same words on both
-  phones: the server can't always tell who changed it). The card is refreshed from the reply and what was typed
-  is kept. Without this, a screen opened in the morning would silently undo the salesman's
-  afternoon update (the Update form sends the stage, value and date it was opened with).
+- **Two people, one site:** if the salesman saved a change after the admin's screen loaded (or the
+  other way round), a save **never undoes** it: what the admin left as he saw it keeps the
+  salesman's change, and only what he changed is saved. If both changed the same thing (say both
+  typed a new Rs. value), the later save is **refused, not merged**: *"This site was changed a
+  moment ago. Here it is now: check it and save again."*; tapping the card shows his own change
+  kept and the rest as the site is now. A form left open while the page refreshes, or a kept
+  draft, is brought up to date the same way and says so. The same on the salesman's phone.
 
 ### Slow connection / no signal
 - After the page has loaded, every tab, count, filter and list works **with no signal**: no
@@ -207,16 +208,33 @@ P7-3), and the history shows it was him.
     (owner, P7-5: only the salesman's own Update resets going cold);
   - once per save ID (spec 005), remembered under `save:admin:<saveId>` (never a salesman's key);
   - reply: only that site's card (with its salesman), or `{ ok: false, message }`.
-- **Two people, one site** (salesman's Update **and** owner's Update): the form sends the states
-  the site may be in on Google's side as far as that page knows (`seen`, up to 5 of: stage,
-  value, Cash / Credit, lost reason, follow-up): what Google last confirmed, and what each of the
-  page's own failed saves would have made it (a save whose reply was lost may have landed).
-  Inside the lock, if the row matches none of them, nothing is written and the reply is
-  `{ ok: false, changed: true, message, site }` with the site as it is now. (His own saves sent
-  one after another, a retried save, a correction after a lost reply, and an Update replacing a
-  failed snooze still go through.) A form from before this version, without `seen`, is saved as
-  today. *(Built: the list of states replaced a single state, found by the existing queue and
-  update browser checks.)*
+- **Two people, one site** (salesman's Update **and** admin's Update). *(Rewritten after the
+  independent review: the first build compared whole states and could still save a stale form's
+  values, and it broke "saved once" after a lost reply.)*
+  - The Update form records, when it opens, what the site was as far as that phone knows (`seen`:
+    stage, Rs. value + Cash / Credit, lost reason, follow-up; before any of the site's saves that
+    failed on this phone), and which of those things he **touches**.
+  - On the server, inside the lock, each of those he **left as he saw it** keeps what the site has
+    **now**, so an old screen can never undo someone else's change; each he **changed** is saved.
+    Only what the saved stage uses counts (a Won site's hidden follow-up is never compared).
+  - If he and someone else changed the **same** thing differently, nothing is written and the
+    reply is `{ ok: false, changed: true, message, site }`: *"This site was changed a moment ago.
+    Here it is now: check it and save again."* His card shows the site as it is now; tapping it
+    reopens the form with what he touched kept and everything else from the site now; Save then
+    saves his change on purpose.
+  - A save of his whose reply was lost may have landed: the page also sends those saves' IDs
+    (`after`); if Google remembers one (its 6-hour save record), the site as that save left it is
+    what he saw (so a correction after a lost reply is saved, spec 005).
+  - When the page refreshes under an open form, or he reopens a kept Update draft, and the site
+    has changed: the form is brought up to date the same way, with *"This site was changed a
+    moment ago. Check and tap Save again."*
+  - `seen` and `after` are not part of a save's fingerprint: a retry of a save that landed is the
+    same save, saved once.
+  - A form without `seen` (one kept on a phone from before this version) saves as it always did.
+  - Why this and not "refuse any difference": refusing whenever anything changed sends both people
+    round in circles for changes that don't clash (a note added while the other moved the date),
+    and still needs re-basing to avoid saving stale values; field by field, the common case just
+    works and only a real clash asks him to look.
 - **The owner-link check** (new helper `requireAdminLink_(k)`): a code not shaped like ours →
   *"This link doesn't work."* without opening any sheet; otherwise Sales Diary is opened once and
   `Links` read: only an **active** row with `role` = `owner` and exactly this code passes. A
@@ -337,7 +355,8 @@ Checked locally:
       pass on a fresh clone; secrets sweep clean. Key assertions mutation-checked: 12 server
       (`tests/admin.test.js` and others) and 4 page (`admin.check.js`), each broken on purpose, the
       check failed, then restored.
-- [ ] Independent review (coordinator).
+- [x] Independent review: security clean; two defects in the changed-site check and one small
+      one fixed, each with a check that fails on the old code (plan 008, step 4).
 
 Checked live (TEST rows on RIA's test link, deleted afterwards with the owner's OK):
 - [ ] **On the owner's phone**, his link shows the four tabs. The agent checks the numbers against

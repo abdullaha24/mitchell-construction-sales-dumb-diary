@@ -350,26 +350,59 @@ function checkUpdate_(input, current, choices, todayKey) {
 }
 
 /**
- * Two people, one site (spec 008): true when the site matches none of the states the Update form
- * knows it could be in (`seen`: one state, or up to 5: what Google last confirmed, and what his
- * own unconfirmed saves would have made it, since a save whose reply was lost may have landed).
- * A state is stage, value, Cash / Credit, lost reason and follow-up. Then someone else (the
- * salesman, the admin, or another phone) saved a change since, and the save is refused, not
- * merged, so a screen loaded in the morning can't undo an afternoon update. A form without
- * `seen` (a page from before spec 008) is not checked.
- * @param {any} seen
- * @param {CurrentSite} current
+ * Two people, one site (spec 008). An Update form says what it was opened on (`seen`: stage,
+ * Rs. value + Cash / Credit, lost reason, follow-up). Each of those he **left as he saw it** keeps
+ * whatever the site has **now** (someone else may have changed it meanwhile: his old screen must
+ * not undo that). What he **changed** is saved. Only when he and someone else changed the same
+ * thing differently is the save refused (`conflict`), so he can look and decide. A form without
+ * `seen` (a page from before spec 008) is taken as it is.
+ * @param {any} input what the page sent
+ * @param {CurrentSite} current the site now (inside the lock)
+ * @param {string} todayKey
+ * @returns {{ conflict: boolean, input: any }} the input to check and save
  */
-function changedSince_(seen, current) {
-  const states = (Array.isArray(seen) ? seen.slice(0, 5) : [seen]).filter((s) => s && typeof s === 'object');
-  if (!states.length) return false;
+function mergeSeen_(input, current, todayKey) {
+  const seen = input && typeof input === 'object' ? input.seen : null;
+  if (!seen || typeof seen !== 'object' || Array.isArray(seen)) return { conflict: false, input };
   /** @param {any} v */
-  const textOf = (v) => (typeof v === 'string' ? v : '');
-  return !states.some((s) => {
-    const value = isBlank_(s.value) ? null : Number(s.value);
-    return s.stage === current.stage && (value || null) === current.value && textOf(s.terms) === current.terms &&
-      textOf(s.lostReason) === current.lostReason && textOf(s.followUp) === current.followUp;
-  });
+  const textOf = (v) => (typeof v === 'string' ? v.trim() : '');
+  /** @param {any} v */
+  const rsOf = (v) => {
+    const n = isBlank_(v) ? null : parseRs_(typeof v === 'number' ? v : String(v));
+    return n !== null && n > 0 ? n : null;
+  };
+  const followUp = followUpKey_(input.followUp, todayKey);
+  // Each thing the form can change, as [his, what he saw, now].
+  const parts = {
+    stage: [textOf(input.stage), textOf(seen.stage), current.stage],
+    money: [`${rsOf(input.value)}|${textOf(input.terms)}`, `${rsOf(seen.value)}|${textOf(seen.terms)}`,
+      `${current.value}|${current.terms}`],
+    lostReason: [textOf(input.lostReason), textOf(seen.lostReason), current.lostReason],
+    followUp: [followUp || textOf(input.followUp), textOf(seen.followUp), current.followUp],
+  };
+  const merged = { ...input };
+  const stage = parts.stage[0] !== parts.stage[1] ? parts.stage[0] : current.stage;
+  // Only what the stage being saved uses can clash (a hidden field is never saved).
+  const used = {
+    stage: true, money: VALUE_STAGES.includes(stage), lostReason: stage === LOST_STAGE,
+    followUp: !CLOSED_STAGES.includes(stage),
+  };
+  for (const [name, [his, saw, now]] of Object.entries(parts)) {
+    if (!used[/** @type {'stage'} */ (name)]) continue;
+    if (his !== saw) {
+      if (now !== saw && now !== his) return { conflict: true, input };
+      continue; // his change
+    }
+    // Left as he saw it: the site keeps what it has now.
+    if (name === 'stage') merged.stage = current.stage;
+    if (name === 'money') {
+      merged.value = current.value === null ? '' : String(current.value);
+      merged.terms = current.terms;
+    }
+    if (name === 'lostReason') merged.lostReason = current.lostReason;
+    if (name === 'followUp' && followUpKey_(current.followUp, todayKey)) merged.followUp = current.followUp;
+  }
+  return { conflict: false, input: merged };
 }
 
 /**

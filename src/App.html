@@ -495,6 +495,7 @@
           queue.forEach(function (e) { showCard(e.card); });
           if (ADMIN) adminLoaded();
           if (screen === 'list') renderList();
+          rebaseOpenForm();
         }).withFailureHandler(function () { if (onFail) onFail(); });
         if (ADMIN) run.adminPageLoad(k); else run.repLoad(k);
       }
@@ -533,6 +534,10 @@
                 var fresh = ADMIN ? adminMerge(r.site) : r.site;
                 showCard(fresh);
                 entry.card = clone(fresh);
+                var now = snap(fresh);
+                queue.forEach(function (q) { if (q.card.id === fresh.id && q.status === 'failed') q.base = now; });
+                // His changes stay; the rest now shows the site as it is (spec 008).
+                if (entry.state && entry.state.seen) entry.state = rebased(entry.state, fresh, now);
               }
               saveQueue();
               if (screen === 'list') renderList();
@@ -569,7 +574,7 @@
         } else {
           showSite(entry.siteId, entry);
         }
-        problemHere(entry.message + ' Check and tap Save again.');
+        problemHere(/save again\.$/i.test(entry.message) ? entry.message : entry.message + ' Check and tap Save again.');
       }
       function problemHere(text) {
         var box = screen === 'site' ? $('u-problem') : $('formNote');
@@ -973,7 +978,8 @@
       function emptyUpdate(s) {
         return { stage: s.stage, value: s.value ? String(s.value) : '', terms: s.terms,
           lostReason: has(data.lostReasons, s.lostReason) ? s.lostReason : '',
-          followUp: keepsDate(s) ? 'keep' : 'tomorrow', date: '', note: '', phone: '', saveId: newSaveId() };
+          followUp: keepsDate(s) ? 'keep' : 'tomorrow', date: '', note: '', phone: '', saveId: newSaveId(),
+          seen: baseFor(s), touched: {} };
       }
       function renderSiteHead(s) {
         var head = $('siteHead'); head.textContent = '';
@@ -998,18 +1004,18 @@
         var r = rules();
         var stages = $('u-stage'); stages.textContent = '';
         r.stages.forEach(function (st) {
-          stages.appendChild(pill(st, upd.stage === st, function () { upd.stage = st; updChanged(); }));
+          stages.appendChild(pill(st, upd.stage === st, function () { upd.stage = st; upd.touched.stage = true; updChanged(); }));
         });
         $('u-valueBox').hidden = !has(r.valueStages, upd.stage);
         $('u-value').value = upd.value;
         var terms = $('u-terms'); terms.textContent = '';
         r.paymentTerms.forEach(function (t) {
-          terms.appendChild(pill(t, upd.terms === t, function () { upd.terms = t; updChanged(); }));
+          terms.appendChild(pill(t, upd.terms === t, function () { upd.terms = t; upd.touched.money = true; updChanged(); }));
         });
         $('u-lostBox').hidden = upd.stage !== r.lostStage;
         var lost = $('u-lost'); lost.textContent = '';
         data.lostReasons.forEach(function (reason) {
-          lost.appendChild(pill(reason, upd.lostReason === reason, function () { upd.lostReason = reason; updChanged(); }));
+          lost.appendChild(pill(reason, upd.lostReason === reason, function () { upd.lostReason = reason; upd.touched.lostReason = true; updChanged(); }));
         });
         var needsNumber = has(r.numberStages, upd.stage) && !s.phone;
         $('u-phoneBox').hidden = !needsNumber;
@@ -1019,7 +1025,7 @@
         var follow = $('u-follow'); follow.textContent = '';
         var options = keepsDate(s) ? [['keep', 'Keep ' + shortDay(s.followUp)]].concat(FOLLOW) : FOLLOW;
         options.forEach(function (f) {
-          follow.appendChild(pill(f[1], upd.followUp === f[0], function () { upd.followUp = f[0]; updChanged(); }));
+          follow.appendChild(pill(f[1], upd.followUp === f[0], function () { upd.followUp = f[0]; upd.touched.followUp = true; updChanged(); }));
         });
         $('u-date').hidden = upd.followUp !== 'date';
         $('u-date').min = todayKey();
@@ -1052,26 +1058,55 @@
         if (!has(r.closedStages, st) && followUp === 'date' && !date) return 'Pick a follow-up date.';
         return '';
       }
+      // ---- Two people, one site (spec 008) ----
+      // The five things an Update can change, as a site has them.
+      function snap(x) {
+        return { stage: x.stage, value: x.value ? Number(x.value) : null, terms: x.terms || '', lostReason: x.lostReason || '',
+          followUp: x.followUp || '' };
+      }
+      function sameSnap(a, b) {
+        return a.stage === b.stage && a.value === b.value && a.terms === b.terms && a.lostReason === b.lostReason &&
+          a.followUp === b.followUp;
+      }
       // The site as Google has it, as far as this page knows: before any of its saves that failed
       // (their cards show what he typed, not what was saved). Saves still on their way count as
-      // saved: they go first.
+      // saved: they go first. An Update form records this when it opens (`seen`).
       function baseFor(s) {
         for (var i = 0; i < queue.length; i++) {
           var q = queue[i];
-          if (q.card.id === s.id && q.status === 'failed' && q.before) return q.before;
+          if (q.card.id !== s.id || q.status !== 'failed') continue;
+          if (q.base) return q.base;
+          if (q.before) return snap(q.before);
         }
-        return s;
+        return snap(s);
       }
-      // `seen` for an Update (spec 008): every state the site may be in on Google's side because of
-      // this page: the base, and what each of its failed saves would have made it (a lost reply may
-      // still have landed). Anything else means someone else changed it, and Google refuses the save.
-      function seenFor(s, base) {
-        var states = [base];
-        queue.forEach(function (q) { if (q.card.id === s.id && q.status === 'failed') states.push(q.card); });
-        states.push(s);
-        return states.slice(-5).map(function (x) {
-          return { stage: x.stage, value: x.value || null, terms: x.terms || '', lostReason: x.lostReason || '', followUp: x.followUp || '' };
-        });
+      // The form on a newer state of the site: what he changed stays; what he left takes the site's
+      // value now, so he sees it before saving. `base`: what Google has (default: as known here).
+      function rebased(u, s, base) {
+        var d = emptyUpdate(s);
+        var t = u.touched || {};
+        var out = clone(u);
+        if (!t.stage) out.stage = d.stage;
+        if (!t.money) { out.value = d.value; out.terms = d.terms; }
+        if (!t.lostReason) out.lostReason = d.lostReason;
+        if (!t.followUp) { out.followUp = d.followUp; out.date = ''; }
+        out.seen = base || d.seen;
+        out.touched = t;
+        out.saveId = newSaveId();
+        return out;
+      }
+      var CHANGED_TEXT = 'This site was changed a moment ago. Check and tap Save again.';
+      // The open form was made on an older state of its site (the page refreshed, or a draft kept on
+      // the phone): bring it up to date and say so.
+      function rebaseOpenForm() {
+        if (screen !== 'site' || !upd || !upd.seen) return;
+        var s = siteById(openId);
+        if (!s || sameSnap(upd.seen, baseFor(s))) return;
+        upd = rebased(upd, s);
+        if (retrying) { retrying.state = clone(upd); saveQueue(); } else store(updKey(openId), upd);
+        renderSiteHead(s);
+        renderUpdate();
+        problemHere(CHANGED_TEXT);
       }
       function saveUpdate() {
         var s = siteById(openId);
@@ -1082,15 +1117,19 @@
           !!s.phone || !!upd.phone.trim(), "Add the contact's number to move this site to " + upd.stage + '.');
         if (trouble) return problem(trouble);
         clearProblem();
-        var base = clone(baseFor(s));
         var followUp = has(r.closedStages, upd.stage) ? '' : followKey(upd.followUp, upd.date, s.followUp);
         var input = {
           stage: upd.stage, value: upd.value, terms: upd.terms, lostReason: upd.lostReason,
           followUp: upd.followUp === 'keep' ? s.followUp : upd.followUp === 'date' ? upd.date : upd.followUp,
           note: upd.note, phone: upd.phone, saveId: upd.saveId,
           // What the form was opened on: a save made over someone else's newer change is refused (spec 008).
-          seen: seenFor(s, base),
         };
+        // What the form was opened on, and his own saves of this site that may have landed unheard.
+        if (upd.seen) {
+          input.seen = clone(upd.seen);
+          input.after = queue.filter(function (q) { return q.card.id === s.id && q.status === 'failed'; })
+            .map(function (q) { return q.id; });
+        }
         var card = clone(s);
         card.stage = upd.stage;
         if (has(r.valueStages, upd.stage)) { card.value = Number(digitsOf(upd.value)); card.terms = upd.terms; }
@@ -1103,7 +1142,7 @@
         if (ADMIN && card.stage !== s.stage) card.closed = has(r.closedStages, card.stage) ? todayKey() : '';
         var replaces = retrying;
         enqueue({ id: upd.saveId, fn: ADMIN ? 'adminPageUpdateSite' : 'repUpdateSite', siteId: openId, input: input, card: card,
-          state: clone(upd), fromStage: base.stage, before: base }, replaces);
+          state: clone(upd), fromStage: upd.seen ? upd.seen.stage : s.stage, base: clone(upd.seen || baseFor(s)) }, replaces);
         store(updKey(openId), null); // the queue carries it now
         retrying = null;
         showList(true);
@@ -1342,11 +1381,15 @@
         retrying = retryEntry || null;
         var draft = retryEntry ? clone(retryEntry.state) : fetchStored(updKey(id));
         upd = draft ? Object.assign(emptyUpdate(s), draft) : emptyUpdate(s);
+        // A form kept from before spec 008 has no `seen`: it saves as it always did.
+        if (draft && !draft.seen) upd.seen = null;
+        if (!upd.touched) upd.touched = {};
         if (!upd.saveId) upd.saveId = newSaveId();
         $('u-phoneNote').hidden = true;
         showOnly('site');
         renderSiteHead(s);
         renderUpdate();
+        if (draft && !retryEntry) rebaseOpenForm();
       }
       function showForm(editId, retryEntry) {
         mode = editId ? { kind: 'edit', siteId: editId } : { kind: 'new' };
@@ -1397,9 +1440,9 @@
       $('f-value').addEventListener('input', function (e) { form.value = e.target.value; clearProblem(); touched(); });
       $('f-note').addEventListener('input', function (e) { form.note = e.target.value; clearProblem(); touched(); });
 
-      $('u-value').addEventListener('input', function (e) { upd.value = e.target.value; updTouched(); });
+      $('u-value').addEventListener('input', function (e) { upd.value = e.target.value; upd.touched.money = true; updTouched(); });
       $('u-note').addEventListener('input', function (e) { upd.note = e.target.value; updTouched(); });
-      $('u-date').addEventListener('change', function (e) { upd.date = e.target.value; updTouched(); });
+      $('u-date').addEventListener('change', function (e) { upd.date = e.target.value; upd.touched.followUp = true; updTouched(); });
       $('u-phone').addEventListener('input', function (e) {
         upd.phone = e.target.value; updTouched();
         $('u-phoneNote').hidden = true;

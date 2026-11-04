@@ -427,8 +427,9 @@ function replyCard_(saver, row) {
  * at that moment (so a save that landed a moment earlier can't be undone or bypassed). Writes
  * only the cells that change, plus one `Activity` row. A salesman reaches only his own sites; the
  * admin any site (spec 008): his row says `admin` in `Activity`, his note starts "Admin: ", and
- * he never resets going cold (`worked_at`, owner P7-5). A form opened on an older state of the
- * site is refused (changedSince_), with the site as it is now.
+ * he never resets going cold (`worked_at`, owner P7-5). What he left as he saw it keeps what the
+ * site has now; a change someone else made to the same thing meanwhile refuses the save
+ * (mergeSeen_), with the site as it is now.
  * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} diary
  * @param {Saver} saver
  * @param {any} siteId
@@ -447,12 +448,13 @@ function saveUpdate_(diary, saver, siteId, input, now, saveId) {
     const row = 'admin' in saver ? anySiteRow_(sites, siteId) : hisRow_(sites, siteId, saver.rep);
     const rep = tidyCode_(row.rep);
     const before = currentSiteOf_(row);
-    if (input && typeof input === 'object' && changedSince_(input.seen, before)) {
+    const merge = mergeSeen_(seenAfterOwnSaves_(key, siteId, input), before, dayKey_(now));
+    if (merge.conflict) {
       return { ok: false, changed: true, message: CHANGED_MESSAGE, site: replyCard_(saver, row) };
     }
     const region = 'admin' in saver ? text_(row.region) : saver.region;
     const choices = choicesFor_(readTab_(diary, DIARY_TABS.lists), region);
-    const checked = checkUpdate_(input, before, choices, dayKey_(now));
+    const checked = checkUpdate_(merge.input, before, choices, dayKey_(now));
     if (!checked.ok) return checked;
     const update = checked.update;
     const warning = update.phone ? phoneOwners_(sites, update.phone, rep) : { team: false, mine: [] };
@@ -577,11 +579,42 @@ function saveSnooze_(diary, salesman, siteId, input, now, saveId) {
 }
 
 /**
- * What a save sent, as text: tells a plain repeat from a resend with different content.
+ * Two people, one site (spec 008): a save of his whose reply never came back may still have
+ * landed. The page sends those saves' IDs (`after`, oldest first); if Google remembers one of
+ * them for this site (oncePerSave_, 6 hours), the site as that save left it is what he saw, so
+ * his own earlier save is never taken for someone else's change.
+ * @param {string} who the save key: a salesman's code or ADMIN_ACTOR
+ * @param {any} siteId
+ * @param {any} input
+ */
+function seenAfterOwnSaves_(who, siteId, input) {
+  if (!input || typeof input !== 'object' || !Array.isArray(input.after) || !input.seen) return input;
+  const cache = CacheService.getScriptCache();
+  let seen = input.seen;
+  for (const id of input.after.slice(0, 10)) {
+    if (typeof id !== 'string' || !/^[A-Za-z0-9]{8,40}$/.test(id)) continue;
+    const stored = cache.get(`save:${who}:${id}`);
+    if (!stored) continue;
+    try {
+      const site = JSON.parse(stored).result.site;
+      if (site && site.id === siteId) {
+        seen = { stage: site.stage, value: site.value, terms: site.terms, lostReason: site.lostReason, followUp: site.followUp };
+      }
+    } catch (e) {
+      // Not a save we can read: what the form says stands.
+    }
+  }
+  return { ...input, seen };
+}
+
+/**
+ * What a save sent, as text: tells a plain repeat from a resend with different content. Not
+ * `seen` or `after` (spec 008): they say what the form was opened on, not what he is saving, so a
+ * retry of a save that landed is still recognised as the same save.
  * @param {any} siteId
  * @param {any} input
  */
 function fingerprintOf_(siteId, input) {
-  const { saveId, ...rest } = input && typeof input === 'object' ? input : { saveId: '' };
+  const { saveId, seen, after, ...rest } = input && typeof input === 'object' ? input : { saveId: '', seen: null, after: null };
   return JSON.stringify([siteId, rest]);
 }

@@ -301,23 +301,53 @@ let browser;
   assert.equal(await page.locator('.card.failed').count(), 0);
   assert.equal(sitesRow('S000002').last_note, 'Admin: call after Friday');
 
-  // ---- Two people, one site: RIA changed it after this screen loaded; the admin's save is refused. ----
+  // ---- Two people, one site (a): RIA changed it after this screen loaded. The admin types a new
+  // value on his old screen: refused, nothing written; reopened, his value stays and the rest shows
+  // RIA's change; saved, RIA's follow-up is kept (never the old screen's "Tomorrow"). ----
+  const followDay = (row) => (row.next_followup instanceof Date ? row.next_followup.getTime() : row.next_followup);
   const riaSave = world.s.repUpdateSite(RIA, 'S000001', { stage: 'Rate Quoted', value: '350000', terms: 'Credit', followUp: '1week', note: 'new rate' });
   assert.equal(riaSave.ok, true);
+  const rias = sitesRow('S000001');
   await tab('late');
   await page.click('#kind-late');
   await card('Late Quote').click();
+  assert.equal(await page.inputValue('#u-value'), '300000', 'his screen still shows the morning');
+  await page.fill('#u-value', '320,000');
   await page.fill('#u-note', 'chase him today');
   await page.click('#save');
   await page.waitForSelector('.card.failed:has-text("Late Quote")');
   assert.equal(await page.locator('.card.failed .meta').last().textContent(),
     'This site was changed a moment ago. Here it is now: check it and save again.');
   assert.equal(await card('Late Quote').locator('.value').textContent(), 'Rs. 350,000 · Credit', 'shown as it is now');
-  assert.equal(sitesRow('S000001').last_note, 'new rate', 'nothing written over his change');
+  assert.deepEqual([sitesRow('S000001').value_rs, followDay(sitesRow('S000001')), sitesRow('S000001').last_note],
+    [350000, followDay(rias), 'new rate'], 'nothing written over his change');
   await page.click('.card.failed:has-text("Late Quote")');
+  assert.equal(await page.textContent('#u-problem'), 'This site was changed a moment ago. Here it is now: check it and save again.');
+  assert.equal(await page.inputValue('#u-value'), '320,000', 'what the admin typed stays');
+  assert.equal(await page.inputValue('#u-note'), 'chase him today');
+  assert.match(await page.textContent('#u-follow .pill[aria-pressed=true]'), /^Keep /, "RIA's follow-up, not the old Tomorrow");
   await page.click('#save');
   await settled();
-  assert.equal(sitesRow('S000001').last_note, 'Admin: chase him today', 'saved once he had seen it');
+  assert.deepEqual([sitesRow('S000001').value_rs, followDay(sitesRow('S000001')), sitesRow('S000001').last_note],
+    [320000, followDay(rias), 'Admin: chase him today'], 'saved once he had seen it: his value, RIA\'s follow-up');
+
+  // ---- Two people, one site (b): his Update form is open; RIA updates the site; the page refreshes
+  // by itself when he comes back; the form shows RIA's change and says so; his note saves without
+  // undoing RIA's follow-up. ----
+  await tab('team');
+  await page.locator('.card.team[data-rep="RIA"] .chip:has-text("Visited / Lead")').click();
+  await card('Fresh Lead').click();
+  const riaAgain = world.s.repUpdateSite(RIA, 'S000002', { stage: 'Visited / Lead', followUp: '1week', note: 'rang him' });
+  assert.equal(riaAgain.ok, true);
+  const rias2 = sitesRow('S000002');
+  await page.evaluate(() => { A.loadedAt = 0; document.dispatchEvent(new Event('visibilitychange')); });
+  await page.waitForSelector('#u-problem:has-text("This site was changed a moment ago. Check and tap Save again.")');
+  assert.equal(await page.textContent('#u-follow .pill[aria-pressed=true]'), `Keep ${short(dayKey(7))}`);
+  await page.fill('#u-note', 'good, keep at it');
+  await page.click('#save');
+  await settled();
+  assert.deepEqual([followDay(sitesRow('S000002')), sitesRow('S000002').last_note], [followDay(rias2), 'Admin: good, keep at it'],
+    "RIA's follow-up stays");
 
   // ---- Refresh: no signal keeps what he has; with signal it reloads. ----
   await page.evaluate(() => { window.__offline = true; });

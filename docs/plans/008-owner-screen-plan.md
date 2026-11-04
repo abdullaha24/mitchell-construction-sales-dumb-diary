@@ -46,7 +46,17 @@
   spec criteria ticked.
 - Mutation checks on key assertions; fresh-clone check; secrets sweep. Done: 315 tests and 7
   browser checks pass on a fresh clone; secrets sweep clean (made-up amounts only, no codes).
-- [ ] Independent review (coordinator).
+- [x] Independent review: security clean. Fixed, each with a check that failed on the old code
+  (mutation-checked: 6 server, 5 page):
+  1. "Saved once" broken after a lost reply (`seen` was in the save's fingerprint): `seen` and
+     `after` left out of it. `queue.check.js` case G; `admin.test.js`.
+  2. A stale form's values could still be saved (refused, then resent unchanged; or a refresh
+     under an open form). Redesigned: `seen` is recorded when the form opens; the server keeps
+     the site's current value for everything he left as he saw it, saves what he changed, and
+     refuses only a real clash; the page re-bases the form (his touched fields kept) on a refusal,
+     a refresh, or a kept draft; `after` names his own unheard saves. `admin.check.js` (a), (b)
+     check `value_rs` and `next_followup`; `queue.check.js` case I; `admin.test.js`.
+  3. An Update kept on a phone from version 9 (no `seen`) saves as before: `queue.check.js` case H.
 
 ## [ ] Step 5: Live (coordinator)
 - Push and update the deployment; owner tests on his phone; TEST rows cleaned up with his OK.

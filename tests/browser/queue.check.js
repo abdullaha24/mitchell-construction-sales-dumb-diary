@@ -246,6 +246,86 @@ const want = (name) => !process.env.ONLY || name.split('/').includes(process.env
     await context.close();
   }
 
+  const fu = (siteRow) => (siteRow[13] instanceof Date ? siteRow[13].toISOString() : siteRow[13]);
+  const activityRows = (world) => world.diary.getSheetByName('Activity').getDataRange().getValues().slice(1);
+
+  if (want('G')) {
+    // Spec 005 + 008: an Update lands but its reply is lost; he taps the orange card and saves it
+    // again unchanged: the same save (seen is not part of it), saved once, nothing left stuck.
+    console.error('case G');
+    const world = buildWorld();
+    const { page, context } = await open(world);
+    await page.evaluate(() => { window.__loseReply = true; });
+    await page.click('.card:has-text("F-11 Tower")');
+    await page.click('#u-stage .pill:has-text("Sample / Trial")');
+    await page.fill('#u-note', 'met him');
+    await page.click('#save');
+    await page.waitForSelector('.card.failed:has-text("F-11 Tower")');
+    await page.evaluate(() => { window.__loseReply = false; });
+    await page.click('.card.failed');
+    await page.click('#save');
+    await page.waitForSelector('#toast:has-text("Saved")');
+    assert.deepEqual(activityRows(world).map((r) => r[4]), ['stage_change'], 'saved once');
+    assert.deepEqual(await failedNames(page), [], 'nothing stuck as not saved');
+    await context.close();
+  }
+
+  if (want('H')) {
+    // An Update kept on the phone by version 9 (no `seen`, no base): after the update, its retry
+    // saves as it always did, never refused as "changed".
+    console.error('case H');
+    const world = buildWorld();
+    const { page, context } = await open(world);
+    await page.evaluate(() => {
+      const card = Object.assign(JSON.parse(JSON.stringify(data.sites[0])), { stage: 'Sample / Trial', note: 'from v9' });
+      const state = { stage: 'Sample / Trial', value: '', terms: '', lostReason: '', followUp: 'tomorrow', date: '', note: 'from v9',
+        phone: '', saveId: 'v9save00001' };
+      const input = { stage: 'Sample / Trial', value: '', terms: '', lostReason: '', followUp: 'tomorrow', note: 'from v9', phone: '',
+        saveId: 'v9save00001' };
+      localStorage.setItem('salesdiary.queue.RIA', JSON.stringify([{ id: 'v9save00001', fn: 'repUpdateSite', siteId: 'S000001',
+        input, card, state, status: 'saving' }]));
+    });
+    await page.reload();
+    await page.click('#tab-all');
+    await page.waitForSelector('.card.failed:has-text("F-11 Tower")');
+    await page.click('.card.failed');
+    await page.click('#save');
+    await page.waitForSelector('#toast:has-text("Saved")');
+    const row = world.diary.getSheetByName('Sites').getDataRange().getValues()[1];
+    assert.deepEqual([row[9], row[14]], ['Sample / Trial', 'from v9'], 'saved as before, not refused');
+    assert.deepEqual(await failedNames(page), []);
+    await context.close();
+  }
+
+  if (want('I')) {
+    // Spec 008: an Update draft kept on the phone, while the site was changed elsewhere (the admin,
+    // or his other phone). Reopening it shows the site as it is now, keeps what he typed, says so;
+    // saving keeps the other change's stage, value and follow-up.
+    console.error('case I');
+    const world = buildWorld();
+    const { page, context, dir } = await open(world);
+    await page.click('.card:has-text("F-11 Tower")');
+    await page.fill('#u-note', 'draft note');
+    const other = world.s.repUpdateSite(RIA, 'S000001', { stage: 'Rate Quoted', value: '500000', terms: 'Cash', followUp: '1week', note: 'other phone' });
+    assert.equal(other.ok, true);
+    const theirs = world.diary.getSheetByName('Sites').getDataRange().getValues()[1];
+    // He opens the app again: Google serves the page with the site as it is now.
+    fs.writeFileSync(path.join(dir, 'app.html'), world.s.doGet({ parameter: { k: RIA } }).getContent());
+    await page.reload();
+    await page.click('#tab-all');
+    await page.click('.card:has-text("F-11 Tower")');
+    assert.equal(await page.textContent('#u-problem'), 'This site was changed a moment ago. Check and tap Save again.');
+    assert.equal(await page.inputValue('#u-note'), 'draft note', 'what he typed stays');
+    assert.equal(await page.getAttribute('#u-stage .pill:has-text("Rate Quoted")', 'aria-pressed'), 'true');
+    assert.equal(await page.inputValue('#u-value'), '500000');
+    assert.match(await page.textContent('#u-follow .pill[aria-pressed=true]'), /^Keep /);
+    await page.click('#save');
+    await page.waitForSelector('#toast:has-text("Saved")');
+    const row = world.diary.getSheetByName('Sites').getDataRange().getValues()[1];
+    assert.deepEqual([row[9], row[10], fu(row), row[14]], ['Rate Quoted', 500000, fu(theirs), 'draft note']);
+    await context.close();
+  }
+
   await browser.close();
   console.log('PASS: the save queue behaves as spec 005 says, in the hard cases.');
 })().catch(async (error) => {
