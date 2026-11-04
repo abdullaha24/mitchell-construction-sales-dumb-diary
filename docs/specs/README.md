@@ -18,3 +18,4 @@ Status values: `Draft` → `Approved` → `In progress` → `Done` (or `Dropped`
 | [001](001-foundations.md) | Foundations: tooling, Sales Diary sheet, reading Meta-Data | Done |
 | [002](002-private-links.md) | Private links: owner makes, sends and cancels links; a link says who you are | Done |
 | [003](003-my-sites.md) | My sites + add a site (numbers stay in the system, duplicate warning, areas) | Done |
+| [004](004-update-site.md) | Update a site: stage, Rs. value + Cash / Credit, lost reason, follow-up, note; edit details | Draft |

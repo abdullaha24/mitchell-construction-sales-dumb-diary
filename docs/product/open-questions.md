@@ -70,3 +70,7 @@ Owner, session 3 (2026-11-04):
 | P3-2 | Spec 003: pick a follow-up date when adding a site? | **Yes, Tomorrow pre-picked** (3 days / 1 week / Pick date also offered). |
 | P3-3 | Spec 003: Save with no signal? | **Keep what he typed on the phone; he taps Save again.** No automatic sending later. |
 | P3-4 | Spec 003: how to stop number hoarding while the phone is optional? | **All three:** a second tap to save without a number; no Sample / Trial, Rate Quoted or Won without a number (phase 4); the owner sees how many sites each salesman has with no number. |
+| P4-1 | Spec 004: what is the Rs. value at Rate Quoted / Won? | **The total quote / order value** in Rs. (so Won Rs. can be added up against targets). Per-bag rates go in the note. |
+| P4-2 | Spec 004: is the Rs. value required? | **Yes, at both Rate Quoted and Won (Order)**, with a Cash / Credit tap. |
+| P4-3 | Spec 004: follow-up date after Won or Lost? | **Neither:** Won and Lost sites have no follow-up and leave Today's Chase. |
+| P4-4 | Spec 004: can a salesman move a site backwards or reopen Won / Lost? | **Yes, any stage.** Every change is kept in the history. |
