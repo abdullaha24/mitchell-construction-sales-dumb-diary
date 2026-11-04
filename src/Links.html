@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <base target="_top">
+    <meta charset="utf-8">
+    <style>
+      body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+             font-size: 14px; color: #1f2933; margin: 0; padding: 0 4px; }
+      #status { min-height: 20px; margin: 4px 0 8px; color: #52606d; }
+      #status.error { color: #b42318; }
+      .person { border-top: 1px solid #e4e7eb; padding: 10px 0; }
+      .name { font-weight: 600; font-size: 15px; }
+      .region { color: #7b8794; font-weight: 400; margin-left: 6px; }
+      .made { color: #52606d; margin: 2px 0 6px; }
+      .link { width: 100%; box-sizing: border-box; font-family: monospace; font-size: 12px;
+              padding: 4px; margin-bottom: 6px; }
+      .buttons { display: flex; flex-wrap: wrap; gap: 6px; }
+      button, a.button { font: inherit; padding: 6px 12px; border: 1px solid #9aa5b1;
+                         border-radius: 4px; background: #fff; color: #1f2933; cursor: pointer;
+                         text-decoration: none; }
+      button.confirm { background: #fde8e8; border-color: #b42318; color: #b42318; }
+      button:disabled { opacity: 0.5; cursor: default; }
+      .note { color: #52606d; font-size: 12px; margin-top: 12px; }
+    </style>
+  </head>
+  <body>
+    <div id="status">Loading…</div>
+    <div id="people"></div>
+    <p class="note">Anyone with a link can use the diary as that person. Send each link only to
+      its owner. Never share the Sales Diary sheet.</p>
+    <script>
+      // Everything from the server is put on the page with textContent, never as HTML.
+      var CONFIRM_MS = 6000;
+      var busy = false;
+
+      function setStatus(text, isError) {
+        var status = document.getElementById('status');
+        status.textContent = text;
+        status.className = isError ? 'error' : '';
+      }
+
+      function setBusy(value) {
+        busy = value;
+        var buttons = document.querySelectorAll('button');
+        for (var i = 0; i < buttons.length; i++) buttons[i].disabled = value;
+      }
+
+      function call(name, who, doneText) {
+        setBusy(true);
+        setStatus('Working…');
+        google.script.run
+          .withSuccessHandler(function (result) { render(result); if (result && result.ok) setStatus(doneText); })
+          .withFailureHandler(function (error) {
+            setBusy(false);
+            setStatus((error && error.message) || 'Something went wrong. Try again.', true);
+          })[name](who);
+      }
+
+      // A button that needs a second tap to confirm. The first tap changes its words.
+      function confirmButton(label, confirmLabel, onConfirm) {
+        var button = el('button', label);
+        var armed = false;
+        var timer = null;
+        button.addEventListener('click', function () {
+          if (busy) return;
+          if (!armed) {
+            armed = true;
+            button.textContent = confirmLabel;
+            button.className = 'confirm';
+            timer = setTimeout(function () {
+              armed = false; button.textContent = label; button.className = '';
+            }, CONFIRM_MS);
+            return;
+          }
+          clearTimeout(timer);
+          onConfirm();
+        });
+        return button;
+      }
+
+      function el(tag, text, className) {
+        var node = document.createElement(tag);
+        if (text !== undefined) node.textContent = text;
+        if (className) node.className = className;
+        return node;
+      }
+
+      function copyLink(input, button) {
+        function selectIt() {
+          input.focus();
+          input.select();
+          setStatus('Selected: press Ctrl+C to copy.');
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(input.value).then(function () {
+            button.textContent = 'Copied';
+            setTimeout(function () { button.textContent = 'Copy'; }, 2000);
+          }, selectIt);
+        } else {
+          selectIt();
+        }
+      }
+
+      function personRow(person) {
+        var box = el('div', undefined, 'person');
+        var name = el('div', person.label, 'name');
+        if (person.region) name.appendChild(el('span', person.region, 'region'));
+        box.appendChild(name);
+        box.appendChild(el('div', person.link ? 'Link made ' + person.made : 'No link', 'made'));
+
+        var buttons = el('div', undefined, 'buttons');
+        var who = person.who;
+        var whose = who === 'owner' ? 'your' : who + "'s";
+        var Whose = who === 'owner' ? 'Your' : who + "'s";
+        if (person.link) {
+          var input = el('input', undefined, 'link');
+          input.readOnly = true;
+          input.value = person.link;
+          box.appendChild(input);
+
+          var copy = el('button', 'Copy');
+          copy.addEventListener('click', function () { copyLink(input, copy); });
+          buttons.appendChild(copy);
+
+          var whatsapp = el('a', 'Send on WhatsApp', 'button');
+          whatsapp.href = 'https://wa.me/?text=' + encodeURIComponent(person.message);
+          whatsapp.target = '_blank';
+          whatsapp.rel = 'noopener noreferrer';
+          buttons.appendChild(whatsapp);
+
+          buttons.appendChild(confirmButton('New link', 'Tap again: ' + Whose + ' old link will stop working',
+            function () { call('ownerNewLink', who, 'New link made.'); }));
+          buttons.appendChild(confirmButton('Cancel link', 'Tap again to cancel ' + whose + ' link',
+            function () { call('ownerCancelLink', who, 'Link cancelled.'); }));
+        } else {
+          var make = el('button', 'New link');
+          make.addEventListener('click', function () {
+            if (!busy) call('ownerNewLink', who, 'Link made.');
+          });
+          buttons.appendChild(make);
+        }
+        box.appendChild(buttons);
+        return box;
+      }
+
+      function render(result) {
+        var people = document.getElementById('people');
+        people.textContent = '';
+        busy = false;
+        if (!result || !result.ok) {
+          setStatus((result && result.message) || 'Something went wrong. Try again.', true);
+          return;
+        }
+        setStatus('');
+        for (var i = 0; i < result.rows.length; i++) people.appendChild(personRow(result.rows[i]));
+      }
+
+      google.script.run
+        .withSuccessHandler(render)
+        .withFailureHandler(function (error) {
+          setStatus((error && error.message) || 'Something went wrong. Try again.', true);
+        })
+        .ownerListLinks();
+    </script>
+  </body>
+</html>

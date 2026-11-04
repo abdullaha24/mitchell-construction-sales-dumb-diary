@@ -298,6 +298,11 @@ function makeUi() {
     alerts: [],
     /** Every menu added: { name, items: [{ caption, functionName }] }. */
     menus: [],
+    /** Every dialog shown: { output, title }. */
+    dialogs: [],
+    showModalDialog(output, title) {
+      ui.dialogs.push({ output, title });
+    },
     alert(...args) {
       ui.alerts.push({ args });
       return 'OK';
@@ -340,6 +345,8 @@ function makeHtmlOutput(content) {
     getTitle: () => title,
     setTitle(t) { title = t; return output; },
     addMetaTag(n, c) { metaTags.push({ name: n, content: c }); return output; },
+    setWidth(w) { output._width = w; return output; },
+    setHeight(h) { output._height = h; return output; },
     /** Test helper. */
     _metaTags: metaTags,
   };

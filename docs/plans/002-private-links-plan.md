@@ -38,7 +38,7 @@
 - Tests: each case; junk codes open no sheet; no code in any page or error.
 - Commit: "Serve Hello / no-link pages from the link code".
 
-## [ ] Step 4: Links window
+## [x] Step 4: Links window
 - `menu.js`: `Sales Diary → Links` (`menuLinks`). `src/linkswindow.js`: `ownerListLinks`,
   `ownerNewLink`, `ownerCancelLink`. `src/Links.html`: rows, New / Copy / Send on WhatsApp /
   Cancel with a confirming second tap; built with `textContent`, never `innerHTML` from data.

@@ -16,6 +16,7 @@ function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('Sales Diary')
     .addItem('Check setup', 'menuCheckSetup')
+    .addItem('Links', 'menuLinks')
     .addToUi();
 }
 

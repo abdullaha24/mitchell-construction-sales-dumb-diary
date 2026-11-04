@@ -58,12 +58,15 @@ function world(options = {}) {
 
 // ----------------------------------------------------------------------------------- Safety
 
-test('the only public functions are doGet, onOpen and menuCheckSetup', () => {
+test('the only public functions are the 7 spec 002 lists', () => {
   const { src } = world();
   const publicFunctions = Object.keys(src.sandbox)
     .filter((name) => !src.globalNamesBefore.has(name))
     .filter((name) => typeof src.sandbox[name] === 'function' && !name.endsWith('_'));
-  assert.deepEqual(publicFunctions.sort(), ['doGet', 'menuCheckSetup', 'onOpen']);
+  assert.deepEqual(publicFunctions.sort(), [
+    'doGet', 'menuCheckSetup', 'menuLinks', 'onOpen',
+    'ownerCancelLink', 'ownerListLinks', 'ownerNewLink',
+  ]);
 });
 
 test('no top-level const, let or var holds a function (would dodge the check above)', () => {
@@ -103,22 +106,26 @@ test('the signed-in check needs both emails, and the same one', () => {
 
 // -------------------------------------------------------------------------------- Check setup
 
-test('onOpen adds Sales Diary → Check setup, and nothing else', () => {
+test('onOpen adds Sales Diary → Check setup and Links, and nothing else', () => {
   const { src, ui, diary, calls } = world({ activeEmail: '', effectiveEmail: OWNER });
   src.sandbox.onOpen(); // no signed-in check: Google may not give the email in onOpen
   assert.deepEqual(JSON.parse(JSON.stringify(ui.menus)), [
-    { name: 'Sales Diary', items: [{ caption: 'Check setup', functionName: 'menuCheckSetup' }] },
+    { name: 'Sales Diary', items: [
+      { caption: 'Check setup', functionName: 'menuCheckSetup' },
+      { caption: 'Links', functionName: 'menuLinks' },
+    ] },
   ]);
   assert.deepEqual(diary._writes(), []);
   assert.deepEqual(calls, { openById: 0, getActiveSpreadsheet: 0 });
 });
 
-test('the menu item calls a function that exists and is public', () => {
+test('every menu item calls a function that exists and is public', () => {
   const { src, ui } = world();
   src.sandbox.onOpen();
-  const functionName = ui.menus[0].items[0].functionName;
-  assert.equal(typeof src.sandbox[functionName], 'function');
-  assert.ok(!functionName.endsWith('_'));
+  for (const { functionName } of ui.menus[0].items) {
+    assert.equal(typeof src.sandbox[functionName], 'function', functionName);
+    assert.ok(!functionName.endsWith('_'));
+  }
 });
 
 test('a full run creates the tabs and shows the summary; Meta-Data is untouched', () => {
