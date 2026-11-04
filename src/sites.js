@@ -176,12 +176,14 @@ function dayText_(value) {
 }
 
 /**
- * A phone cell in tidy form; if it can't be tidied (typed by hand), as it is.
+ * A phone cell in tidy form, or '' if it isn't a real number (blank, or junk typed by hand such
+ * as "-" or "n/a"): such a site has "No number yet" and must get one before Sample / Trial,
+ * Rate Quoted or Won (owner P3-4).
  * @param {any} value
  */
 function phoneText_(value) {
   const tidy = tidyPhone_(value);
-  return tidy.ok ? tidy.phone : String(value).trim();
+  return tidy.ok ? tidy.phone : '';
 }
 
 /**
@@ -251,7 +253,8 @@ const SAVE_ID_SECONDS = 21600;
 
 /**
  * Saves a checked new site for a salesman, inside the script lock: the `Sites` row, the
- * `created` row in `Activity`, and a new area in `Lists` if needed. Returns the new site ID.
+ * `created` row in `Activity`, and a new area in `Lists` if needed. Returns oncePerSave_'s
+ * outcome (result: the new site ID).
  * `saveId` is the page's one-time ID for this form: if a save with it already went through
  * (the reply was lost on a weak signal and he tapped Save again), nothing is saved twice.
  * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} diary
@@ -259,9 +262,10 @@ const SAVE_ID_SECONDS = 21600;
  * @param {NewSite} site
  * @param {Date} now
  * @param {string} [saveId]
+ * @param {string} [fingerprint] what was sent, to tell a plain repeat from a changed resend
  */
-function saveNewSite_(diary, salesman, site, now, saveId) {
-  return oncePerSave_(salesman.rep, saveId, () => {
+function saveNewSite_(diary, salesman, site, now, saveId, fingerprint = '') {
+  return oncePerSave_(salesman.rep, saveId, fingerprint, 'report', () => {
     const sites = readTab_(diary, DIARY_TABS.sites);
     const activity = readTab_(diary, DIARY_TABS.activity);
     const lists = readTab_(diary, DIARY_TABS.lists);
@@ -289,62 +293,105 @@ function saveNewSite_(diary, salesman, site, now, saveId) {
   });
 }
 
+
+
+
+
 /**
- * Runs a save inside the script lock, once per one-time save ID: if a save with this ID
- * already went through (the reply was lost and he tapped Save again), it isn't done twice.
+ * What oncePerSave_ did: `repeat` when this one-time save ID was already saved; `changed` when
+ * the repeat carried different content (then `redo` ran the work again, `report` didn't).
+ * @typedef {{ repeat: boolean, changed: boolean, result: any }} SaveOutcome
+ */
+
+/**
+ * Runs a save inside the script lock, once per one-time save ID: if a save with this ID already
+ * went through (the reply was lost and he tapped Save again), it isn't done twice. A failure
+ * ({ ok: false }) is never remembered, so he can fix it and save again.
  * @param {string} rep
  * @param {string | undefined} saveId
- * @param {() => string} work returns the site ID it saved
- * @returns {string}
+ * @param {string} fingerprint what was sent
+ * @param {'redo' | 'report'} ifChanged a repeat with different content: run again (updates
+ *   just set the latest state) or only report it (a new site must not be made twice)
+ * @param {() => any} work
+ * @returns {SaveOutcome}
  */
-function oncePerSave_(rep, saveId, work) {
+function oncePerSave_(rep, saveId, fingerprint, ifChanged, work) {
   return withScriptLock_(() => {
     const cache = CacheService.getScriptCache();
     const cacheKey = saveId ? `save:${rep}:${saveId}` : '';
-    const already = cacheKey ? cache.get(cacheKey) : null;
-    if (already) return already;
+    const stored = cacheKey ? cache.get(cacheKey) : null;
+    if (stored) {
+      /** @type {{ fingerprint?: string, result?: any }} */
+      let earlier = {};
+      try { earlier = JSON.parse(stored); } catch (e) { /* from an older version: a plain repeat */ }
+      const changed = earlier.fingerprint !== undefined && earlier.fingerprint !== fingerprint;
+      if (!changed || ifChanged === 'report') return { repeat: true, changed, result: earlier.result };
+    }
     const result = work();
-    if (cacheKey) cache.put(cacheKey, result, SAVE_ID_SECONDS);
-    return result;
+    if (cacheKey && !(result && result.ok === false)) {
+      cache.put(cacheKey, JSON.stringify({ fingerprint, result }), SAVE_ID_SECONDS);
+    }
+    return { repeat: false, changed: false, result };
   });
 }
 
 const NOT_YOURS_MESSAGE = "That site isn't in your list.";
 
 /**
- * Saves an Update (spec 004) to one of his sites: only the cells that change, plus one
- * `Activity` row. The row is found again inside the lock, by site ID and his code.
+ * His site as it is right now, found by ID and his code (inside the lock when called from a
+ * save). Throws the "isn't in your list" message if it isn't his.
+ * @param {Tab} sites
+ * @param {any} siteId
+ * @param {string} rep
+ */
+function hisRow_(sites, siteId, rep) {
+  const row = findHisRow_(sites, siteId, rep);
+  if (!row) throw new Error(NOT_YOURS_MESSAGE);
+  return row;
+}
+
+/**
+ * Checks and saves an Update (spec 004) to one of his sites, **inside the lock**, against the
+ * row as it is at that moment (so a save that landed a moment earlier can't be undone or
+ * bypassed). Writes only the cells that change, plus one `Activity` row.
  * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} diary
  * @param {{ rep: string, region: string }} salesman
- * @param {string} siteId
- * @param {SiteUpdate} update
+ * @param {any} siteId
+ * @param {any} input what the page sent
+ * @param {{ lostReasons: string[] }} choices
  * @param {Date} now
- * @param {string} [saveId]
+ * @param {string} saveId
+ * @returns {SaveOutcome} result: { ok: true, warning } or { ok: false, message }
  */
-function saveUpdate_(diary, salesman, siteId, update, now, saveId) {
-  return oncePerSave_(salesman.rep, saveId, () => {
+function saveUpdate_(diary, salesman, siteId, input, choices, now, saveId) {
+  return oncePerSave_(salesman.rep, saveId, fingerprintOf_(siteId, input), 'redo', () => {
     const sites = readTab_(diary, DIARY_TABS.sites);
     const activity = readTab_(diary, DIARY_TABS.activity);
-    const row = findHisRow_(sites, siteId, salesman.rep);
-    if (!row) throw new Error(NOT_YOURS_MESSAGE);
+    const row = hisRow_(sites, siteId, salesman.rep);
     const before = currentSiteOf_(row);
+    const checked = checkUpdate_(input, before, choices, dayKey_(now));
+    if (!checked.ok) return checked;
+    const update = checked.update;
+    const warning = update.phone ? phoneOwners_(sites, update.phone, salesman.rep) : { team: false, mine: [] };
     const followUp = update.followUp ? dayStart_(update.followUp) : '';
+    const valueStage = VALUE_STAGES.includes(update.stage);
 
+    // Only what changes: a value or reason the owner typed by hand is never overwritten by an
+    // unrelated update.
     /** @type {Object<string, any>} */
-    const cells = {
-      stage: asText_(update.stage),
-      value_rs: update.value === null ? '' : update.value,
-      payment_terms: asText_(update.terms),
-      lost_reason: asText_(update.lostReason),
-      next_followup: followUp,
-      updated_at: now,
-    };
+    const cells = { updated_at: now };
+    if (update.stage !== before.stage) cells.stage = asText_(update.stage);
+    if (valueStage && (update.value !== before.value || update.terms !== before.terms)) {
+      cells.value_rs = update.value;
+      cells.payment_terms = asText_(update.terms);
+    }
+    if (update.lostReason !== before.lostReason) cells.lost_reason = asText_(update.lostReason);
+    if (update.followUp !== before.followUp) cells.next_followup = followUp;
     if (update.note) cells.last_note = asText_(update.note);
     if (update.phone) cells.contact_phone = update.phone;
     setCells_(sites, row._row, cells, ['contact_phone']);
 
     const stageChanged = update.stage !== before.stage;
-    const valueStage = VALUE_STAGES.includes(update.stage);
     appendRows_(activity.sheet, [rowFor_(activity.columns, {
       activity_id: nextId_(activity.rows.map((r) => r.activity_id), 'A', 7),
       timestamp: now, rep: asText_(salesman.rep), site_id: siteId,
@@ -357,28 +404,37 @@ function saveUpdate_(diary, salesman, siteId, update, now, saveId) {
       note: asText_([update.note, update.phone ? `Phone added ${update.phone}` : ''].filter(Boolean).join(' · ')),
       next_followup: followUp,
     })]);
-    return siteId;
+    return { ok: true, warning };
   });
 }
 
 /**
- * Saves Edit details (spec 004) to one of his sites: the changed fields, a new area if any,
- * and one `details` row in `Activity` listing what changed (old → new number).
+ * Checks and saves Edit details (spec 004) for one of his sites, **inside the lock**, against
+ * the row as it is at that moment (so a number added a moment ago can't be removed). Writes the
+ * fields, a new area if any, and one `details` row in `Activity` listing what changed.
  * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} diary
  * @param {{ rep: string, region: string }} salesman
- * @param {string} siteId
- * @param {SiteFields} fields
- * @param {string[]} changes
+ * @param {any} siteId
+ * @param {any} input what the page sent
+ * @param {{ buyerTypes: string[], categories: string[], areas: string[] }} choices
  * @param {Date} now
- * @param {string} [saveId]
+ * @param {string} saveId
+ * @returns {SaveOutcome} result: { ok: true, warning } or { ok: false, message }
  */
-function saveDetails_(diary, salesman, siteId, fields, changes, now, saveId) {
-  return oncePerSave_(salesman.rep, saveId, () => {
+function saveDetails_(diary, salesman, siteId, input, choices, now, saveId) {
+  return oncePerSave_(salesman.rep, saveId, fingerprintOf_(siteId, input), 'redo', () => {
     const sites = readTab_(diary, DIARY_TABS.sites);
     const activity = readTab_(diary, DIARY_TABS.activity);
     const lists = readTab_(diary, DIARY_TABS.lists);
-    const row = findHisRow_(sites, siteId, salesman.rep);
-    if (!row) throw new Error(NOT_YOURS_MESSAGE);
+    const row = hisRow_(sites, siteId, salesman.rep);
+    const before = currentSiteOf_(row);
+    const checked = checkDetails_(input, before, choices);
+    if (!checked.ok) return checked;
+    const fields = checked.fields;
+    let warning = { team: false, mine: /** @type {string[]} */ ([]) };
+    if (fields.phone && fields.phone !== before.phone) {
+      warning = phoneOwners_({ ...sites, rows: sites.rows.filter((r) => r !== row) }, fields.phone, salesman.rep);
+    }
     const area = saveArea_(lists, salesman, fields.area, fields.newArea);
     setCells_(sites, row._row, {
       site_name: asText_(fields.name), buyer_type: asText_(fields.buyerType),
@@ -388,8 +444,18 @@ function saveDetails_(diary, salesman, siteId, fields, changes, now, saveId) {
     appendRows_(activity.sheet, [rowFor_(activity.columns, {
       activity_id: nextId_(activity.rows.map((r) => r.activity_id), 'A', 7),
       timestamp: now, rep: asText_(salesman.rep), site_id: siteId, action: 'details',
-      note: asText_(changes.join('; ')),
+      note: asText_(checked.changes.join('; ')),
     })]);
-    return siteId;
+    return { ok: true, warning };
   });
+}
+
+/**
+ * What a save sent, as text: tells a plain repeat from a resend with different content.
+ * @param {any} siteId
+ * @param {any} input
+ */
+function fingerprintOf_(siteId, input) {
+  const { saveId, ...rest } = input && typeof input === 'object' ? input : { saveId: '' };
+  return JSON.stringify([siteId, rest]);
 }

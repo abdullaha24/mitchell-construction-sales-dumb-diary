@@ -100,8 +100,12 @@ function repAddSite(k, input) {
     const warning = checked.site.phone
       ? phoneOwners_(readTab_(diary, DIARY_TABS.sites), checked.site.phone, salesman.rep)
       : { team: false, mine: [] };
-    saveNewSite_(diary, salesman, checked.site, now, saveId);
-    return { ...loadFor_(salesman), warning };
+    const outcome = saveNewSite_(diary, salesman, checked.site, now, saveId, fingerprintOf_('', input));
+    // The same form sent again with changes after its first save landed: never make the site
+    // twice; tell him it's already saved.
+    const notice = outcome.repeat && outcome.changed
+      ? 'This site was already saved. Open it from your list to change anything.' : '';
+    return { ...loadFor_(salesman), warning, notice };
   });
 }
 
@@ -113,22 +117,11 @@ function saveIdOf_(input) {
   return input && typeof input.saveId === 'string' && /^[A-Za-z0-9]{8,40}$/.test(input.saveId) ? input.saveId : '';
 }
 
-/**
- * His site as it is now, or the "isn't in your list" error. Only his own sites are found.
- * @param {Tab} sites
- * @param {any} siteId
- * @param {string} rep
- */
-function hisSite_(sites, siteId, rep) {
-  const row = findHisRow_(sites, siteId, rep);
-  if (!row) throw new Error(NOT_YOURS_MESSAGE);
-  return currentSiteOf_(row);
-}
 
 /**
  * Saves an Update to one of his sites (spec 004) and returns his refreshed page data, or
- * { ok: false, message } if something needs fixing. If he added a number on the way, `warning`
- * repeats the duplicate check for it.
+ * { ok: false, message } if something needs fixing. The check runs inside the lock (see
+ * saveUpdate_). If he added a number on the way, `warning` repeats the duplicate check.
  * @param {any} k his link code
  * @param {any} siteId
  * @param {any} input { stage, value, terms, lostReason, followUp, note, phone, saveId }
@@ -137,24 +130,17 @@ function repUpdateSite(k, siteId, input) {
   return forSalesman_(() => {
     const salesman = requireRep_(k);
     const diary = openSalesDiary_();
-    const now = new Date();
-    const sites = readTab_(diary, DIARY_TABS.sites);
-    const current = hisSite_(sites, siteId, salesman.rep);
     const choices = choicesFor_(readTab_(diary, DIARY_TABS.lists), salesman.region);
-    const checked = checkUpdate_(input, current, choices, dayKey_(now));
-    if (!checked.ok) return checked;
-    const warning = checked.update.phone
-      ? phoneOwners_(sites, checked.update.phone, salesman.rep)
-      : { team: false, mine: [] };
-    saveUpdate_(diary, salesman, siteId, checked.update, now, saveIdOf_(input));
-    return { ...loadFor_(salesman), warning };
+    const outcome = saveUpdate_(diary, salesman, siteId, input, choices, new Date(), saveIdOf_(input));
+    if (!outcome.result.ok) return outcome.result;
+    return { ...loadFor_(salesman), warning: outcome.result.warning };
   });
 }
 
 /**
  * Saves Edit details for one of his sites (spec 004) and returns his refreshed page data, or
- * { ok: false, message }. If the number changed, `warning` repeats the duplicate check for it
- * (his other sites only; this site itself isn't counted).
+ * { ok: false, message }. The check runs inside the lock (see saveDetails_). If the number
+ * changed, `warning` repeats the duplicate check (his other sites only).
  * @param {any} k his link code
  * @param {any} siteId
  * @param {any} input { name, buyerType, contactName, phone, products, area, saveId }
@@ -163,17 +149,9 @@ function repEditSite(k, siteId, input) {
   return forSalesman_(() => {
     const salesman = requireRep_(k);
     const diary = openSalesDiary_();
-    const sites = readTab_(diary, DIARY_TABS.sites);
-    const current = hisSite_(sites, siteId, salesman.rep);
     const choices = choicesFor_(readTab_(diary, DIARY_TABS.lists), salesman.region);
-    const checked = checkDetails_(input, current, choices);
-    if (!checked.ok) return checked;
-    let warning = { team: false, mine: /** @type {string[]} */ ([]) };
-    if (checked.fields.phone && checked.fields.phone !== current.phone) {
-      const others = { ...sites, rows: sites.rows.filter((r) => text_(r.site_id) !== siteId) };
-      warning = phoneOwners_(others, checked.fields.phone, salesman.rep);
-    }
-    saveDetails_(diary, salesman, siteId, checked.fields, checked.changes, new Date(), saveIdOf_(input));
-    return { ...loadFor_(salesman), warning };
+    const outcome = saveDetails_(diary, salesman, siteId, input, choices, new Date(), saveIdOf_(input));
+    if (!outcome.result.ok) return outcome.result;
+    return { ...loadFor_(salesman), warning: outcome.result.warning };
   });
 }

@@ -69,7 +69,11 @@ function stub() {
         return (...args) => {
           window.__calls.push(prop);
           window.__server(prop, JSON.stringify(args)).then(
-            (json) => success && success(JSON.parse(json)),
+            (json) => {
+              // The server did the work, but the reply never reaches the phone.
+              if (window.__loseReply) return failure && failure({ message: 'NetworkError: Connection failure due to HTTP 0' });
+              return success && success(JSON.parse(json));
+            },
             (error) => failure && failure({ message: String(error.message || error).replace(/^Error: /, '') }));
         };
       },
@@ -130,15 +134,30 @@ function stub() {
     ['Rate Quoted', 450000, 'Credit', 'WP-100 @ 1,450']);
   if (shots) await page.screenshot({ path: path.join(shots, 'update-list.png') });
 
-  // ---- Won: no follow-up asked; value shown again. ----
+  // ---- A site with a date ahead keeps it unless he picks another; Back throws away the draft. ----
   await openSite('F-11 Tower');
+  const firstFollow = page.locator('#u-follow .pill').first();
+  assert.match(await firstFollow.textContent(), /^Keep \d+ \w{3}$/);
+  assert.equal(await firstFollow.getAttribute('aria-pressed'), 'true');
+  await page.fill('#u-note', 'not saved');
+  await page.click('#cancel');
+  await openSite('F-11 Tower');
+  assert.equal(await page.inputValue('#u-note'), '', 'Back threw the unsaved update away');
+
+  // ---- Won: no follow-up asked; value shown again. A correction after a lost reply is saved. ----
   await page.click('#u-stage .pill:has-text("Won (Order)")');
   assert.equal(await page.isHidden('#u-followBox'), true);
   assert.equal(await page.inputValue('#u-value'), '450000');
   assert.equal(await page.getAttribute('#u-terms .pill:has-text("Credit")', 'aria-pressed'), 'true');
+  await page.evaluate(() => { window.__loseReply = true; });
+  await save();
+  await page.waitForSelector('#u-problem:has-text("no signal")');
+  assert.equal(row(1).value_rs, 450000, 'the first save did land');
+  await page.fill('#u-value', '600,000');
+  await page.evaluate(() => { window.__loseReply = false; });
   await save();
   await page.waitForSelector('#toast:has-text("Saved")');
-  assert.deepEqual([row(1).stage, row(1).next_followup], ['Won (Order)', '']);
+  assert.deepEqual([row(1).stage, row(1).next_followup, row(1).value_rs], ['Won (Order)', '', 600000], 'the correction was saved');
 
   // ---- Lost: a reason; Other needs a note. ----
   await openSite('F-11 Tower');
@@ -153,8 +172,10 @@ function stub() {
   await save();
   await page.waitForSelector('#toast:has-text("Saved")');
   assert.deepEqual([row(1).stage, row(1).lost_reason, row(1).last_note], ['Lost / Dead', 'Other', 'went with a local brand']);
-  assert.deepEqual(activity().map((a) => `${a[4]} ${a[5]}>${a[6]}`),
-    ['stage_change Visited / Lead>Rate Quoted', 'stage_change Rate Quoted>Won (Order)', 'stage_change Won (Order)>Lost / Dead']);
+  assert.deepEqual(activity().map((a) => `${a[4]} ${a[5]}>${a[6]}`), [
+    'stage_change Visited / Lead>Rate Quoted', 'stage_change Rate Quoted>Won (Order)',
+    'update >', 'stage_change Won (Order)>Lost / Dead',
+  ], 'the corrected Won is a second history row (same stage: an update)');
 
   // ---- The number gate on a site without a number. ----
   await openSite('Blue Area');

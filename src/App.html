@@ -257,7 +257,8 @@
       }
       function savedToast(r) {
         var w = r.warning || {};
-        if (w.team) toast('Saved. Someone in the team already works with this contact.');
+        if (r.notice) toast(r.notice);
+        else if (w.team) toast('Saved. Someone in the team already works with this contact.');
         else if (w.mine && w.mine.length) toast('Saved. You already have this number: ' + w.mine.join(', ') + '.');
         else toast('Saved');
       }
@@ -273,6 +274,12 @@
         }, SAVE_WAIT_MS);
         var run = google.script.run.withSuccessHandler(function (r) {
           clearTimeout(giveUp);
+          if (attempt !== send.attempt) {
+            // A late answer to a save he has since given up on or replaced: keep the fresh list,
+            // but don't move him or touch what he is typing now.
+            if (r && r.ok) { var oldK = k; data = r; data.k = oldK; if (screen === 'list') renderList(); }
+            return;
+          }
           busy = false; confirmNoNumber = false;
           if (!r || !r.ok) { renderSave(); return problem((r && r.message) || 'Something went wrong. Try again.'); }
           var keepK = k;
@@ -331,9 +338,12 @@
       }
 
       // ---- Site screen: details and Update (spec 004) ----
+      // A site that already has a date from today on keeps it unless he picks another.
+      function keepsDate(s) { return !!s.followUp && s.followUp >= data.today; }
       function emptyUpdate(s) {
-        return { stage: s.stage, value: s.value ? String(s.value) : '', terms: s.terms, lostReason: s.lostReason,
-          followUp: 'tomorrow', date: '', note: '', phone: '', saveId: newSaveId() };
+        return { stage: s.stage, value: s.value ? String(s.value) : '', terms: s.terms,
+          lostReason: has(data.lostReasons, s.lostReason) ? s.lostReason : '',
+          followUp: keepsDate(s) ? 'keep' : 'tomorrow', date: '', note: '', phone: '', saveId: newSaveId() };
       }
       function renderSiteHead(s) {
         var head = $('siteHead'); head.textContent = '';
@@ -372,7 +382,8 @@
         $('u-phone').value = upd.phone;
         $('u-followBox').hidden = has(r.closedStages, upd.stage);
         var follow = $('u-follow'); follow.textContent = '';
-        FOLLOW.forEach(function (f) {
+        var options = keepsDate(s) ? [['keep', 'Keep ' + shortDay(s.followUp)]].concat(FOLLOW) : FOLLOW;
+        options.forEach(function (f) {
           follow.appendChild(pill(f[1], upd.followUp === f[0], function () { upd.followUp = f[0]; updChanged(); }));
         });
         $('u-date').hidden = upd.followUp !== 'date';
@@ -384,7 +395,9 @@
         $('u-noteOpt').textContent = noteNeeded ? '(needed for Other)' : '(optional)';
         renderSave();
       }
-      function updChanged() { clearProblem(); store(updKey(openId), upd); renderUpdate(); }
+      // Any change makes it a new save: a corrected resend is saved, not taken for a repeat.
+      function updTouched() { upd.saveId = newSaveId(); clearProblem(); store(updKey(openId), upd); }
+      function updChanged() { updTouched(); renderUpdate(); }
       function saveUpdate() {
         if (busy) return;
         var s = siteById(openId);
@@ -405,9 +418,10 @@
         }
         if (!has(r.closedStages, upd.stage) && upd.followUp === 'date' && !upd.date) return problem('Pick a follow-up date.');
         clearProblem();
+        var followUp = upd.followUp === 'date' ? upd.date : upd.followUp === 'keep' ? s.followUp : upd.followUp;
         var input = {
           stage: upd.stage, value: upd.value, terms: upd.terms, lostReason: upd.lostReason,
-          followUp: upd.followUp === 'date' ? upd.date : upd.followUp, note: upd.note, phone: upd.phone, saveId: upd.saveId,
+          followUp: followUp, note: upd.note, phone: upd.phone, saveId: upd.saveId,
         };
         var id = openId;
         send('repUpdateSite', [k, id, input], problem, function (reply) {
@@ -447,7 +461,8 @@
           buyer.appendChild(pill(t, form.buyerType === t, function () { form.buyerType = t; changed(); }));
         });
         var products = $('f-products'); products.textContent = '';
-        data.categories.forEach(function (c) {
+        var categoryList = data.categories.concat(form.products.filter(function (p) { return !has(data.categories, p); }));
+        categoryList.forEach(function (c) {
           var on = form.products.indexOf(c) >= 0;
           products.appendChild(pill(c, on, function () {
             form.products = on ? form.products.filter(function (p) { return p !== c; }) : form.products.concat([c]);
@@ -480,10 +495,16 @@
         $('f-date').value = form.date;
         renderSave();
       }
+      // In Edit details any change makes it a new save (a corrected resend is saved). A new site
+      // keeps its ID, so it can never be made twice; the server says if it was already saved.
+      function touched() {
+        if (mode.kind === 'edit') form.saveId = newSaveId();
+        saveDraft();
+      }
       function changed() {
         confirmNoNumber = false;
         clearProblem();
-        saveDraft();
+        touched();
         renderForm();
       }
 
@@ -616,29 +637,32 @@
 
       $('newSite').addEventListener('click', function () { showForm(''); });
       $('editDetails').addEventListener('click', function () { showForm(openId); });
+      // Back throws away an unsaved update or edit (a new site's draft is kept: the list says so).
       $('cancel').addEventListener('click', function () {
-        if (screen === 'form' && mode.kind === 'edit') showSite(mode.siteId); else showList();
+        if (screen === 'form' && mode.kind === 'edit') { store(formKey(), null); showSite(mode.siteId); return; }
+        if (screen === 'site') store(updKey(openId), null);
+        showList();
       });
       $('save').addEventListener('click', function () { if (screen === 'site') saveUpdate(); else saveForm(); });
 
-      $('f-name').addEventListener('input', function (e) { form.name = e.target.value; confirmNoNumber = false; clearProblem(); saveDraft(); renderSave(); });
-      $('f-contact').addEventListener('input', function (e) { form.contactName = e.target.value; clearProblem(); saveDraft(); });
+      $('f-name').addEventListener('input', function (e) { form.name = e.target.value; confirmNoNumber = false; clearProblem(); touched(); renderSave(); });
+      $('f-contact').addEventListener('input', function (e) { form.contactName = e.target.value; clearProblem(); touched(); });
       $('f-phone').addEventListener('input', function (e) {
         form.phone = e.target.value; confirmNoNumber = false; phoneCheck = { valid: true };
-        $('phoneNote').hidden = true; clearProblem(); saveDraft(); renderSave();
+        $('phoneNote').hidden = true; clearProblem(); touched(); renderSave();
         // Check once he pauses, when it could be a whole number (10+ digits).
         clearTimeout(checkPhone.timer);
         if (form.phone.replace(/\D/g, '').length >= 10) checkPhone.timer = setTimeout(checkPhone, 700);
       });
       $('f-phone').addEventListener('change', checkPhone);
-      $('f-newarea').addEventListener('input', function (e) { form.newArea = e.target.value; saveDraft(); renderSuggestions(); });
+      $('f-newarea').addEventListener('input', function (e) { form.newArea = e.target.value; touched(); renderSuggestions(); });
       $('f-date').addEventListener('change', function (e) { form.date = e.target.value; saveDraft(); });
 
-      $('u-value').addEventListener('input', function (e) { upd.value = e.target.value; clearProblem(); store(updKey(openId), upd); });
-      $('u-note').addEventListener('input', function (e) { upd.note = e.target.value; clearProblem(); store(updKey(openId), upd); });
-      $('u-date').addEventListener('change', function (e) { upd.date = e.target.value; store(updKey(openId), upd); });
+      $('u-value').addEventListener('input', function (e) { upd.value = e.target.value; updTouched(); });
+      $('u-note').addEventListener('input', function (e) { upd.note = e.target.value; updTouched(); });
+      $('u-date').addEventListener('change', function (e) { upd.date = e.target.value; updTouched(); });
       $('u-phone').addEventListener('input', function (e) {
-        upd.phone = e.target.value; clearProblem(); store(updKey(openId), upd);
+        upd.phone = e.target.value; updTouched();
         $('u-phoneNote').hidden = true;
         clearTimeout(checkUpdPhone.timer);
         if (upd.phone.replace(/\D/g, '').length >= 10) checkUpdPhone.timer = setTimeout(checkUpdPhone, 700);

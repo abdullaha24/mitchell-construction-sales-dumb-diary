@@ -331,7 +331,14 @@ function checkUpdate_(input, current, choices, todayKey) {
  * @returns {{ ok: true, fields: SiteFields, changes: string[] } | Failure}
  */
 function checkDetails_(input, current, choices) {
-  const checked = checkSiteFields_(input, choices);
+  // What the site already has stays allowed even if the owner has since turned it off in Lists
+  // (an old area or product category); it is never added to Lists again.
+  const own = {
+    ...choices,
+    categories: choices.categories.concat(current.products.filter((p) => !choices.categories.includes(p))),
+    areas: current.area && !choices.areas.includes(current.area) ? choices.areas.concat([current.area]) : choices.areas,
+  };
+  const checked = checkSiteFields_(input, own);
   if (!checked.ok) return checked;
   const fields = checked.fields;
   if (current.phone && !fields.phone) return fail_("A site's number can be changed, not removed.");

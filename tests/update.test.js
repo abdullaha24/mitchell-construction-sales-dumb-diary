@@ -232,9 +232,98 @@ test("Edit details: the duplicate warning counts other sites, not this one", () 
 test('inside the lock the site is found again by ID and his code (e.g. owner just reassigned it)', () => {
   const w = world();
   const ria = { rep: 'RIA', region: 'North' };
-  const update = { stage: 'Visited / Lead', value: null, terms: '', lostReason: '', followUp: '2026-11-10', note: 'x', phone: '' };
-  assert.throws(() => w.s.saveUpdate_(w.diary, ria, 'S000002', update, new Date()), /That site isn't in your list/);
-  const fields = { name: 'X', buyerType: 'Dealer', contactName: '', phone: '923001112223', products: [], area: '', newArea: false };
-  assert.throws(() => w.s.saveDetails_(w.diary, ria, 'S000002', fields, ['Site name'], new Date()), /That site isn't in your list/);
+  const choices = { lostReasons: [], buyerTypes: ['Dealer'], categories: [], areas: [] };
+  assert.throws(() => w.s.saveUpdate_(w.diary, ria, 'S000002', { stage: 'Visited / Lead', followUp: 'tomorrow', note: 'x' }, choices, new Date(), ''),
+    /That site isn't in your list/);
+  assert.throws(() => w.s.saveDetails_(w.diary, ria, 'S000002', { name: 'X', buyerType: 'Dealer' }, choices, new Date(), ''),
+    /That site isn't in your list/);
+  assert.deepEqual(w.diary._writes(), []);
+});
+
+// ------------------------------------------------------------------- Fixes from the review
+
+test('a number added a moment ago (by another save) cannot be removed by a stale Edit details', () => {
+  const w = world();
+  // Phone A: adds a number to Blue Area through the number gate.
+  w.s.repUpdateSite(RIA, 'S000003', { stage: 'Sample / Trial', followUp: 'tomorrow', phone: '0321 5556666' });
+  // Phone B still showed "No number yet" and sends Edit details with an empty number.
+  const reply = plain(w.s.repEditSite(RIA, 'S000003', { ...DETAILS, name: 'Blue Area 2', phone: '' }));
+  assert.deepEqual(reply, { ok: false, message: "A site's number can be changed, not removed." });
+  assert.equal(rowOf(w, 3).contact_phone, '923215556666');
+});
+
+test('a repeat after a lost reply says Saved, not "Nothing to save", and saves once', () => {
+  const w = world();
+  const first = plain(w.s.repUpdateSite(RIA, 'S000001', { stage: 'Won (Order)', value: '500000', terms: 'Cash', saveId: 'won0000001' }));
+  const again = plain(w.s.repUpdateSite(RIA, 'S000001', { stage: 'Won (Order)', value: '500000', terms: 'Cash', saveId: 'won0000001' }));
+  assert.equal(first.ok, true);
+  assert.equal(again.ok, true, again.message);
+  assert.equal(w.diary.getSheetByName('Activity').getLastRow(), 3, 'one history row');
+  const edit = { ...DETAILS, name: 'Renamed', saveId: 'edit000001' };
+  assert.equal(plain(w.s.repEditSite(RIA, 'S000001', edit)).ok, true);
+  assert.equal(plain(w.s.repEditSite(RIA, 'S000001', edit)).ok, true);
+  assert.equal(w.diary.getSheetByName('Activity').getLastRow(), 4);
+});
+
+test('the same save ID sent again with a corrected value saves the correction', () => {
+  const w = world();
+  w.s.repUpdateSite(RIA, 'S000001', { stage: 'Won (Order)', value: '500000', terms: 'Cash', saveId: 'won0000002' });
+  w.s.repUpdateSite(RIA, 'S000001', { stage: 'Won (Order)', value: '750000', terms: 'Cash', saveId: 'won0000002' });
+  assert.equal(rowOf(w, 1).value_rs, 750000);
+});
+
+test('a new site sent again with changes after it was saved: not made twice, and he is told', () => {
+  const w = world();
+  const site = { name: 'Askari', buyerType: 'Dealer', followUp: 'tomorrow', saveId: 'newsite001' };
+  w.s.repAddSite(RIA, site);
+  const reply = plain(w.s.repAddSite(RIA, { ...site, name: 'Askari Heights' }));
+  assert.equal(reply.ok, true);
+  assert.equal(reply.notice, 'This site was already saved. Open it from your list to change anything.');
+  assert.equal(w.diary.getSheetByName('Sites').getLastRow(), 5, 'one new site, not two');
+  assert.equal(plain(w.s.repAddSite(RIA, site)).notice, '', 'a plain repeat needs no notice');
+});
+
+test("an update never erases a value or reason it isn't changing (e.g. typed by the owner)", () => {
+  const w = world();
+  w.diary.getSheetByName('Sites').getRange(2, 11, 1, 3).setValues([["'4.5 lakh", 'Cash', "'my own words"]]);
+  w.s.repUpdateSite(RIA, 'S000001', { stage: 'Visited / Lead', followUp: '1week', note: 'called' });
+  assert.deepEqual([rowOf(w, 1).value_rs, rowOf(w, 1).payment_terms], ['4.5 lakh', 'Cash']);
+});
+
+test('junk in the phone cell ("-", "n/a") is no number: shown as such, and the gate applies', () => {
+  const w = world();
+  w.diary.getSheetByName('Sites').getRange(4, 8).setValues([['-']]);
+  const card = plain(w.s.repLoad(RIA)).sites.find((x) => x.id === 'S000003');
+  assert.equal(card.phone, '');
+  assert.deepEqual(plain(w.s.repUpdateSite(RIA, 'S000003', { stage: 'Won (Order)', value: '5', terms: 'Cash' })),
+    { ok: false, message: "Add the contact's number to move this site to Won (Order)." });
+});
+
+test("Edit details keeps an area or product the owner has since turned off, without re-adding it", () => {
+  const w = world();
+  const sites = w.diary.getSheetByName('Sites');
+  sites.getRange(2, 6).setValues([["'Old Area"]]);
+  sites.getRange(2, 9).setValues([["'Tile Adhesives | Old Category"]]);
+  const listsBefore = w.diary.getSheetByName('Lists').getLastRow();
+  const reply = plain(w.s.repEditSite(RIA, 'S000001', {
+    ...DETAILS, name: 'Renamed', area: 'Old Area', products: ['Tile Adhesives', 'Old Category'],
+  }));
+  assert.equal(reply.ok, true, reply.message);
+  assert.equal(w.diary.getSheetByName('Lists').getLastRow(), listsBefore, 'nothing added to Lists');
+  assert.deepEqual([rowOf(w, 1).area, rowOf(w, 1).products], ['Old Area', 'Tile Adhesives | Old Category']);
+  // He can still untick the old category.
+  assert.equal(plain(w.s.repEditSite(RIA, 'S000001', { ...DETAILS, name: 'Renamed', area: 'Old Area', products: ['Tile Adhesives'] })).ok, true);
+  assert.equal(rowOf(w, 1).products, 'Tile Adhesives');
+});
+
+test('the locked save itself refuses to remove a number (the check runs inside the lock)', () => {
+  const w = world();
+  const ria = { rep: 'RIA', region: 'North' };
+  const choices = { lostReasons: [], buyerTypes: ['Dealer'], categories: ['Tile Adhesives'], areas: ['DHA'] };
+  const outcome = plain(w.s.saveDetails_(w.diary, ria, 'S000001', { ...DETAILS, name: 'X', phone: '' }, choices, new Date(), ''));
+  assert.deepEqual(outcome.result, { ok: false, message: "A site's number can be changed, not removed." });
+  const gate = plain(w.s.saveUpdate_(w.diary, ria, 'S000003', { stage: 'Won (Order)', value: '5', terms: 'Cash' },
+    { lostReasons: [] }, new Date(), ''));
+  assert.deepEqual(gate.result, { ok: false, message: "Add the contact's number to move this site to Won (Order)." });
   assert.deepEqual(w.diary._writes(), []);
 });

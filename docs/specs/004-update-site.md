@@ -27,7 +27,7 @@ He taps a site card in his list. The **site screen** shows:
 | 2 | **Rs. value** | Rate Quoted, Won (Order) | **Required.** The **total** quote or order value in rupees (owner, P4-1, P4-2), number keypad. Commas allowed. Shows the last value if there is one. |
 | 3 | **Cash / Credit** | Rate Quoted, Won (Order) | **Required.** Two buttons. |
 | 4 | **Lost reason** | Lost / Dead | **Required.** Price Too High · Credit Terms · Competitor Approved · Site Delayed · Other. **Other needs a note.** |
-| 5 | **Next follow-up** | every stage **except Won and Lost** | Tomorrow (pre-picked) · 3 days · 1 week · Pick date. Won and Lost sites have **no follow-up** (owner, P4-3): they leave Today's Chase. |
+| 5 | **Next follow-up** | every stage **except Won and Lost** | Tomorrow (pre-picked) · 3 days · 1 week · Pick date. If the site already has a date from today on, a first button **Keep 9 Nov** is pre-picked instead, so a note-only update never quietly moves his date. *(Added after review.)* Won and Lost sites have **no follow-up** (owner, P4-3): they leave Today's Chase. |
 | 6 | **Quick note** | always | One line, optional (except Lost → Other). E.g. *"Quoted WP-100 @ 1,450, waiting for consultant"*. The phone keyboard's microphone works here. |
 
 Then **Save** → back to his list, *"Saved"*.
@@ -40,7 +40,8 @@ Then **Save** → back to his list, *"Saved"*.
   save."*
 - **No signal / busy / saved twice:** exactly as when adding a site (spec 003): *"Not saved: no
   signal. Tap Save again."*, what he typed stays on the phone, and a repeat after a lost reply
-  is saved once.
+  is saved once and says *"Saved"*. If he **corrected** something before tapping again, the
+  correction is saved. *(Added after review.)* **Back** throws away an unsaved update.
 
 ### Edit details
 **Edit details** opens the same fields as + New Site (name, buyer type, contact name, phone,
@@ -49,6 +50,8 @@ products, area), filled in. He fixes a typo or adds a missing number, then **Sav
   in the system). Clearing the box says *"A site's number can be changed, not removed."*
 - Every change is in the history, including the **old and new number**, so a number can't
   quietly disappear.
+- An area or product category the site already has stays allowed (and shown) even if the owner
+  has since turned it off in `Lists`; it is never added to `Lists` again. *(Added after review.)*
 
 ### What the owner sees
 - `Sites` always shows each site's current state; every save adds one `Activity` row.
@@ -69,7 +72,10 @@ products, area), filled in. He fixes a typo or adds a missing number, then **Sav
   **cleared** at Won (Order) and Lost / Dead. Same date rules as spec 003 (today to a year
   ahead, Pakistan time).
 - `last_note`: replaced when he writes a note; kept otherwise. Notes up to 200 characters.
-- `updated_at` = now on every save.
+- `updated_at` = now on every save. **Only cells that change are written**: an update never
+  erases a value, terms or reason it isn't changing (e.g. one the owner typed by hand).
+- A phone cell holding something that isn't a real number (e.g. "-") counts as **no number**.
+  *(Added after review.)*
 
 ### Whose site
 - He can only update or edit **his own** sites: the server finds the site by its ID **and**
@@ -81,8 +87,11 @@ products, area), filled in. He fixes a typo or adds a missing number, then **Sav
 - New public functions: `repUpdateSite(k, siteId, update)` and `repEditSite(k, siteId,
   details)`, each checking the link first (`requireRep_`), wrapped so only our own plain
   messages reach him.
-- Every typed or picked text is stored as plain text (no formulas). Writes happen inside the
-  lock with a one-time save ID; the site row is found again inside the lock.
+- Every typed or picked text is stored as plain text (no formulas). **The checks run inside the
+  lock**, against the row as it is at that moment, so two saves landing together can't remove
+  a number or skip the number gate. One-time save IDs as in spec 003; a new site resent with
+  changes after it was saved is never made twice: *"This site was already saved. Open it from
+  your list to change anything."* *(Added after review.)*
 
 ## Data
 - **Writes:** `Sites` (the one row for that site), `Activity` (one new row per save), `Lists`
