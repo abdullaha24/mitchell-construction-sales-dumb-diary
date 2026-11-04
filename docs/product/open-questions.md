@@ -77,3 +77,10 @@ Owner, session 3 (2026-11-04):
 | P4b-1 | Phase 4 test: adding a site then reopening it to set the stage is two jobs. | **Capture the lead and its stage together** in + New Site. |
 | P4b-2 | Saves take 4–5 seconds. Show as done at once and finish in the background? | **Yes, instant.** Failures shown on the card ("Not saved. Tap to try again."); nothing sent later when the app is closed. |
 | P4b-3 | Keep the salesmen list (Rep_Mapping) in memory instead of opening Meta-Data every save? | **Yes, longer:** the list seldom changes; add a **refresh button in the sheet menu**. (Agent: 24 hours + Sales Diary → Refresh salesmen + Check setup.) |
+
+Owner, session 4 (2026-11-04):
+
+| # | Question | Answer |
+| --- | --- | --- |
+| P5-1 | Spec 006: Hot Pipeline order? | **Biggest Rs. first.** Rate Quoted sites by value, largest first; then sites with no value shown (Sample / Trial), soonest follow-up first. |
+| P5-2 | Spec 006: a total Rs. ("Rs. 4,500,000 quoted") at the top of Hot Pipeline? | **No.** Salesmen see their target only (as Q12c). |
