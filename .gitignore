@@ -1,0 +1,30 @@
+# --- Secrets: never commit ---
+.clasprc.json
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials*.json
+client_secret*.json
+token*.json
+# Real rep link tokens / phone lists must stay out of git
+secrets/
+
+# --- Dependencies and build output ---
+node_modules/
+dist/
+build/
+coverage/
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+
+# --- Logs ---
+*.log
+npm-debug.log*
