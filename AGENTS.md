@@ -24,9 +24,9 @@ Read before any product or UI work:
 
 ## Status
 
-Phases 0–2 are done and live (2026-11-04): foundations (spec 001) and private links
-(spec 002). **Phase 3 (my sites + add a site, spec 003) is built and tested locally**; going
-live needs the owner. See `docs/plans/handoff.md`.
+Phases 0–3 are done and live (2026-11-04): foundations (spec 001), private links (spec 002),
+my sites + add a site (spec 003). Next: the phase 4 spec (update a site). See
+`docs/plans/handoff.md`.
 
 ## Commands
 
@@ -40,7 +40,7 @@ Node 22 or newer. All checks run locally with no Google account.
 | `npm run check` | Type check, then tests. **Must pass before every commit.** |
 | `npm run check:browser` | Drives the owner's Links window and the salesman's page in Chromium (the page runs against the real server code and fake sheets). Needs Playwright; skips if it isn't installed. Run it when any `.html` changes. |
 | `npx clasp push --force` | Sends `src/` to Apps Script. Always `--force`: without it, in a non-interactive shell clasp **silently skips** the push. Git is the source of truth. |
-| `npx clasp show-file-status` | Lists the files a push would send (should be `appsscript.json`, the `.js` files and `Index.html`). |
+| `npx clasp show-file-status` | Lists the files a push would send (should be `appsscript.json`, the `.js` files and the `.html` files in `src/`). |
 | `npx clasp create-deployment -d "<note>"` | Creates the web app. **Once only**: each run makes a new address. |
 | `npx clasp update-deployment <deploymentId> -d "<note>"` | Puts the latest pushed code live **at the same address**. Use this for every update after the first. The deployment ID is in `docs/plans/handoff.md`. |
 

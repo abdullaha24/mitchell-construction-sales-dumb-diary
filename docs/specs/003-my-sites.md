@@ -1,6 +1,6 @@
 # 003: My sites + add a site
 
-- **Status:** In progress (built, reviewed and tested locally 2026-11-04; going live next)
+- **Status:** Done (live 2026-11-04, session 3, deployment version 3)
 - **Owner approval:** approved by the owner on 2026-11-04 (session 3)
 - **Related:** roadmap phase 3 · ADR-0002 (links) · ADR-0004 (private lists, duplicate warning) ·
   [data model](../architecture/data-model.md) → `Sites`, `Activity`, `Lists` ·
@@ -138,13 +138,13 @@ Checked locally:
 - [x] Tests show salesman B can't see A's site, and the duplicate check tells B only "yes".
 
 Checked live with the owner:
-- [ ] On the RIA test link (phone, no sign-in): add a site with a number, one without (second
+- [x] On the RIA test link (phone, no sign-in): add a site with a number, one without (second
       tap), and a new area; they appear in his list, in `Sites` and `Activity`, the area in
       `Lists`.
-- [ ] A second test link (e.g. SJ) doesn't show RIA's sites; typing RIA's test number shows
+- [x] A second test link (e.g. SJ) doesn't show RIA's sites; typing RIA's test number shows
       the "someone in the team" warning.
-- [ ] Check setup shows the no-number counts.
-- [ ] Test rows are removed afterwards (by the owner, or by the agent with his OK).
+- [x] Check setup shows the no-number counts.
+- [x] Test rows are removed afterwards (by the agent, with the owner's OK: 3 sites, 3 activity rows and the test area DHA).
 
 ## Out of scope
 - Updating a site, stages, notes, rates (phase 4). Tabs, search, target (phase 5). Call /

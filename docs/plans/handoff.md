@@ -23,31 +23,35 @@
     deleted).
 
 ## Next
-**Phase 3 (my sites + add a site, spec 003) is built, reviewed and tested locally**: 204 tests
-and both browser checks pass on a fresh clone. The independent review found one serious hole
-(formula injection through typed text: a site name like `=TEXTJOIN(…,Links!C:C)` would have
-revealed link codes); it is fixed and tested, with the other review points.
+**Phase 3 (my sites + add a site) is Done and live** (deployment version 3, same address). The
+owner tested it on his phone (RIA and SJ test links): sites saved, no-number second tap, new
+area, SJ can't see RIA's sites, duplicate warning shows only "someone in the team", Check
+setup shows no-number counts. Test rows (3 sites, 3 activity rows, test area DHA) were deleted
+with his OK, so `Sites` / `Activity` are empty and IDs start again at `S000001` (no real IDs
+were ever issued). His owner, RIA and SJ test links are still active.
 
-**Next: go live with the owner** (plan 003 step 6):
-1. clasp sign-in (recipe below). `npx clasp show-file-status`, `npx clasp push --force`, pull
-   back and compare, then `npx clasp update-deployment AKfycbwmWhxLQfpkQRfFIfdv9tZD4CvZfeWEB__YiXnGTSk7-6mlZVZUvLEp2aJDwey0HXaF -d "phase 3: my sites"`.
-2. Owner opens his RIA test link on his phone: adds a site with a number, one without (second
-   tap), one with a new area. Agent checks `Sites`, `Activity`, `Lists` via the connector.
-3. Owner makes a test SJ link: SJ's page doesn't show RIA's sites; typing RIA's test number
-   shows only "Someone in the team already works with this contact."
-4. Owner taps Check setup: the "Sites with no phone number" section shows.
-5. Test rows removed afterwards (owner's OK, or he deletes them). `npx clasp logout`, delete
-   `~/.clasprc.json`.
+**Next: write the phase 4 spec: update a site** (`docs/specs/004-update-site.md`): stage
+buttons, Rs. value + Cash / Credit at Rate Quoted / Won, lost reason (+ Other with note),
+follow-up buttons + Pick date, quick note; every update changes `Sites` and appends to
+`Activity`. **Already decided by the owner (P3-4): a site can't move to Sample / Trial, Rate
+Quoted or Won (Order) without a phone number.** Phase 4 should also let him add a missing
+number and fix a site's name / contact. Ask the owner only business questions.
 
-Carry forward (phase 3 and later):
+Carry forward (phase 4 and later):
 - **Never run `create-deployment` again.** Put new code live with
   `npx clasp push --force` then
   `npx clasp update-deployment AKfycbwmWhxLQfpkQRfFIfdv9tZD4CvZfeWEB__YiXnGTSk7-6mlZVZUvLEp2aJDwey0HXaF -d "<note>"`,
   so the address salesmen get never changes.
 - Access is `ANYONE_ANONYMOUS` ("Anyone"), **not** `ANYONE` (forces a Google sign-in). A test
   pins `src/appsscript.json`.
-- Every new public function must check the link code first (ADR-0002) and only return that
-  salesman's data (ADR-0004); update the allow-list in `tests/menu.test.js` on purpose.
+- Every new public function must check the link code first (ADR-0002, `requireRep_`), wrap
+  its work in `forSalesman_`, and only return that salesman's data (ADR-0004); update the
+  allow-list in `tests/menu.test.js` on purpose.
+- **Write every typed or picked text with `asText_`** (formula injection: a "name" starting
+  with `=` would otherwise run as a formula in the owner's sheet). The fake sheet now behaves
+  like Sheets, so a test will show it.
+- Saves carry a one-time `saveId` (script cache, 6 hours) so a repeat after a lost reply is
+  saved once. Reuse this for updates.
 - `menuCheckSetup`'s safety check passes for the owner himself, signed in, even from a web
   page (harmless today; don't rely on it as "came from the menu").
 
