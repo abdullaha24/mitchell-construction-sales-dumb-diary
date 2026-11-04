@@ -33,7 +33,10 @@
 - Data model, src/README.md, tests/README.md, AGENTS.md, glossary, roadmap ("built and checked
   locally"), spec criteria ticked.
 - Mutation checks on the key assertions; fresh-clone check; secrets sweep.
-- [ ] Independent review: still to do, with the go-live routine.
+- [x] Independent review. Fixed with checks: numbers on a card still saving in stored form (page
+  tidies like `tidyPhone_`, pinned by a parity test); a failed snooze can't trap a site (Open
+  site, Don't snooze, an Update replaces it); orange edge wins over yellow; a flaky wait in
+  `queue.check.js` case D.
 
 ## [ ] Step 5: Live with the owner (coordinator)
 - Add the two `Sites` headers to the live sheet **first**, then push and update the deployment;

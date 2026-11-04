@@ -208,8 +208,11 @@ const want = (name) => !process.env.ONLY || name.split('/').includes(process.env
     await addSite(page, 'Second');
     await page.waitForSelector('.card.failed:has-text("First")'); // given up on at 0.6 s
     assert.equal(world.diary.getSheetByName('Sites').getLastRow(), 2, 'Second is not sent before First is answered');
-    await page.waitForFunction(() => !document.querySelector('.card.failed')); // First's late "saved" is honoured
-    await page.waitForFunction(() => !document.querySelector('.tag.saving'));
+    // First's late "saved" is honoured. Second may be given up on too (its reply also takes
+    // 1.2 s): wait until the sheet has both, then until the page shows nothing failed or saving.
+    const deadline = Date.now() + 15000;
+    while (world.diary.getSheetByName('Sites').getLastRow() < 4 && Date.now() < deadline) await page.waitForTimeout(50);
+    await page.waitForFunction(() => !document.querySelector('.card.failed') && !document.querySelector('.tag.saving'));
     const sites = world.diary.getSheetByName('Sites').getDataRange().getValues().slice(1).map((r) => r[3]);
     assert.deepEqual(sites, ['F-11 Tower', 'First', 'Second'], 'saved once each, in order');
     assert.deepEqual((await names(page)).filter((n) => n === 'First').length, 1);

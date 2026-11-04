@@ -269,3 +269,20 @@ test('his page gets the going-cold threshold with the stage rules (owner Q5: 7 d
   assert.equal(rules.coldDays, 7);
   assert.deepEqual(rules.hotStages, ['Sample / Trial', 'Rate Quoted']);
 });
+
+test("the page tidies a typed number exactly as the server does (Call / WhatsApp while saving)", () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const vm = require('node:vm');
+  const html = fs.readFileSync(path.join(__dirname, '..', 'src', 'App.html'), 'utf8');
+  const source = /function tidyPhone\(raw\) \{[\s\S]*?\n {6}\}/.exec(html);
+  assert.ok(source, 'tidyPhone is in App.html');
+  const page = vm.runInNewContext(`(${source[0]})`);
+  const { tidyPhone_ } = world().s;
+  for (const typed of ['0300 1234567', '0300-1234567', '+92 300 1234567', '+92 (0)300 1234567', '0092 300 1234567',
+    '3001234567', '923001234567', '042 3576 1234', '+971 50 123 4567', '00971501234567', '0300 12', '0300 12345678',
+    'n/a', '-', '', '   ', '+44 20 7946 0958', '051-1234567']) {
+    const server = plain(tidyPhone_(typed));
+    assert.equal(page(typed), server.ok ? server.phone : '', JSON.stringify(typed));
+  }
+});

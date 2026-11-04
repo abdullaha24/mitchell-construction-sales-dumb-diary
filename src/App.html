@@ -86,6 +86,7 @@
       .card.cold { background: var(--yellow-bg); border-color: var(--yellow-line); }
       .card.cold.late { border-left-color: var(--red); }
       .tag.cold { background: #fbe9a6; color: var(--yellow-ink); font-weight: 700; }
+      .card.cold.failed { border-color: var(--orange); } /* a save that didn't go through shows first */
       .btnrow { display: flex; gap: 8px; margin-top: 10px; }
       .btnrow > a, .btnrow > button { flex: 1 1 0; min-width: 0; min-height: 44px; display: flex; align-items: center;
                justify-content: center; padding: 6px 4px; border-radius: 10px; border: 1px solid var(--line);
@@ -241,6 +242,10 @@
       <div id="snoozeProblem" class="note error" hidden></div>
       <div class="sheet-choices" id="snoozeChoices"></div>
       <button class="plain" id="snoozeCancel" type="button">Cancel</button>
+      <div class="btnrow" id="snoozeRetry" hidden>
+        <button id="snoozeOpen" type="button">Open site</button>
+        <button id="snoozeDrop" type="button">Don't snooze</button>
+      </div>
     </div>
     <div id="toast" role="status"></div>
 
@@ -324,6 +329,20 @@
         return Number(p[2]) + ' ' + MONTHS[Number(p[1]) - 1];
       }
       // How a salesman knows a number: 923001234567 → 0300 1234567 (stored form unchanged).
+      // A typed number in the one tidy stored form (92…), exactly as the server's tidyPhone_
+      // (src/siterules.js) does it, or '' if it isn't a real number. The card waiting in the save
+      // queue then dials and WhatsApps the same number Google will store (spec 007).
+      function tidyPhone(raw) {
+        var text = String(raw || '').trim();
+        if (!text || !/^[+\d\s\-().]+$/.test(text)) return '';
+        var digits = text.replace(/\D/g, '');
+        if (digits.indexOf('00') === 0) digits = digits.slice(2);
+        else if (digits.indexOf('0') === 0) digits = '92' + digits.slice(1);
+        else if (digits.length === 10 && digits.indexOf('3') === 0) digits = '92' + digits;
+        if (digits.indexOf('920') === 0) digits = '92' + digits.slice(3);
+        var fits = digits.indexOf('923') === 0 ? digits.length === 12 : digits.length >= 10 && digits.length <= 15;
+        return fits ? digits : '';
+      }
       function showPhone(p) {
         if (/^923\d{9}$/.test(p)) return '0' + p.slice(2, 5) + ' ' + p.slice(5);
         if (/^92\d+$/.test(p)) return '0' + p.slice(2);
@@ -431,9 +450,12 @@
       // Google confirmed a save (possibly late, after it was shown as not saved).
       function applySuccess(entry, r) {
         removeEntry(entry);
-        // Older failed saves of the same site are replaced by this newer one.
+        // Older failed saves of the same site are replaced by this newer one. An Update also
+        // replaces a failed snooze: it set the follow-up itself (spec 007).
         for (var i = queue.length - 1; i >= 0; i--) {
-          if (queue[i].status === 'failed' && queue[i].fn === entry.fn && queue[i].card.id === entry.card.id) queue.splice(i, 1);
+          var q = queue[i];
+          var replaced = q.fn === entry.fn || (entry.fn === 'repUpdateSite' && q.fn === 'repSnoozeSite');
+          if (q.status === 'failed' && replaced && q.card.id === entry.card.id) queue.splice(i, 1);
         }
         if (!r.site) {
           refreshAll(); // a reply from before this version: just reload his list
@@ -611,6 +633,8 @@
       function saidLine(s, today) { return s.noteDay ? dayLabel(s.noteDay, today) + ': ' + s.note : s.note; }
       // WhatsApp for a mobile: a Pakistani 03… number, or one from abroad. A landline has none.
       function hasWhatsApp(phone) { return /^923\d{9}$/.test(phone) || !/^92/.test(phone); }
+      // Links are only ever built from a number in the stored form (digits, 92… for Pakistan).
+      function isStoredPhone(phone) { return typeof phone === 'string' && phone !== '' && tidyPhone(phone) === phone; }
       // A link or button inside a card does only its own job: it never opens the site screen.
       function ownTap(node, onTap) {
         node.addEventListener('click', function (e) { e.stopPropagation(); if (onTap) onTap(e); });
@@ -626,7 +650,7 @@
       // Call / WhatsApp (not logged, P6-4), and Snooze when asked. Null when there is nothing to show.
       function buttonRow(s, withSnooze) {
         var row = el('div', undefined, 'btnrow');
-        if (s.phone) {
+        if (isStoredPhone(s.phone)) {
           // Google shows the app in a frame: the dialer is opened from the top page, WhatsApp in a new one.
           row.appendChild(linkButton('Call', 'tel:+' + s.phone, 'call', '_top'));
           if (hasWhatsApp(s.phone)) row.appendChild(linkButton('WhatsApp', 'https://wa.me/' + s.phone, 'wa', '_blank'));
@@ -649,6 +673,9 @@
         snoozing = { id: id, entry: retryEntry || null };
         $('snoozeTitle').textContent = 'Snooze ' + s.name + ' to:';
         $('snoozeProblem').hidden = true;
+        // A snooze that didn't go through can also be dropped, or he can open the site instead.
+        $('snoozeCancel').hidden = !!retryEntry;
+        $('snoozeRetry').hidden = !retryEntry;
         var box = $('snoozeChoices'); box.textContent = '';
         SNOOZE.forEach(function (c) {
           var b = el('button', c[1], 'big');
@@ -675,10 +702,32 @@
         var saveId = newSaveId();
         var card = clone(s);
         card.followUp = followKey(choice);
+        // `before`: the site as it was, so a snooze he drops can be undone on the phone.
         enqueue({ id: saveId, fn: 'repSnoozeSite', siteId: s.id, input: { followUp: choice, saveId: saveId }, card: card,
-          state: { followUp: choice } }, replaces);
+          state: { followUp: choice }, before: replaces && replaces.before ? replaces.before : clone(s) }, replaces);
         toast('Snoozed to ' + shortDay(card.followUp));
         if (screen === 'list') renderList();
+      }
+
+      // Don't snooze: a failed snooze leaves the queue (it is cheap to redo). The site gets its old
+      // follow-up back, then his list as Google has it, when there is signal.
+      function dropSnooze() {
+        var entry = snoozing && snoozing.entry;
+        closeSnooze();
+        if (!entry) return;
+        removeEntry(entry);
+        saveQueue();
+        var s = siteById(entry.siteId);
+        if (s && entry.before && s.followUp === entry.card.followUp) s.followUp = entry.before.followUp;
+        toast('Not snoozed');
+        if (screen === 'list') renderList();
+        refreshAll();
+      }
+      // Open site: the site screen, as for any card; the failed snooze stays until he decides.
+      function openSnoozedSite() {
+        var id = snoozing && snoozing.id;
+        closeSnooze();
+        if (id) showSite(id);
       }
 
       // ---- Area filter (All My Parties, spec 007): his own sites' areas, most sites first ----
@@ -999,7 +1048,7 @@
         card.lostReason = upd.stage === r.lostStage ? upd.lostReason : '';
         card.followUp = followUp;
         if (upd.note.trim()) { card.note = upd.note.trim(); card.noteDay = todayKey(); }
-        if (upd.phone.trim()) card.phone = upd.phone.trim();
+        if (tidyPhone(upd.phone)) card.phone = tidyPhone(upd.phone);
         card.worked = todayKey(); // a real Update: no longer going cold (P6-2)
         var replaces = retrying;
         enqueue({ id: upd.saveId, fn: 'repUpdateSite', siteId: openId, input: input, card: card, state: clone(upd) }, replaces);
@@ -1189,7 +1238,7 @@
           card = { id: 'new-' + form.saveId, name: form.name.trim(), area: area, buyerType: form.buyerType,
             stage: form.stage, value: has(r.valueStages, form.stage) ? Number(digitsOf(form.value)) : null,
             terms: has(r.valueStages, form.stage) ? form.terms : '', lostReason: form.stage === r.lostStage ? form.lostReason : '',
-            followUp: closed ? '' : followKey(form.followUp, form.date, ''), phone: form.phone.trim(),
+            followUp: closed ? '' : followKey(form.followUp, form.date, ''), phone: tidyPhone(form.phone),
             contactName: form.contactName.trim(), products: form.products.slice(), note: form.note.trim(), created: todayKey(),
             worked: todayKey(), noteDay: form.note.trim() ? todayKey() : '' };
           var saved = clone(form);
@@ -1204,7 +1253,7 @@
           var id = mode.siteId;
           card = clone(site);
           card.name = form.name.trim(); card.buyerType = form.buyerType; card.contactName = form.contactName.trim();
-          card.phone = form.phone.trim() || site.phone; card.products = form.products.slice(); card.area = area;
+          card.phone = tidyPhone(form.phone) || site.phone; card.products = form.products.slice(); card.area = area;
           var editReplaces = retrying;
           store(formKey(), null); // the queue carries it now
           enqueue({ id: form.saveId, fn: 'repEditSite', siteId: id, input: input, card: card, state: clone(form) }, editReplaces);
@@ -1313,6 +1362,8 @@
         renderList.timer = setTimeout(renderList, 120); // one redraw once he pauses, not per letter
       });
       $('snoozeCancel').addEventListener('click', closeSnooze);
+      $('snoozeDrop').addEventListener('click', dropSnooze);
+      $('snoozeOpen').addEventListener('click', openSnoozedSite);
       $('snoozeBack').addEventListener('click', closeSnooze);
       $('clearSearch').addEventListener('click', function () {
         query = ''; $('search').value = ''; shownCount = PAGE_SIZE;

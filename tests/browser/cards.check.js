@@ -74,6 +74,8 @@ function buildWorld() {
       value_rs: 900000, payment_terms: 'Cash', created_at: created(7), worked_at: dayCell(-30) }),
     site({ site_id: 'S000008', site_name: 'Hand Typed', contact_phone: '923219876543', stage: 'Rate Quoted', value_rs: 100000,
       payment_terms: 'Cash', next_followup: dayCell(4), created_at: dayCell(-9, 10) }),
+    site({ site_id: 'S000010', site_name: 'Spare Due', contact_phone: '923001112223', stage: 'Visited / Lead',
+      next_followup: dayCell(-3), created_at: created(10), worked_at: created(10) }),
     site({ site_id: 'S000009', rep: 'SH', region: 'Center', site_name: 'Gulberg Mall', area: 'Gulberg', contact_phone: '923007654321',
       stage: 'Rate Quoted', value_rs: 1, payment_terms: 'Cash', next_followup: dayCell(-5), created_at: created(9), worked_at: dayCell(-20) }),
   ];
@@ -170,7 +172,7 @@ function stub() {
   const settled = () => page.waitForFunction(() => !document.querySelector('.tag.saving'));
 
   // ---- Today's Chase: the cards, their buttons, going cold, the last-spoken line. ----
-  assert.deepEqual(await names(), ['No Number Due', 'Cold Quote', 'Trial Site']);
+  assert.deepEqual(await names(), ['Spare Due', 'No Number Due', 'Cold Quote', 'Trial Site']);
   assert.deepEqual(await buttons('Cold Quote'), ['Call', 'WhatsApp', 'Snooze']);
   assert.deepEqual(await buttons('Trial Site'), ['Call', 'Snooze'], 'a landline has no WhatsApp');
   assert.deepEqual(await buttons('No Number Due'), ['Snooze'], 'no number: no Call or WhatsApp');
@@ -219,7 +221,7 @@ function stub() {
   await page.evaluate(() => { window.__delay = 700; });
   await card('Cold Quote').locator('button.snooze').click();
   await page.click('#snoozeChoices .big:has-text("3 days")');
-  assert.deepEqual(await names(), ['No Number Due', 'Trial Site'], 'gone from Today\'s Chase at once');
+  assert.deepEqual(await names(), ['Spare Due', 'No Number Due', 'Trial Site'], 'gone from Today\'s Chase at once');
   await page.waitForSelector(`#toast:has-text("Snoozed to ${short(dayKey(3))}")`);
   await page.click('#tab-hot');
   assert.equal(await card('Cold Quote').locator('.tag.saving').textContent(), 'Saving…');
@@ -244,14 +246,63 @@ function stub() {
     await page.click(`#tab-${tab}`);
     assert.equal((await names())[0], 'Trial Site', `failed snooze on top of ${tab}`);
   }
+  assert.ok((await classes('Trial Site')).includes('cold'));
+  assert.equal(await card('Trial Site').evaluate((e) => getComputedStyle(e).borderTopColor), 'rgb(180, 83, 9)',
+    'a failed save on a going-cold card has the orange edge');
   await page.evaluate(() => { window.__offline = false; });
   await card('Trial Site').click();
   assert.equal(await page.isVisible('#snoozeSheet'), true, 'the panel, not the site screen');
   assert.equal(await page.textContent('#snoozeProblem'), 'Not saved: no signal. Tap a day again.');
+  assert.equal(await page.isHidden('#snoozeCancel'), true);
+  assert.deepEqual(await page.$$eval('#snoozeRetry button', (els) => els.map((e) => e.textContent)), ['Open site', "Don't snooze"]);
   await page.click('#snoozeChoices .big:has-text("Tomorrow")');
   await page.waitForFunction(() => !document.querySelector('.card.failed') && !document.querySelector('.tag.saving'));
   assert.equal(sitesRow('S000003').next_followup.getTime(), dayCell(1).getTime());
   assert.equal(activity().filter((a) => a.site_id === 'S000003').length, 1, 'saved once');
+
+  // ---- A failed snooze never traps the site: Open site, and an Update replaces the snooze. ----
+  await page.click('#tab-chase');
+  await page.evaluate(() => { window.__offline = true; });
+  await card('Spare Due').locator('button.snooze').click();
+  await page.click('#snoozeChoices .big:has-text("Tomorrow")');
+  await page.waitForSelector('.card.failed');
+  await page.evaluate(() => { window.__offline = false; });
+  await card('Spare Due').click();
+  await page.click('#snoozeOpen');
+  assert.equal(await page.isVisible('#siteView'), true, 'Open site: the site screen');
+  assert.equal(await page.isHidden('#snoozeSheet'), true);
+  assert.equal(await page.textContent('#siteHead h2'), 'Spare Due');
+  await page.fill('#u-note', 'visited, call on Friday');
+  await page.click('#save');
+  await page.waitForFunction(() => !document.querySelector('.card.failed') && !document.querySelector('.tag.saving'));
+  assert.deepEqual(activity().filter((a) => a.site_id === 'S000010').map((a) => a.action), ['update'],
+    'the Update went through; the failed snooze is gone, never sent');
+  assert.equal(await page.evaluate(() => queue.length), 0);
+
+  // ---- A snooze Google refuses for good (the site was marked Lost elsewhere): Don't snooze. ----
+  const sheet = world.diary.getSheetByName('Sites');
+  const at = sheet.getDataRange().getValues().findIndex((r) => r[0] === 'S000005');
+  sheet.getRange(at + 1, SITES.indexOf('stage') + 1).setValues([['Lost / Dead']]);
+  await page.click('#tab-chase');
+  await card('No Number Due').locator('button.snooze').click();
+  await page.click('#snoozeChoices .big:has-text("1 week")');
+  await page.waitForSelector('.card.failed');
+  assert.ok((await card('No Number Due').textContent()).includes('Won and Lost sites have no follow-up.'));
+  await card('No Number Due').click();
+  await page.click('#snoozeOpen');
+  assert.equal(await page.textContent('#siteHead h2'), 'No Number Due', 'he can still open it');
+  await page.click('#cancel');
+  assert.equal(await page.locator('.card.failed').count(), 1, 'Back keeps it, as for any failed save');
+  await card('No Number Due').click();
+  await page.click('#snoozeDrop');
+  await page.waitForSelector('#toast:has-text("Not snoozed")');
+  await page.waitForFunction(() => !document.querySelector('.card.failed'));
+  await page.click('#tab-all');
+  await page.waitForFunction(() => /Lost \/ Dead/.test(document.querySelector('#sites').textContent));
+  assert.equal(await card('No Number Due').locator('.tag.lost').textContent(), 'Lost / Dead', 'his list as Google has it');
+  assert.equal(await page.evaluate(() => queue.length), 0);
+  assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem('salesdiary.queue.RIA'))), [], 'gone for good');
+  assert.equal(activity().filter((a) => a.site_id === 'S000005').length, 0);
 
   // ---- Hot Pipeline: 6 days is not cold; a row typed by hand goes cold from created_at. ----
   await page.click('#tab-hot');
@@ -322,7 +373,7 @@ function stub() {
   await page.click('#tab-all');
   assert.deepEqual(await picked(), ['DHA 4'], 'kept while switching tabs');
   await page.click('#areaRow .pill:has-text("DHA 4")');
-  assert.equal((await names()).length, 8, 'tapping DHA again shows everything');
+  assert.equal((await names()).length, 9, 'tapping DHA again shows everything');
   await page.click('#areaRow .pill:has-text("Saddar 1")');
   await search('no number');
   assert.deepEqual(await names(), ['No Number Due']);
@@ -331,6 +382,30 @@ function stub() {
   assert.deepEqual(await calls(), before, 'the area filter needs no trip to Google');
   await page.click('#clearSearch');
   await noSideways('area row');
+
+  // ---- Call / WhatsApp on a card still saving use the stored number, never the typed one. ----
+  await page.evaluate(() => { window.__delay = 700; });
+  await card('No Number').click();
+  await page.click('#u-stage .pill:has-text("Sample / Trial")');
+  await page.fill('#u-phone', '042 3576 1234');
+  await page.click('#save');
+  assert.equal(await card('No Number').locator('.tag.saving').count(), 1, 'still saving');
+  assert.deepEqual(await card('No Number').locator('.btnrow > a').evaluateAll((els) => els.map((e) => e.getAttribute('href'))),
+    ['tel:+924235761234'], 'tidied as Google will store it; a landline gets no WhatsApp');
+  await settled();
+  assert.equal(sitesRow('S000004').contact_phone, '924235761234');
+  await card('Abroad').click();
+  await page.click('#editDetails');
+  assert.equal(await page.inputValue('#f-phone'), '+971501234567', 'shown the way he knows it');
+  await page.fill('#f-contact', 'Asif (Dubai)');
+  await page.click('#save');
+  const links = ['tel:+971501234567', 'https://wa.me/971501234567'];
+  assert.deepEqual(await page.$$eval('#siteHead .btnrow > a', (els) => els.map((e) => e.getAttribute('href'))), links,
+    'Edit details keeps the stored number');
+  await page.click('#cancel');
+  assert.equal(await card('Abroad').locator('.tag.saving').count(), 1, 'still saving');
+  assert.deepEqual(await card('Abroad').locator('.btnrow > a').evaluateAll((els) => els.map((e) => e.getAttribute('href'))), links);
+  await settled();
 
   // ---- + New Site lands on All My Parties with the search and the area cleared. ----
   await page.click('#areaRow .pill:has-text("Bahria 1")');
@@ -342,6 +417,9 @@ function stub() {
   await page.click('#save');
   assert.deepEqual(await picked(), ['All areas']);
   assert.equal((await names())[0], 'Fresh Lead');
+  assert.equal(await card('Fresh Lead').locator('.tag.saving').count(), 1, 'still saving');
+  assert.deepEqual(await card('Fresh Lead').locator('.btnrow > a').evaluateAll((els) => els.map((e) => e.getAttribute('href'))),
+    ['tel:+923009990001', 'https://wa.me/923009990001'], 'a new site: the stored form while it saves');
   assert.equal(await card('Fresh Lead').locator('.said').textContent(), `${short(dayKey(0))}: met at site`);
   await settled();
   assert.equal(await card('Fresh Lead').locator('.said').textContent(), `${short(dayKey(0))}: met at site`, 'the server agrees');

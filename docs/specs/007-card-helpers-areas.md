@@ -39,6 +39,9 @@ From the top, as today plus the new lines (marked **new**):
     and "Tomorrow" could otherwise move it *earlier*.
   - **A site with no number gets no Call or WhatsApp button** (it already says **No number
     yet**). If it has no number and isn't due, there is no button row at all.
+- On a card still "Saving…" (a new site, a number added in an Update, Edit details), Call and
+  WhatsApp use the number **as Google will store it** (0300 1234567 → 923001234567, worked out on
+  the phone the same way as on the server), never the text as typed. *(Added after review.)*
 - Tapping a **button** does only what the button says; it **never opens the site screen**.
   Tapping anywhere else on the card opens the site screen, as today.
 - Call and WhatsApp taps are **not written down anywhere** (owner, P6-4): no history row, no trip
@@ -67,7 +70,11 @@ From the top, as today plus the new lines (marked **new**):
 - It is a save like any other (spec 005): **instant on the phone**, sent in the background in the
   save queue with a one-time save ID, "Saving…" then gone. If it fails, the orange **"Not saved.
   Tap to try again."** card shows at the top of every tab, as for any save; tapping it reopens the
-  snooze panel for that site with the reason.
+  snooze panel for that site with the reason, and two more buttons: **Open site** (the site screen,
+  as for any card) and **Don't snooze** (drops the snooze: the site gets its old follow-up back;
+  a snooze is cheap to redo). A later **Update** of that site replaces a failed snooze (it sets the
+  follow-up itself). So a snooze Google refuses for good (the site was marked Won or Lost, or
+  handed to another salesman, elsewhere) never traps the site. *(Added after review.)*
 - The dates count from **today**, not from the old follow-up date (a site 3 days late snoozed
   for "Tomorrow" is due tomorrow).
 - **No Pick date** in Snooze: for "after Eid" or "the 15th" he uses Update (owner, P6-1: three
@@ -208,13 +215,15 @@ Checked locally:
       Tomorrow takes the card out of Today's Chase at once with "Saving…", then it clears; a
       failed snooze shows orange on every tab and its tap reopens the panel; a 7-day-old Rate
       Quoted card is yellow and a 6-day-old one isn't; after an Update it isn't yellow, after
-      Snooze or Edit details it still is; the last-spoken line; the area row (counts, order,
+      Snooze or Edit details it still is; a failed snooze: orange edge even on a yellow card, Open
+      site, Don't snooze, an Update replaces it; numbers on a card still saving in stored form; the last-spoken line; the area row (counts, order,
       DHA / D.H.A as one), area + search together, ✕ and All areas; no sideways scrolling of the
       page.
-- [x] `npm run check` (287 tests) and `npm run check:browser` (6 checks, new: `cards.check.js`)
+- [x] `npm run check` (288 tests) and `npm run check:browser` (6 checks, new: `cards.check.js`)
       pass on a fresh clone. Key new assertions mutation-checked (each broken on purpose, the
       check failed, then restored). Secrets sweep clean.
-- [ ] Independent review (not run yet: for the go-live routine).
+- [x] Independent review: four findings fixed, each with a check that fails on the old code
+      (see plan 007, step 4).
 
 Checked live (on RIA's test link, TEST rows deleted afterwards with the owner's OK):
 - [ ] The two headers are in live `Sites` before the deploy; Check setup (or a read through the
