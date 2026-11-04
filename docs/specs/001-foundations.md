@@ -1,7 +1,7 @@
 # 001: Foundations
 
-- **Status:** Draft (v2, after adversarial review and owner answers, 2026-11-04)
-- **Owner approval:** _pending_
+- **Status:** Approved (v2, after adversarial review and owner answers)
+- **Owner approval:** approved by the owner on 2026-11-04 (session 2)
 - **Related:** roadmap phase 1 · ADR-0001 (Sheets + Apps Script) · ADR-0003 (tooling) ·
   ADR-0005 (two sheets) · ADR-0007 (Meta-Data ID in code) ·
   [data model](../architecture/data-model.md) · build plan:

@@ -21,11 +21,13 @@
 - **No app code yet.**
 
 ## Next
-- **Spec 001 (foundations) is `Draft` v2**, revised after an adversarial review (a separate
+- **Spec 001 (foundations) v2**, revised after an adversarial review (a separate
   reviewer agent) and the owner's answers (open questions S1-1 to S1-6, ADR-0007). Its build plan
   is ready: `docs/plans/001-foundations-plan.md`.
-- **Waiting for the owner to approve spec 001.** Then set it to `Approved` and start build step 1.
-  **No code before approval.**
+- **Spec 001 is `Approved`** (owner, 2026-11-04). He chose to build in a later session.
+  **Next session: start build step 1** of `docs/plans/001-foundations-plan.md` and work through
+  steps 1–7 (local, one commit each). Step 8 needs the owner present (Apps Script API switch,
+  clasp sign-in, allowing permissions).
 - Facts checked (2026-11-04): clasp 3.4.1, TypeScript 7.0.2 (type-checks JSDoc JS fine), Node 22
   in the cloud container; `clasp push` needs `--force` in a non-interactive shell or it silently
   skips; Meta-Data months are dates and must be read in the sheet's own timezone; Google's sign-in

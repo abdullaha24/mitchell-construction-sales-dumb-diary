@@ -1,6 +1,6 @@
 # Build plan 001: Foundations
 
-> For [spec 001](../specs/001-foundations.md). **Build only after the spec is `Approved`.**
+> For [spec 001](../specs/001-foundations.md) (**Approved** 2026-11-04).
 > Each step is small, ends with `npm run check` passing (from step 1 on), and is one commit.
 > Tick the box when the step is committed, so the next session can pick up where this one stopped.
 > If a step reveals something the spec didn't foresee, stop and update the spec (and ask the owner
