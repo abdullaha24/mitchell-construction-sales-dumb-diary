@@ -224,11 +224,25 @@ function makeUtilities() {
       }).formatToParts(date);
       const part = (type) => parts.find((p) => p.type === type).value;
       if (pattern === 'yyyy-MM') return `${part('year')}-${part('month')}`;
+      if (pattern === 'yyyy-MM-dd') return `${part('year')}-${part('month')}-${part('day').padStart(2, '0')}`;
       if (pattern === 'd MMM yyyy') {
         const month = new Intl.DateTimeFormat('en-US', { timeZone, month: 'short' }).format(date);
         return `${part('day')} ${month} ${part('year')}`;
       }
       throw new Error(`fake Utilities.formatDate does not support "${pattern}"`);
+    },
+    /** Midnight at the start of a yyyy-MM-dd day in `timeZone` (the only pattern the code uses). */
+    parseDate(text, timeZone, pattern) {
+      if (pattern !== 'yyyy-MM-dd') throw new Error(`fake Utilities.parseDate does not support "${pattern}"`);
+      const [y, m, d] = text.split('-').map(Number);
+      const guess = Date.UTC(y, m - 1, d);
+      const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone, hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric',
+        hour: 'numeric', minute: 'numeric', second: 'numeric',
+      }).formatToParts(new Date(guess));
+      const part = (type) => Number(parts.find((p) => p.type === type).value);
+      const asIfUtc = Date.UTC(part('year'), part('month') - 1, part('day'), part('hour'), part('minute'), part('second'));
+      return new Date(guess - (asIfUtc - guess));
     },
     getUuid() {
       const uuid = crypto.randomUUID();

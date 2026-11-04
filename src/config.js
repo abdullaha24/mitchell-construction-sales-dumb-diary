@@ -115,5 +115,23 @@ const STARTING_LISTS = {
 const STARTING_LISTS_ADDED_BY = 'owner';
 const LIST_SORT_STEP = 10;
 
+/** The five sales stages, in order, exactly as in the glossary. */
+const STAGES = ['Visited / Lead', 'Sample / Trial', 'Rate Quoted', 'Won (Order)', 'Lost / Dead'];
+
+/** Stage a new site starts at. */
+const FIRST_STAGE = 'Visited / Lead';
+
+/**
+ * Follow-up buttons (glossary): days from today. "Pick date" sends a yyyy-MM-dd date.
+ * @type {Object<string, number>}
+ */
+const FOLLOW_UP_DAYS = { tomorrow: 1, '3days': 3, '1week': 7 };
+
+/** Limits on typed text and dates (spec 003). */
+const LIMITS = { siteName: 80, contactName: 60, area: 40, followUpDays: 365 };
+
+/** How `Sites.products` joins categories: their names can contain commas. */
+const PRODUCTS_SEPARATOR = ' | ';
+
 /** Google's name for the empty first tab of a new spreadsheet. */
 const DEFAULT_FIRST_TAB = 'Sheet1';

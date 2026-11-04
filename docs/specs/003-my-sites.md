@@ -69,8 +69,9 @@ Then **Save**. He's back on his list with the new site at the top and *"Saved"*.
 ### Numbers
 - Stored in **one tidy form** (data model): digits only, Pakistani numbers as `92…`:
   `0300-1234567`, `+92 300 1234567`, `0092 300 1234567`, `300 1234567` → `923001234567`;
-  landlines too (`042-35761234` → `924235761234`). After tidying it must be 10–15 digits;
-  otherwise *"Check the number"*.
+  landlines too (`042-35761234` → `924235761234`). After tidying, a Pakistani mobile (`92 3…`)
+  must be exactly 12 digits and any other number 10–15 digits; otherwise *"Check the number"*.
+  *(Tightened while building: a mobile missing a digit or two is caught.)*
 - The duplicate check compares tidy forms. For other salesmen it answers **only yes/no**
   (ADR-0004): no name, site, stage, rate or note.
 

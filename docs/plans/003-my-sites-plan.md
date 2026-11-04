@@ -10,7 +10,7 @@
   only yes/no (ADR-0004). Test both on every new function.
 - Replies hold no `Date`s. Pages put data on screen as text only.
 
-## [ ] Step 1: Site rules (plain logic)
+## [x] Step 1: Site rules (plain logic)
 `src/siterules.js`: tidy phone numbers; area keys, "same area" and "Did you mean" suggestions
 (edit distance); follow-up dates in Pakistan time; checking a new site's values; next IDs
 (`S000001`, `A0000001`, never reusing one seen in `Sites` or `Activity`); joining products

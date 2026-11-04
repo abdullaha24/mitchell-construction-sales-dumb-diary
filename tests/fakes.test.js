@@ -38,6 +38,14 @@ test('formatDate d MMM yyyy: Karachi day, short English month', () => {
   assert.equal(utilities.formatDate(new Date('2026-09-15T12:00:00Z'), 'Asia/Karachi', 'd MMM yyyy'), '15 Sep 2026');
 });
 
+test('formatDate yyyy-MM-dd and parseDate: Pakistan days', () => {
+  const utilities = makeUtilities();
+  assert.equal(utilities.formatDate(new Date('2026-11-04T19:30:00Z'), 'Asia/Karachi', 'yyyy-MM-dd'), '2026-11-05');
+  assert.equal(utilities.formatDate(new Date('2026-11-04T18:59:00Z'), 'Asia/Karachi', 'yyyy-MM-dd'), '2026-11-04');
+  assert.equal(utilities.parseDate('2026-11-05', 'Asia/Karachi', 'yyyy-MM-dd').toISOString(), '2026-11-04T19:00:00.000Z');
+  assert.equal(utilities.parseDate('2026-11-05', 'UTC', 'yyyy-MM-dd').toISOString(), '2026-11-05T00:00:00.000Z');
+});
+
 test('getUuid: random v4 UUIDs, all kept for tests', () => {
   const utilities = makeUtilities();
   const a = utilities.getUuid();
