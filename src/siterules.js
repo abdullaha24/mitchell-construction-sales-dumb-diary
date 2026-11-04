@@ -350,22 +350,26 @@ function checkUpdate_(input, current, choices, todayKey) {
 }
 
 /**
- * Two people, one site (spec 008): true when the site no longer matches what the Update form was
- * opened on (`seen`: stage, value, Cash / Credit, lost reason, follow-up), because someone else
- * (the salesman, the admin, or his other phone) saved a change since. Such a save is refused, not
- * merged, so a screen loaded in the morning can't undo an afternoon update. A form without `seen`
- * (a page from before spec 008) is not checked.
+ * Two people, one site (spec 008): true when the site matches none of the states the Update form
+ * knows it could be in (`seen`: one state, or up to 5: what Google last confirmed, and what his
+ * own unconfirmed saves would have made it, since a save whose reply was lost may have landed).
+ * A state is stage, value, Cash / Credit, lost reason and follow-up. Then someone else (the
+ * salesman, the admin, or another phone) saved a change since, and the save is refused, not
+ * merged, so a screen loaded in the morning can't undo an afternoon update. A form without
+ * `seen` (a page from before spec 008) is not checked.
  * @param {any} seen
  * @param {CurrentSite} current
  */
 function changedSince_(seen, current) {
-  if (!seen || typeof seen !== 'object') return false;
-  const value = isBlank_(seen.value) ? null : Number(seen.value);
+  const states = (Array.isArray(seen) ? seen.slice(0, 5) : [seen]).filter((s) => s && typeof s === 'object');
+  if (!states.length) return false;
   /** @param {any} v */
   const textOf = (v) => (typeof v === 'string' ? v : '');
-  return seen.stage !== current.stage || (value || null) !== current.value ||
-    textOf(seen.terms) !== current.terms || textOf(seen.lostReason) !== current.lostReason ||
-    textOf(seen.followUp) !== current.followUp;
+  return !states.some((s) => {
+    const value = isBlank_(s.value) ? null : Number(s.value);
+    return s.stage === current.stage && (value || null) === current.value && textOf(s.terms) === current.terms &&
+      textOf(s.lostReason) === current.lostReason && textOf(s.followUp) === current.followUp;
+  });
 }
 
 /**

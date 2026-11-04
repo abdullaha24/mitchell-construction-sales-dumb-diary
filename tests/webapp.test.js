@@ -28,6 +28,8 @@ function world({ links, metaTabs = metaDataTabs(), diaryOpens = true, sites } = 
   const diary = makeSpreadsheet({
     Sites: sites || [SITES, siteRow('S000001', 'RIA', 'F-11 Tower', '923001234567'), siteRow('S000002', 'SH', 'Gulberg Mall', '923007654321')],
     Lists: [LISTS, ['buyer_type', 'Dealer', '', 'owner', true, 10], ['area', 'DHA', 'North', 'RIA', true, 10]],
+    Activity: [['activity_id', 'timestamp', 'rep', 'site_id', 'action', 'from_stage', 'to_stage', 'value_rs',
+      'payment_terms', 'lost_reason', 'note', 'next_followup']],
     Links: links || [
       LINKS,
       ['rep', 'RIA', RIA_CODE, true, NOW],
@@ -100,10 +102,25 @@ test("a salesman's link writes nothing when the page opens", () => {
   assert.deepEqual(w.diary._writes(), []);
 });
 
-test("the owner's link: Hello, owner, and that his screen comes later", () => {
-  const html = assertSafePage(visit(world(), OWNER_CODE));
-  assert.ok(html.includes('<h1>Hello, owner</h1>'));
-  assert.ok(html.includes('Your screen comes in a later phase.'));
+test("the owner's link opens the admin screen (spec 008): everyone's sites, his own code only", () => {
+  const w = world();
+  const page = visit(w, OWNER_CODE);
+  assert.equal(page.getTitle(), 'Sales Diary · Admin');
+  const html = page.getContent();
+  const data = appData(page);
+  assert.equal(data.admin, true);
+  assert.equal(data.k, OWNER_CODE, 'his page needs his own code to save');
+  assert.deepEqual(data.sites.map((x) => `${x.rep} ${x.name}`).sort(), ['RIA F-11 Tower', 'SH Gulberg Mall']);
+  assert.ok(html.includes('function adminRender()'), "the admin's part is in his page");
+  for (const secret of [RIA_CODE, CANCELLED_CODE, ODD_CODE]) assert.ok(!html.includes(secret), 'no other link code');
+  assert.deepEqual(w.diary._writes(), []);
+});
+
+test("a salesman's page never carries the admin's part", () => {
+  const html = visit(world(), RIA_CODE).getContent();
+  assert.ok(!html.includes('function adminRender'));
+  assert.ok(!html.includes('Late & cold'));
+  assert.ok(!html.includes('<?'), 'no template code left over');
 });
 
 test('cancelled, unknown, badly shaped or missing codes all get the same "doesn\'t work" page', () => {

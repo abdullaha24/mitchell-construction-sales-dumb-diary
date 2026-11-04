@@ -439,14 +439,17 @@ function makeHtmlService() {
     createTemplateFromFile(name) {
       const source = read(name);
       const template = {
+        // Supports printing a value escaped (<?= name ?>), as Google does, and as it is
+        // (<?!= name ?>, spec 008: the admin's part of the page).
         evaluate() {
-          const leftover = source.replace(/<\?=\s*([A-Za-z_$][\w$]*)\s*\?>/g, '');
+          const scriptlet = /<\?(!?)=\s*([A-Za-z_$][\w$]*)\s*\?>/g;
+          const leftover = source.replace(scriptlet, '');
           if (/<\?/.test(leftover)) throw new Error(`fake template: unsupported scriptlet in ${name}`);
-          return makeHtmlOutput(source.replace(/<\?=\s*([A-Za-z_$][\w$]*)\s*\?>/g, (_, key) => {
+          return makeHtmlOutput(source.replace(scriptlet, (_, raw, key) => {
             if (!Object.prototype.hasOwnProperty.call(template, key)) {
               throw new Error(`ReferenceError: "${key}" is not defined.`);
             }
-            return escapeHtml(template[key]);
+            return raw ? String(template[key]) : escapeHtml(template[key]);
           }));
         },
       };

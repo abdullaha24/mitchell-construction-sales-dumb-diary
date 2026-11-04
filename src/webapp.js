@@ -1,6 +1,7 @@
 // @ts-check
-// The web app (specs 002, 003). A visitor's link code decides the page:
-//   salesman → his app (App.html) with his own sites; owner → "Hello, owner";
+// The web app (specs 002, 003, 008). A visitor's link code decides the page:
+//   salesman → his app (App.html) with his own sites; the owner's link → the admin screen
+//   (App.html with Admin.html inside, spec 008: people see him as "Admin", owner P7-7);
 //   anything else → "This link doesn't work"; Google failing → "Something went wrong", so
 //   nobody thinks a good link was cancelled.
 // A code is only ever written into its own holder's page (his page needs it to save), never
@@ -11,7 +12,6 @@
 
 /** @type {Object<string, PageText>} */
 const PAGE_TEXT = {
-  owner: { heading: 'Hello, owner', note: 'Your screen comes in a later phase.' },
   none: { heading: "This link doesn't work.", note: 'Ask the admin for a new one.' },
   error: { heading: 'Something went wrong.', note: 'Try again in a minute.' },
 };
@@ -27,7 +27,8 @@ function doGet(e) {
     const diary = isWellFormedCode_(code) ? openSalesDiary_() : undefined;
     const visitor = whoIsVisiting_(code, diary);
     if (visitor.kind === 'rep' && diary) return renderApp_(visitor, String(code), diary);
-    return renderPage_(pageTextFor_(visitor));
+    if (visitor.kind === 'owner' && diary) return renderAdmin_(String(code), diary, visitor.linked);
+    return renderPage_(PAGE_TEXT.none);
   } catch (error) {
     // Deliberately not logged: keep it simple and keep codes out of logs.
     return renderPage_(PAGE_TEXT.error);
@@ -45,18 +46,27 @@ function doGet(e) {
 function renderApp_(salesman, code, diary) {
   const template = HtmlService.createTemplateFromFile('App');
   template.data = JSON.stringify({ ...loadFor_(salesman, diary), k: code });
+  template.adminParts = ''; // a salesman's page never carries the admin's part
   return template.evaluate()
     .setTitle('Sales Diary')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 
 /**
- * The words on the simple page for the owner or a refused visitor.
- * @param {Visitor} visitor
- * @returns {PageText}
+ * The admin's screen (spec 008): the same App.html (site screen, Update form, save queue) with
+ * the admin's part (Admin.html) inside, and every salesman's data. Only for a working admin link.
+ * @param {string} code his own link code (his page needs it to save)
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} diary already open
+ * @param {string[]} linked salesmen with a working link
+ * @returns {GoogleAppsScript.HTML.HtmlOutput}
  */
-function pageTextFor_(visitor) {
-  return visitor.kind === 'owner' ? PAGE_TEXT.owner : PAGE_TEXT.none;
+function renderAdmin_(code, diary, linked) {
+  const template = HtmlService.createTemplateFromFile('App');
+  template.data = JSON.stringify({ ...adminDataFor_(diary, linked, new Date()), k: code });
+  template.adminParts = HtmlService.createHtmlOutputFromFile('Admin').getContent();
+  return template.evaluate()
+    .setTitle('Sales Diary · Admin')
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 
 /**

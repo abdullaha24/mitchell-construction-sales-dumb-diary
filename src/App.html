@@ -252,13 +252,16 @@
       </div>
     </div>
     <div id="toast" role="status"></div>
-
+<?!= adminParts ?>
     <script>
       // Everything from the server or the sheet goes on screen with textContent, never as HTML.
       var data = JSON.parse(document.getElementById('data').textContent);
       var k = data.k;
-      var DRAFT_KEY = 'salesdiary.draft.' + data.rep;
-      var QUEUE_KEY = 'salesdiary.queue.' + data.rep;
+      // The admin's screen (spec 008) is this page with Admin.html inside: the same site screen,
+      // Update form and save queue; its own tabs and lists. A salesman's page has none of it.
+      var ADMIN = !!data.admin;
+      var DRAFT_KEY = 'salesdiary.draft.' + (ADMIN ? 'admin' : data.rep);
+      var QUEUE_KEY = 'salesdiary.queue.' + (ADMIN ? 'admin' : data.rep);
       var FOLLOW = [['tomorrow', 'Tomorrow'], ['3days', '3 days'], ['1week', '1 week'], ['date', 'Pick date']];
       var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       var SAVE_WAIT_MS = 30000;
@@ -417,6 +420,7 @@
       function savedToast(r) {
         var w = r.warning || {};
         if (r.notice) toast(r.notice);
+        else if (ADMIN && (w.team || (w.mine && w.mine.length))) toast('Saved. Another site already has this number.');
         else if (w.team) toast('Saved. Someone in the team already works with this contact.');
         else if (w.mine && w.mine.length) toast('Saved. You already have this number: ' + w.mine.join(', ') + '.');
         else toast('Saved');
@@ -454,6 +458,7 @@
       // Google confirmed a save (possibly late, after it was shown as not saved).
       function applySuccess(entry, r) {
         removeEntry(entry);
+        if (ADMIN && r.site) r.site = adminMerge(r.site);
         // Older failed saves of the same site are replaced by this newer one. An Update also
         // replaces a failed snooze: it set the follow-up itself (spec 007).
         for (var i = queue.length - 1; i >= 0; i--) {
@@ -479,15 +484,19 @@
         saveQueue();
         // A snooze already said "Snoozed to …" when he tapped it; only a notice is worth a word.
         if (entry.fn !== 'repSnoozeSite' || r.notice) savedToast(r);
+        if (ADMIN) adminSaved(entry, r);
         if (screen === 'list') renderList();
       }
-      function refreshAll() {
-        google.script.run.withSuccessHandler(function (r) {
-          if (!r || !r.ok) return;
+      // Reloads the page's data (onFail: no signal or refused; the list stays as it is).
+      function refreshAll(onFail) {
+        var run = google.script.run.withSuccessHandler(function (r) {
+          if (!r || !r.ok) { if (onFail) onFail(); return; }
           var keepK = k; data = r; data.k = keepK; setClock();
           queue.forEach(function (e) { showCard(e.card); });
+          if (ADMIN) adminLoaded();
           if (screen === 'list') renderList();
-        }).withFailureHandler(function () { /* no signal: the list stays as it is */ }).repLoad(k);
+        }).withFailureHandler(function () { if (onFail) onFail(); });
+        if (ADMIN) run.adminPageLoad(k); else run.repLoad(k);
       }
       function sendNext() {
         if (sending) return;
@@ -519,6 +528,12 @@
               applySuccess(entry, r); // honoured even if it arrives after the give-up
             } else if (mine) {
               entry.status = 'failed'; entry.message = (r && r.message) || 'Something went wrong.';
+              // Changed by someone else since the form was opened (spec 008): show it as it is now.
+              if (r && r.changed && r.site) {
+                var fresh = ADMIN ? adminMerge(r.site) : r.site;
+                showCard(fresh);
+                entry.card = clone(fresh);
+              }
               saveQueue();
               if (screen === 'list') renderList();
             }
@@ -534,6 +549,7 @@
         if (entry.fn === 'repAddSite') run.repAddSite(k, entry.input);
         else if (entry.fn === 'repUpdateSite') run.repUpdateSite(k, entry.siteId, entry.input);
         else if (entry.fn === 'repSnoozeSite') run.repSnoozeSite(k, entry.siteId, entry.input);
+        else if (entry.fn === 'adminPageUpdateSite') run.adminPageUpdateSite(k, entry.siteId, entry.input);
         else run.repEditSite(k, entry.siteId, entry.input);
       }
       // Tapping a card that didn't save reopens it exactly as he left it, with the reason. It stays
@@ -589,9 +605,10 @@
           if (landed && landed.length) refreshAll();
           if (screen === 'list') renderList();
         }
-        google.script.run.withSuccessHandler(function (r) { settle(r && r.ok ? r.landed : null); })
-          .withFailureHandler(function () { settle(null); })
-          .repSaveStatus(k, queue.map(function (e) { return e.id; }));
+        var ask = google.script.run.withSuccessHandler(function (r) { settle(r && r.ok ? r.landed : null); })
+          .withFailureHandler(function () { settle(null); });
+        var ids = queue.map(function (e) { return e.id; });
+        if (ADMIN) ask.adminPageSaveStatus(k, ids); else ask.repSaveStatus(k, ids);
       }
 
       function renderSave() {
@@ -863,7 +880,8 @@
           card.appendChild(el('span', 'Not saved. Tap to try again.', 'tag failed'));
           card.appendChild(el('div', entry.message, 'meta'));
         }
-        var buttons = buttonRow(s, canSnooze(s, today));
+        if (ADMIN) adminCardExtras(card, s);
+        var buttons = buttonRow(s, !ADMIN && canSnooze(s, today));
         if (buttons) card.appendChild(buttons);
         return card;
       }
@@ -888,6 +906,7 @@
         return box;
       }
       function renderList() {
+        if (ADMIN) return adminRender();
         var today = todayKey();
         renderedDay = today;
         $('who').textContent = data.rep;
@@ -958,6 +977,7 @@
       }
       function renderSiteHead(s) {
         var head = $('siteHead'); head.textContent = '';
+        if (ADMIN) head.appendChild(el('div', 'Salesman: ' + s.rep + (s.region ? ' (' + s.region + ')' : ''), 'line who-line'));
         head.appendChild(el('h2', s.name));
         var meta = [s.area, s.buyerType].filter(Boolean).join(' · ');
         if (meta) head.appendChild(el('div', meta, 'line'));
@@ -1032,6 +1052,27 @@
         if (!has(r.closedStages, st) && followUp === 'date' && !date) return 'Pick a follow-up date.';
         return '';
       }
+      // The site as Google has it, as far as this page knows: before any of its saves that failed
+      // (their cards show what he typed, not what was saved). Saves still on their way count as
+      // saved: they go first.
+      function baseFor(s) {
+        for (var i = 0; i < queue.length; i++) {
+          var q = queue[i];
+          if (q.card.id === s.id && q.status === 'failed' && q.before) return q.before;
+        }
+        return s;
+      }
+      // `seen` for an Update (spec 008): every state the site may be in on Google's side because of
+      // this page: the base, and what each of its failed saves would have made it (a lost reply may
+      // still have landed). Anything else means someone else changed it, and Google refuses the save.
+      function seenFor(s, base) {
+        var states = [base];
+        queue.forEach(function (q) { if (q.card.id === s.id && q.status === 'failed') states.push(q.card); });
+        states.push(s);
+        return states.slice(-5).map(function (x) {
+          return { stage: x.stage, value: x.value || null, terms: x.terms || '', lostReason: x.lostReason || '', followUp: x.followUp || '' };
+        });
+      }
       function saveUpdate() {
         var s = siteById(openId);
         var r = rules();
@@ -1041,27 +1082,34 @@
           !!s.phone || !!upd.phone.trim(), "Add the contact's number to move this site to " + upd.stage + '.');
         if (trouble) return problem(trouble);
         clearProblem();
+        var base = clone(baseFor(s));
         var followUp = has(r.closedStages, upd.stage) ? '' : followKey(upd.followUp, upd.date, s.followUp);
         var input = {
           stage: upd.stage, value: upd.value, terms: upd.terms, lostReason: upd.lostReason,
           followUp: upd.followUp === 'keep' ? s.followUp : upd.followUp === 'date' ? upd.date : upd.followUp,
           note: upd.note, phone: upd.phone, saveId: upd.saveId,
+          // What the form was opened on: a save made over someone else's newer change is refused (spec 008).
+          seen: seenFor(s, base),
         };
         var card = clone(s);
         card.stage = upd.stage;
         if (has(r.valueStages, upd.stage)) { card.value = Number(digitsOf(upd.value)); card.terms = upd.terms; }
         card.lostReason = upd.stage === r.lostStage ? upd.lostReason : '';
         card.followUp = followUp;
-        if (upd.note.trim()) { card.note = upd.note.trim(); card.noteDay = todayKey(); }
+        if (upd.note.trim()) { card.note = (ADMIN ? 'Admin: ' : '') + upd.note.trim(); card.noteDay = todayKey(); }
         if (tidyPhone(upd.phone)) card.phone = tidyPhone(upd.phone);
-        card.worked = todayKey(); // a real Update: no longer going cold (P6-2)
+        // A salesman's Update is real work: no longer going cold (P6-2). The admin's never is (P7-5).
+        if (!ADMIN) card.worked = todayKey();
+        if (ADMIN && card.stage !== s.stage) card.closed = has(r.closedStages, card.stage) ? todayKey() : '';
         var replaces = retrying;
-        enqueue({ id: upd.saveId, fn: 'repUpdateSite', siteId: openId, input: input, card: card, state: clone(upd) }, replaces);
+        enqueue({ id: upd.saveId, fn: ADMIN ? 'adminPageUpdateSite' : 'repUpdateSite', siteId: openId, input: input, card: card,
+          state: clone(upd), fromStage: base.stage, before: base }, replaces);
         store(updKey(openId), null); // the queue carries it now
         retrying = null;
         showList(true);
       }
       function checkUpdPhone() {
+        if (ADMIN) return; // the admin's save checks the number itself (no salesman's check here)
         var typed = upd.phone.trim();
         var note = $('u-phoneNote');
         if (!typed) { note.hidden = true; return; }
@@ -1277,6 +1325,7 @@
         $('formView').hidden = name !== 'form';
         $('formActions').hidden = name === 'list';
         $('newSite').hidden = name !== 'list';
+        if (ADMIN) adminShowOnly(name);
         clearProblem();
         window.scrollTo(0, 0);
       }
@@ -1381,6 +1430,7 @@
       window.addEventListener('pageshow', newDayCheck);
       setInterval(newDayCheck, 60000);
 
+      if (ADMIN) adminStart();
       loadQueue();
       showList();
     </script>

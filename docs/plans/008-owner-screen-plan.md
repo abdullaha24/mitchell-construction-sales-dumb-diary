@@ -28,13 +28,18 @@
   `admin`, the stale-form check, won by its own stage, snooze counts, today only, the "Admin: "
   note, save keys, kept region targets, the link list.
 
-## [ ] Step 3: The page
+## [x] Step 3: The page
 - `Admin.html` inserted into `App.html` for the admin only: top bar (Admin, Updated, Refresh),
   tabs Today · Team · Late & cold · This month, tap-through lists, the site screen with the
   salesman line and Update (no Edit details, no Snooze), the save queue with `adminPageUpdateSite`.
 - Salesman page: sends `seen` with an Update; shows a "changed a moment ago" refusal with the
   fresh card.
 - Browser check `tests/browser/admin.check.js` in `check:browser`; existing checks unchanged.
+- Done. Found while building, fixed with checks: `seen` is what Google last confirmed plus what
+  this page's own failed saves would have made the site (a retried save, a correction after a lost
+  reply, and an Update replacing a failed snooze all still save; the existing checks caught it).
+  `seen` may be a list of up to 5 states. 4 page behaviours mutation-checked in `admin.check.js`
+  (`seen` sent, failed card on every tab, late order, Won day kept after a save), each caught.
 
 ## [ ] Step 4: Docs, local acceptance
 - Data model, src/README.md, tests/README.md, AGENTS.md, roadmap ("built and checked locally"),

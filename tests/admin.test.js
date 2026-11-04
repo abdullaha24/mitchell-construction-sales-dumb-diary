@@ -317,7 +317,8 @@ test('an admin save is saved once per save ID; adminPageSaveStatus knows only hi
 
 test('two people, one site: a form opened on an older state is refused, both ways, nothing written', () => {
   const w = world();
-  // RIA moved the quote on; the admin's screen still shows the morning's state.
+  // RIA moved the quote on; the admin's screen still shows the morning's state (a list of states the
+  // page knows of works the same: none matches).
   const stale = { stage: 'Visited / Lead', value: null, terms: '', lostReason: '', followUp: '2026-11-01' };
   const writes = w.diary._writes().length;
   const r = plain(w.s.adminPageUpdateSite(ADMIN, 'S000002', { stage: RQ, value: '1', terms: 'Cash', followUp: 'tomorrow', seen: stale }));
@@ -329,6 +330,9 @@ test('two people, one site: a form opened on an older state is refused, both way
   const s = plain(w.s.repUpdateSite(RIA, 'S000002', { stage: RQ, value: '1', terms: 'Cash', followUp: 'tomorrow', seen: stale }));
   assert.equal(s.changed, true);
   assert.equal(s.site.rep, undefined, 'his card, as always');
+  const both = plain(w.s.repUpdateSite(RIA, 'S000002', { stage: RQ, value: '1', terms: 'Cash', followUp: 'tomorrow',
+    seen: [stale, { ...stale, stage: 'Sample / Trial' }] }));
+  assert.equal(both.changed, true, 'none of the states his page knows of');
   assert.equal(w.diary._writes().length, writes, 'nothing written');
 });
 
@@ -342,6 +346,11 @@ test('two people, one site: a matching form, or one from an older page (no seen)
   const second = plain(w.s.repUpdateSite(RIA, 'S000002', { stage: LOST, lostReason: 'Price Too High', note: 'gone',
     seen: { stage: card.stage, value: card.value, terms: card.terms, lostReason: card.lostReason, followUp: card.followUp } }));
   assert.equal(second.ok, true, second.message);
+  // A save whose reply was lost may have landed: his page offers both states, and either matches.
+  const now = { stage: LOST, value: 350000, terms: 'Cash', lostReason: 'Price Too High', followUp: '' };
+  const after = plain(w.s.repUpdateSite(RIA, 'S000002', { stage: LOST, lostReason: 'Price Too High', note: 'gone for good',
+    seen: [{ ...now, stage: RQ }, now] }));
+  assert.equal(after.ok, true, after.message);
   const old = plain(w.s.repUpdateSite(RIA, 'S000001', { stage: 'Visited / Lead', followUp: '3days', note: 'no seen' }));
   assert.equal(old.ok, true);
 });

@@ -1,0 +1,439 @@
+<!-- The admin's screen (spec 008): inserted by doGet into App.html ONLY for a working admin link,
+     so a salesman's page never carries any of it. App.html keeps the site screen, the Update form
+     and the save queue (one copy for both); this part draws the four tabs, the tap-through lists
+     and the admin's extras on cards. Every value goes on screen with textContent, never as HTML.
+     Words on screen say "Admin", never "owner" (owner P7-7). -->
+<style>
+  #refresh { flex: none; min-height: 44px; padding: 6px 12px; font-size: 15px; }
+  .target .upd { white-space: nowrap; }
+  .a-h { font-size: 18px; font-weight: 700; margin: 4px 0 8px; }
+  .a-sub { font-size: 16px; font-weight: 700; margin: 18px 0 6px; }
+  .a-line { font-size: 14px; color: var(--soft); margin-top: 2px; }
+  .a-line b { color: var(--ink); }
+  .banner.ok { background: #e3f5ec; color: var(--green); }
+  .who-line { font-size: 13px; font-weight: 700; color: var(--blue); }
+  .card.team, .card.region, .card.feed, .card.rep-row { cursor: default; }
+  .card.region { background: #eef3fb; }
+  .card .big-name { font-weight: 700; font-size: 18px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .chip { min-height: 40px; padding: 6px 10px; border-radius: 10px; border: 1px solid var(--line); background: #f5f7fa;
+          color: var(--ink); font-size: 14px; text-align: left; }
+  .chip b { font-weight: 700; }
+  .rep-row { display: flex; width: 100%; align-items: baseline; gap: 10px; text-align: left; min-height: 44px; cursor: pointer;
+             font: inherit; color: var(--ink); }
+  .rep-row[aria-pressed=true] { border-color: var(--blue); background: #e6effb; }
+  .rep-row .code { font-weight: 700; min-width: 40px; }
+  .rep-row .what { font-size: 14px; color: var(--soft); }
+  .rep-row.idle .what { color: var(--orange); font-weight: 600; }
+  .card.feed { cursor: pointer; }
+  .feed .when { font-size: 14px; font-weight: 600; }
+  .feed .what { font-size: 14px; margin-top: 2px; }
+  .back { margin-bottom: 10px; }
+</style>
+<script>
+  // ---- The admin's screen (spec 008). Called from App.html when data.admin is set. ----
+  var A = { tab: 'today', drill: null, todayRep: '', lateKind: 'late', lateRep: '', lostReason: '', loadedAt: Date.now(),
+    tabScroll: 0 };
+  var A_TABS = [['today', 'Today'], ['team', 'Team'], ['late', 'Late & cold'], ['month', 'This month']];
+  var A_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  var A_REFRESH_MS = 10 * 60 * 1000; // coming back after 10 minutes refreshes by itself
+
+  function aWon() { var r = rules(); return r.closedStages.filter(function (s) { return s !== r.lostStage; })[0]; }
+  function aOpenStages() { var r = rules(); return r.stages.filter(function (s) { return !has(r.closedStages, s); }); }
+  function aMonthName() { return MONTH_NAMES[Number(String(data.month).slice(5)) - 1]; }
+  function aWonMonth(s) { return !!s.closed && s.stage === aWon(); }
+  function aLostMonth(s) { return !!s.closed && s.stage === rules().lostStage; }
+  function aNoNumber(s) { return isOpenSite(s) && !s.phone; }
+  function aLate(s, today) { return isOpenSite(s) && (!s.followUp || s.followUp < today); }
+  function aRegions() { return Object.keys(data.regionTargets || {}).filter(function (k) { return k !== data.houseRegion; }); }
+  function aPct(won, target) { return target ? Math.floor(won * 100 / target) + '%' : ''; }
+  function aClock() { return new Date(Date.now() + clockGap + PK_OFFSET_MS).toISOString().slice(11, 16); }
+  function aDayName(key) { var p = key.split('-').map(Number); return A_DAYS[new Date(Date.UTC(p[0], p[1] - 1, p[2])).getUTCDay()]; }
+  function aPlural(n, one, many) { return n + ' ' + (n === 1 ? one : many); }
+
+  function adminStart() {
+    $('who').textContent = 'Admin';
+    var refresh = el('button', 'Refresh', 'plain');
+    refresh.id = 'refresh';
+    refresh.type = 'button';
+    refresh.addEventListener('click', function () { adminRefresh(false); });
+    document.querySelector('header').appendChild(refresh);
+    var nav = el('nav', undefined, 'tabs');
+    nav.id = 'adminTabs';
+    nav.setAttribute('role', 'tablist');
+    A_TABS.forEach(function (t) {
+      var b = el('button', t[1], 'tab');
+      b.type = 'button';
+      b.id = 'atab-' + t[0];
+      b.setAttribute('role', 'tab');
+      b.appendChild(el('span', '', 'count'));
+      b.addEventListener('click', function () { adminPickTab(t[0]); });
+      nav.appendChild(b);
+    });
+    $('tabs').parentNode.insertBefore(nav, $('tabs').nextSibling);
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden && Date.now() - A.loadedAt >= A_REFRESH_MS) adminRefresh(true);
+    });
+  }
+  function adminShowOnly(name) {
+    $('adminTabs').hidden = name !== 'list';
+    $('refresh').hidden = name !== 'list';
+    $('editDetails').hidden = true;
+    $('newSite').hidden = true;
+    $('tabs').hidden = true;
+  }
+  function adminRefresh(quiet) {
+    var b = $('refresh');
+    b.disabled = true;
+    b.textContent = 'Refreshing…';
+    refreshAll(function () {
+      b.disabled = false;
+      b.textContent = 'Refresh';
+      if (!quiet) toast("Couldn't refresh: no signal.", true);
+    });
+  }
+  function adminLoaded() {
+    A.loadedAt = Date.now();
+    $('refresh').disabled = false;
+    $('refresh').textContent = 'Refresh';
+  }
+  function adminPickTab(name) {
+    A.tab = name; A.drill = null; shownCount = PAGE_SIZE;
+    renderList();
+    window.scrollTo(0, 0);
+  }
+  function adminDrill(title, test) {
+    A.tabScroll = window.scrollY || 0;
+    A.drill = { title: title, test: test };
+    shownCount = PAGE_SIZE;
+    renderList();
+    window.scrollTo(0, 0);
+  }
+
+  // A reply's card keeps this month's facts the page already had (snoozes; the day it was won or
+  // lost), and gets today as that day if this save moved it to Won or Lost.
+  function adminMerge(site) {
+    var old = siteById(site.id);
+    var merged = clone(site);
+    merged.snoozes = old ? old.snoozes || 0 : 0;
+    merged.closed = old && old.stage === site.stage ? old.closed || '' : has(rules().closedStages, site.stage) ? todayKey() : '';
+    return merged;
+  }
+  // His own save shows at once on Today as "You" (it never counts as a salesman's work, P7-2).
+  function adminSaved(entry, r) {
+    if (entry.fn !== 'adminPageUpdateSite' || !r.site) return;
+    var s = r.site;
+    var note = String(entry.input.note || '').trim();
+    data.feed.unshift({ time: aClock(), by: 'admin', site: s.id, name: s.name,
+      action: entry.fromStage !== s.stage ? 'stage_change' : 'update', from: entry.fromStage, to: s.stage,
+      value: has(rules().valueStages, s.stage) ? s.value : null, terms: has(rules().valueStages, s.stage) ? s.terms : '',
+      lostReason: s.lostReason, note: note ? 'Admin: ' + note : '', followUp: s.followUp });
+  }
+
+  // ---- Cards: the salesman's card, plus whose it is, when it was won / lost, snoozes ----
+  function adminCardExtras(card, s) {
+    card.insertBefore(el('div', s.rep + (s.region ? ' · ' + s.region : ''), 'who-line'), card.firstChild);
+    if (s.closed) {
+      var lost = s.stage === rules().lostStage;
+      card.appendChild(el('div', (lost ? 'Lost ' : 'Won ') + shortDay(s.closed) + (lost && s.lostReason ? ' · ' + s.lostReason : ''), 'meta'));
+    }
+    if ((s.snoozes || 0) >= 2) card.appendChild(el('span', 'Snoozed ' + s.snoozes + ' times this month', 'tag'));
+  }
+
+  // ---- Drawing ----
+  function aTop(today) {
+    var t = $('target');
+    t.hidden = false;
+    t.textContent = '';
+    t.appendChild(el('div', 'Updated ' + new Date(data.now + PK_OFFSET_MS).toISOString().slice(11, 16), 'upd'));
+    var won = 0;
+    data.sites.forEach(function (s) { if (aWonMonth(s)) won += Number(s.value) || 0; });
+    t.appendChild(el('div', aMonthName() + ': Won ' + rs(won) + ' logged, not invoiced'));
+    var lateOrCold = 0;
+    data.sites.forEach(function (s) { if (aLate(s, today) || coldDays(s, today)) lateOrCold++; });
+    A_TABS.forEach(function (tab) {
+      var b = $('atab-' + tab[0]);
+      b.setAttribute('aria-selected', A.tab === tab[0] ? 'true' : 'false');
+      var c = b.querySelector('.count');
+      c.textContent = tab[0] === 'late' ? String(lateOrCold) : '';
+      c.className = 'count' + (tab[0] === 'late' && lateOrCold ? ' late' : '');
+    });
+  }
+  function adminRender() {
+    var today = todayKey();
+    renderedDay = today;
+    aTop(today);
+    $('draftBanner').hidden = true;
+    $('noStorage').hidden = storageWorks;
+    $('searchBox').hidden = true;
+    $('areaRow').hidden = true;
+    var box = $('sites');
+    box.textContent = '';
+    var frag = document.createDocumentFragment();
+    // A save that didn't go through is never hidden: at the top of every tab.
+    data.sites.forEach(function (s) { if (isFailed(s)) frag.appendChild(cardFor(s, today)); });
+    if (A.drill) aDrillView(frag, today);
+    else if (A.tab === 'today') aToday(frag, today);
+    else if (A.tab === 'team') aTeam(frag);
+    else if (A.tab === 'late') aLateCold(frag, today);
+    else aMonth(frag, today);
+    box.appendChild(frag);
+  }
+  // Up to shownCount cards, then Show more.
+  function aCards(frag, list, today, empty) {
+    var rows = list.filter(function (s) { return !isFailed(s); });
+    if (!rows.length) { frag.appendChild(el('div', empty, 'empty')); return; }
+    rows.slice(0, shownCount).forEach(function (s) { frag.appendChild(cardFor(s, today)); });
+    if (rows.length > shownCount) {
+      var more = el('button', 'Show more', 'plain more');
+      more.type = 'button';
+      more.id = 'showMore';
+      more.addEventListener('click', function () { shownCount += PAGE_SIZE; renderList(); });
+      frag.appendChild(more);
+    }
+  }
+  function aDrillView(frag, today) {
+    var back = el('button', '‹ Back', 'plain back');
+    back.type = 'button';
+    back.id = 'drillBack';
+    back.addEventListener('click', function () {
+      A.drill = null; shownCount = PAGE_SIZE; renderList(); window.scrollTo(0, A.tabScroll);
+    });
+    frag.appendChild(back);
+    var list = data.sites.filter(A.drill.test).sort(function (a, b) {
+      return shownValue(b) - shownValue(a) || ((a.followUp || '') < (b.followUp || '') ? -1 : (a.followUp || '') > (b.followUp || '') ? 1 : 0);
+    });
+    frag.appendChild(el('div', A.drill.title + ' · ' + aPlural(list.length, 'site', 'sites'), 'a-h'));
+    aCards(frag, list, today, 'No sites.');
+  }
+
+  // ---- Today: who worked today (P7-2: any save counts; the admin's never) ----
+  var A_KINDS = [['created', 'new site', 'new sites'], ['update', 'update', 'updates'], ['details', 'details change', 'details changes'],
+    ['snooze', 'snooze', 'snoozes']];
+  function aKind(action) { return action === 'stage_change' ? 'update' : action; }
+  function aFeedWhat(f) {
+    var money = f.value ? ' · ' + rs(f.value) + (f.terms ? ' ' + f.terms : '') : '';
+    var lost = f.lostReason ? ' · ' + f.lostReason : '';
+    if (f.action === 'created') return 'New site · ' + f.to + money + lost;
+    if (f.action === 'stage_change') return f.from + ' → ' + f.to + money + lost;
+    if (f.action === 'details') return 'Details changed: ' + f.note;
+    if (f.action === 'snooze') return 'Snoozed to ' + shortDay(f.followUp);
+    return 'Update' + money + (f.followUp ? ' · follow up ' + shortDay(f.followUp) : '');
+  }
+  function aToday(frag, today) {
+    frag.appendChild(el('div', 'Today, ' + aDayName(data.today) + ' ' + shortDay(data.today), 'a-h'));
+    if (today !== data.today) frag.appendChild(el('div', 'This is ' + shortDay(data.today) + '. Tap Refresh.', 'banner'));
+    var counts = {};
+    data.feed.forEach(function (f) {
+      if (f.by === 'admin') return;
+      var c = counts[f.by] || (counts[f.by] = { total: 0 });
+      c.total++;
+      c[aKind(f.action)] = (c[aKind(f.action)] || 0) + 1;
+    });
+    var idle = data.salesmen.filter(function (s) { return !counts[s.rep]; })
+      .map(function (s) { return s.rep + (s.linked ? '' : ' (no link)'); });
+    frag.appendChild(idle.length ? el('div', 'Nothing logged today: ' + idle.join(' · '), 'banner')
+      : el('div', 'Everyone has logged something today.', 'banner ok'));
+    data.salesmen.forEach(function (s) {
+      var c = counts[s.rep];
+      var row = el('button', undefined, 'card rep-row' + (c ? '' : ' idle'));
+      row.type = 'button';
+      row.setAttribute('aria-pressed', A.todayRep === s.rep ? 'true' : 'false');
+      row.appendChild(el('span', s.rep, 'code'));
+      var what = c ? aPlural(c.total, 'save', 'saves') + ': ' + A_KINDS.filter(function (k) { return c[k[0]]; })
+        .map(function (k) { return aPlural(c[k[0]], k[1], k[2]); }).join(', ') : 'nothing yet';
+      row.appendChild(el('span', what, 'what'));
+      row.addEventListener('click', function () { A.todayRep = A.todayRep === s.rep ? '' : s.rep; renderList(); });
+      frag.appendChild(row);
+    });
+    frag.appendChild(el('div', "Today's saves", 'a-sub'));
+    if (A.todayRep) {
+      var all = pill('Everyone', false, function () { A.todayRep = ''; renderList(); });
+      all.id = 'everyone';
+      frag.appendChild(all);
+    }
+    var feed = data.feed.filter(function (f) { return !A.todayRep || f.by === A.todayRep; });
+    if (!feed.length) frag.appendChild(el('div', A.todayRep ? 'No saves from ' + A.todayRep + ' yet today.' : 'No saves yet today.', 'empty'));
+    feed.forEach(function (f) {
+      var card = el('div', undefined, 'card feed');
+      card.setAttribute('role', 'button');
+      card.appendChild(el('div', f.time + ' · ' + (f.by === 'admin' ? 'You' : f.by) + ' · ' + f.name, 'when'));
+      card.appendChild(el('div', aFeedWhat(f), 'what'));
+      if (f.note && f.action !== 'details') card.appendChild(el('div', f.note, 'said'));
+      card.addEventListener('click', function () {
+        if (siteById(f.site)) showSite(f.site); else toast("This site isn't on this screen.");
+      });
+      frag.appendChild(card);
+    });
+  }
+
+  // ---- Team: each salesman and region against this month's target ----
+  function aTeam(frag) {
+    var month = aMonthName();
+    var by = {};
+    function stats(rep) {
+      return by[rep] || (by[rep] = { won: 0, wonN: 0, lostN: 0, noNumber: 0, rq: 0, stages: {} });
+    }
+    data.sites.forEach(function (s) {
+      var st = stats(s.rep);
+      if (aWonMonth(s)) { st.won += Number(s.value) || 0; st.wonN++; }
+      if (aLostMonth(s)) st.lostN++;
+      if (isOpenSite(s)) {
+        st.stages[s.stage] = (st.stages[s.stage] || 0) + 1;
+        if (has(rules().valueStages, s.stage)) st.rq += Number(s.value) || 0; // open: Rate Quoted
+        if (aNoNumber(s)) st.noNumber++;
+      }
+    });
+    var known = data.salesmen.map(function (s) { return s.rep; });
+    var regions = aRegions();
+    var teamTarget = 0, teamHasTarget = false, teamWon = 0;
+    regions.forEach(function (r) { if (data.regionTargets[r]) { teamTarget += data.regionTargets[r]; teamHasTarget = true; } });
+    data.salesmen.forEach(function (s) { teamWon += stats(s.rep).won; });
+
+    function moneyLine(target, won) {
+      return (target ? month + ' target ' + rs(target) + ' · ' : 'No target for ' + month + ' · ') + 'Won ' + rs(won) +
+        (target ? ' (' + aPct(won, target) + ')' : '') + ' logged, not invoiced';
+    }
+    var top = el('div', undefined, 'card region');
+    top.id = 'teamAll';
+    top.appendChild(el('div', 'All salesmen', 'big-name'));
+    top.appendChild(el('div', moneyLine(teamHasTarget ? teamTarget : 0, teamWon), 'a-line'));
+    frag.appendChild(top);
+    var house = el('div', undefined, 'card region');
+    house.id = 'teamHouse';
+    house.appendChild(el('div', 'House / office sales', 'big-name'));
+    var ht = data.regionTargets[data.houseRegion];
+    house.appendChild(el('div', (ht ? month + ' target ' + rs(ht) : 'No target for ' + month) + ' · Not logged in the diary.', 'a-line'));
+    frag.appendChild(house);
+
+    function chip(text, title, test) {
+      var b = el('button', text, 'chip');
+      b.type = 'button';
+      b.addEventListener('click', function () { adminDrill(title, test); });
+      return b;
+    }
+    function salesmanCard(rep, target, snoozes, former) {
+      var st = stats(rep);
+      var card = el('div', undefined, 'card team');
+      card.setAttribute('data-rep', rep);
+      card.appendChild(el('div', rep, 'big-name'));
+      if (!former) {
+        card.appendChild(el('div', target ? month + ' target ' + rs(target) : 'No target for ' + month, 'a-line'));
+        card.appendChild(el('div', 'Won ' + rs(st.won) + (target ? ' · ' + aPct(st.won, target) : '') + ' · logged, not invoiced', 'a-line won'));
+      }
+      var chips = el('div', undefined, 'chips');
+      aOpenStages().forEach(function (stage) {
+        var n = st.stages[stage] || 0;
+        var text = stage + ' ' + n + (has(rules().valueStages, stage) && st.rq ? ' · ' + rs(st.rq) : '');
+        chips.appendChild(chip(text, rep + ' · ' + stage, function (s) { return s.rep === rep && s.stage === stage && isOpenSite(s); }));
+      });
+      card.appendChild(chips);
+      var month2 = el('div', undefined, 'chips');
+      month2.appendChild(el('span', 'This month:', 'a-line'));
+      month2.appendChild(chip('Won ' + st.wonN, rep + ' · Won this month', function (s) { return s.rep === rep && aWonMonth(s); }));
+      month2.appendChild(chip('Lost ' + st.lostN, rep + ' · Lost this month', function (s) { return s.rep === rep && aLostMonth(s); }));
+      card.appendChild(month2);
+      if (st.noNumber || snoozes) {
+        var more = el('div', undefined, 'chips');
+        if (st.noNumber) more.appendChild(chip('No number ' + st.noNumber, rep + ' · No number', function (s) { return s.rep === rep && aNoNumber(s); }));
+        if (snoozes) more.appendChild(el('span', 'Snoozed ' + aPlural(snoozes, 'time', 'times') + ' this month', 'a-line snoozes'));
+        card.appendChild(more);
+      }
+      return card;
+    }
+    regions.forEach(function (region) {
+      var reps = data.salesmen.filter(function (s) { return s.region === region; });
+      var won = 0;
+      reps.forEach(function (s) { won += stats(s.rep).won; });
+      var head = el('div', undefined, 'card region');
+      head.setAttribute('data-region', region);
+      head.appendChild(el('div', region, 'big-name'));
+      head.appendChild(el('div', moneyLine(data.regionTargets[region], won), 'a-line'));
+      frag.appendChild(head);
+      reps.forEach(function (s) { frag.appendChild(salesmanCard(s.rep, s.target, s.snoozes, false)); });
+    });
+    var others = [];
+    data.sites.forEach(function (s) { if (s.rep && !has(known, s.rep) && !has(others, s.rep)) others.push(s.rep); });
+    if (others.length) {
+      frag.appendChild(el('div', 'Not in the salesmen list', 'a-sub'));
+      others.sort().forEach(function (rep) { frag.appendChild(salesmanCard(rep, null, 0, true)); });
+    }
+  }
+
+  // ---- Late & cold across the team ----
+  function aLateCold(frag, today) {
+    var late = data.sites.filter(function (s) { return aLate(s, today); }).sort(function (a, b) {
+      if ((a.followUp || '') !== (b.followUp || '')) return (a.followUp || '') < (b.followUp || '') ? -1 : 1;
+      return shownValue(b) - shownValue(a);
+    });
+    var cold = data.sites.filter(function (s) { return coldDays(s, today); }).sort(function (a, b) {
+      return shownValue(b) - shownValue(a) || coldDays(b, today) - coldDays(a, today);
+    });
+    var kinds = el('div', undefined, 'pills');
+    kinds.style.marginBottom = '10px';
+    [['late', 'Late ' + late.length], ['cold', 'Going cold ' + cold.length]].forEach(function (k) {
+      var b = pill(k[1], A.lateKind === k[0], function () { A.lateKind = k[0]; A.lateRep = ''; shownCount = PAGE_SIZE; renderList(); });
+      b.id = 'kind-' + k[0];
+      kinds.appendChild(b);
+    });
+    frag.appendChild(kinds);
+    var list = A.lateKind === 'late' ? late : cold;
+    var counts = {};
+    list.forEach(function (s) { counts[s.rep] = (counts[s.rep] || 0) + 1; });
+    var order = data.salesmen.map(function (s) { return s.rep; });
+    Object.keys(counts).sort().forEach(function (rep) { if (!has(order, rep)) order.push(rep); });
+    order = order.filter(function (rep) { return counts[rep]; });
+    if (A.lateRep && !counts[A.lateRep]) A.lateRep = '';
+    if (order.length) {
+      var row = el('div', undefined, 'areas');
+      row.id = 'repRow';
+      row.appendChild(pill('Everyone', !A.lateRep, function () { A.lateRep = ''; shownCount = PAGE_SIZE; renderList(); }));
+      order.forEach(function (rep) {
+        var b = pill(rep + ' ', A.lateRep === rep, function () { A.lateRep = A.lateRep === rep ? '' : rep; shownCount = PAGE_SIZE; renderList(); });
+        b.appendChild(el('span', String(counts[rep]), 'n'));
+        b.setAttribute('data-rep', rep);
+        row.appendChild(b);
+      });
+      frag.appendChild(row);
+    }
+    var shown = list.filter(function (s) { return !A.lateRep || s.rep === A.lateRep; });
+    aCards(frag, shown, today, A.lateKind === 'late' ? 'No late sites.' : 'Nothing going cold.');
+  }
+
+  // ---- This month: won and lost, and why ----
+  function aMonth(frag, today) {
+    var month = aMonthName();
+    var won = data.sites.filter(aWonMonth).sort(function (a, b) { return (Number(b.value) || 0) - (Number(a.value) || 0); });
+    var wonRs = 0;
+    won.forEach(function (s) { wonRs += Number(s.value) || 0; });
+    frag.appendChild(el('div', month + ': ' + won.length + ' won · ' + rs(wonRs) + ' · logged, not invoiced', 'a-h'));
+    aCards(frag, won, today, 'Nothing won yet this month.');
+    var lost = data.sites.filter(aLostMonth).sort(function (a, b) { return a.closed < b.closed ? 1 : a.closed > b.closed ? -1 : 0; });
+    var lostRs = 0;
+    var reasons = {};
+    lost.forEach(function (s) { lostRs += Number(s.value) || 0; reasons[s.lostReason || 'Other'] = (reasons[s.lostReason || 'Other'] || 0) + 1; });
+    var head = el('div', month + ': ' + lost.length + ' lost' + (lostRs ? ' · ' + rs(lostRs) + ' quoted' : ''), 'a-h');
+    head.id = 'lostHead';
+    head.style.marginTop = '20px';
+    frag.appendChild(head);
+    if (A.lostReason && !reasons[A.lostReason]) A.lostReason = '';
+    var names = Object.keys(reasons).sort(function (a, b) { return reasons[b] - reasons[a] || a.localeCompare(b); });
+    if (names.length) {
+      var row = el('div', undefined, 'pills');
+      row.id = 'reasons';
+      row.style.marginBottom = '10px';
+      names.forEach(function (reason) {
+        var b = pill(reason + ' ' + reasons[reason], A.lostReason === reason, function () {
+          A.lostReason = A.lostReason === reason ? '' : reason; renderList();
+        });
+        row.appendChild(b);
+      });
+      frag.appendChild(row);
+    }
+    var shown = lost.filter(function (s) { return !A.lostReason || (s.lostReason || 'Other') === A.lostReason; });
+    var keep = shownCount;
+    shownCount = PAGE_SIZE * 4; // the lost list sits under the won list: no second Show more
+    aCards(frag, shown, today, 'Nothing lost this month.');
+    shownCount = keep;
+  }
+</script>
