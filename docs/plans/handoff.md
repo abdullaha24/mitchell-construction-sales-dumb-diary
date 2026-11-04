@@ -23,12 +23,21 @@
     deleted).
 
 ## Next
-**Phase 2 (private links) is Done and live** (deployment version 2, same address). The owner
-has a working owner link and a test RIA link (both active; leave them). Live cancel check was
-skipped at his request; tests and `npm run check:browser` cover it.
+**Phase 3 (my sites + add a site, spec 003) is built, reviewed and tested locally**: 204 tests
+and both browser checks pass on a fresh clone. The independent review found one serious hole
+(formula injection through typed text: a site name like `=TEXTJOIN(…,Links!C:C)` would have
+revealed link codes); it is fixed and tested, with the other review points.
 
-**Spec 003 (my sites + add a site) is Approved** (2026-11-04). Build it with
-`docs/plans/003-my-sites-plan.md`.
+**Next: go live with the owner** (plan 003 step 6):
+1. clasp sign-in (recipe below). `npx clasp show-file-status`, `npx clasp push --force`, pull
+   back and compare, then `npx clasp update-deployment AKfycbwmWhxLQfpkQRfFIfdv9tZD4CvZfeWEB__YiXnGTSk7-6mlZVZUvLEp2aJDwey0HXaF -d "phase 3: my sites"`.
+2. Owner opens his RIA test link on his phone: adds a site with a number, one without (second
+   tap), one with a new area. Agent checks `Sites`, `Activity`, `Lists` via the connector.
+3. Owner makes a test SJ link: SJ's page doesn't show RIA's sites; typing RIA's test number
+   shows only "Someone in the team already works with this contact."
+4. Owner taps Check setup: the "Sites with no phone number" section shows.
+5. Test rows removed afterwards (owner's OK, or he deletes them). `npx clasp logout`, delete
+   `~/.clasprc.json`.
 
 Carry forward (phase 3 and later):
 - **Never run `create-deployment` again.** Put new code live with

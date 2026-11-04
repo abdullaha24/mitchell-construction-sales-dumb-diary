@@ -1,6 +1,6 @@
 # 003: My sites + add a site
 
-- **Status:** Approved
+- **Status:** In progress (built, reviewed and tested locally 2026-11-04; going live next)
 - **Owner approval:** approved by the owner on 2026-11-04 (session 3)
 - **Related:** roadmap phase 3 · ADR-0002 (links) · ADR-0004 (private lists, duplicate warning) ·
   [data model](../architecture/data-model.md) → `Sites`, `Activity`, `Lists` ·
@@ -134,8 +134,8 @@ Then **Save**. He's back on his list with the new site at the top and *"Saved"*.
 
 ## Acceptance criteria
 Checked locally:
-- [ ] Every rule above has a test; `npm run check` and `npm run check:browser` pass.
-- [ ] Tests show salesman B can't see A's site, and the duplicate check tells B only "yes".
+- [x] Every rule above has a test; `npm run check` (204 tests) and `npm run check:browser` pass.
+- [x] Tests show salesman B can't see A's site, and the duplicate check tells B only "yes".
 
 Checked live with the owner:
 - [ ] On the RIA test link (phone, no sign-in): add a site with a number, one without (second
