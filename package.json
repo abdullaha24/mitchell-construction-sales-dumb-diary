@@ -1,0 +1,19 @@
+{
+  "name": "sales-diary",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Phone-first sales diary for field salesmen. Google Apps Script web app on Google Sheets.",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test \"tests/**/*.test.js\"",
+    "typecheck": "tsc -p .",
+    "check": "npm run typecheck && npm test"
+  },
+  "devDependencies": {
+    "@google/clasp": "3.4.1",
+    "@types/google-apps-script": "2.0.14",
+    "typescript": "7.0.2"
+  }
+}
