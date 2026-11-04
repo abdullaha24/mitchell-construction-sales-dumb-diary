@@ -110,6 +110,7 @@ test('a good site is tidied: spaces, number, products in list order, existing ar
       name: 'F-11 Commercial Tower', buyerType: 'Dealer', contactName: 'Asif (site engineer)',
       phone: '923001234567', products: ['Tile Adhesives', 'Mortars, Plasters & Putties'],
       area: 'DHA', newArea: false, followUp: '2026-11-05',
+      stage: 'Visited / Lead', value: null, terms: '', lostReason: '', note: '',
     },
   });
 });
@@ -151,10 +152,37 @@ test('each problem gets a plain message', () => {
 });
 
 test('the page cannot choose who or where: unknown keys are ignored', () => {
-  const result = check({ rep: 'SH', region: 'South', site_id: 'S999999', stage: 'Won (Order)' });
+  const result = check({ rep: 'SH', region: 'South', site_id: 'S999999', created_at: 'x' });
   assert.equal(result.ok, true);
-  assert.deepEqual(Object.keys(result.site).sort(),
-    ['area', 'buyerType', 'contactName', 'followUp', 'name', 'newArea', 'phone', 'products']);
+  assert.deepEqual(Object.keys(result.site).sort(), ['area', 'buyerType', 'contactName', 'followUp', 'lostReason',
+    'name', 'newArea', 'note', 'phone', 'products', 'stage', 'terms', 'value']);
+});
+
+// ------------------------------------------------------- Stage when adding a site (spec 005)
+
+test('a new site can start at any stage, with the same rules as an Update', () => {
+  assert.deepEqual(check({ stage: 'Won (Order)' }), { ok: false, message: 'Type the total Rs. value.' });
+  assert.deepEqual(check({ stage: 'Rate Quoted', value: '450,000' }), { ok: false, message: 'Tap Cash or Credit.' });
+  assert.deepEqual(check({ stage: 'Done' }), { ok: false, message: 'Tap a stage.' });
+  const quoted = check({ stage: 'Rate Quoted', value: '450,000', terms: 'Credit', followUp: '3days', note: 'WP-100 @ 1,450' });
+  assert.deepEqual([quoted.site.stage, quoted.site.value, quoted.site.terms, quoted.site.followUp, quoted.site.note],
+    ['Rate Quoted', 450000, 'Credit', '2026-11-07', 'WP-100 @ 1,450']);
+  const won = check({ stage: 'Won (Order)', value: '1,000,000', terms: 'Cash' });
+  assert.deepEqual([won.site.stage, won.site.followUp], ['Won (Order)', ''], 'no follow-up at Won');
+});
+
+test('a new site at Sample, Quoted or Won needs its number now; Lost needs a reason', () => {
+  for (const stage of ['Sample / Trial', 'Rate Quoted', 'Won (Order)']) {
+    assert.deepEqual(check({ stage, phone: '', value: '5', terms: 'Cash' }),
+      { ok: false, message: `Type the contact's number: a site at ${stage} needs one.` });
+  }
+  assert.equal(check({ stage: 'Visited / Lead', phone: '' }).ok, true);
+  const lostChoices = { ...CHOICES, lostReasons: ['Price Too High', 'Other'] };
+  const lost = (changes) => plain(s.checkNewSite_({ ...GOOD, ...changes }, lostChoices, TODAY));
+  assert.deepEqual(lost({ stage: 'Lost / Dead' }), { ok: false, message: 'Tap a lost reason.' });
+  assert.deepEqual(lost({ stage: 'Lost / Dead', lostReason: 'Other' }), { ok: false, message: 'Write a short note for Other.' });
+  const ok = lost({ stage: 'Lost / Dead', lostReason: 'Price Too High', phone: '' });
+  assert.deepEqual([ok.site.stage, ok.site.lostReason, ok.site.followUp, ok.site.phone], ['Lost / Dead', 'Price Too High', '', '']);
 });
 
 // -------------------------------------------------------------------------------------- IDs

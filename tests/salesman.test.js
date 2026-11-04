@@ -343,3 +343,19 @@ test('the Meta-Data sheet is never written by any salesman function', () => {
   w.s.repCheckPhone(RIA, '03001234567');
   w.s.repAddSite(RIA, GOOD);
 });
+
+test('repAddSite straight to Rate Quoted or Won: stage, value, terms and note in Sites and Activity', () => {
+  const w = world();
+  const reply = plain(w.s.repAddSite(RIA, { ...GOOD, stage: 'Rate Quoted', value: '450,000', terms: 'Credit', followUp: '3days', note: 'WP-100 @ 1,450' }));
+  assert.deepEqual([reply.site.stage, reply.site.value, reply.site.terms, reply.site.note], ['Rate Quoted', 450000, 'Credit', 'WP-100 @ 1,450']);
+  const row = w.diary.getSheetByName('Sites').getDataRange().getValues()[4];
+  assert.deepEqual([row[9], row[10], row[11], row[14]], ['Rate Quoted', 450000, 'Credit', 'WP-100 @ 1,450']);
+  const act = w.diary.getSheetByName('Activity').getDataRange().getValues().pop();
+  assert.deepEqual([act[4], act[6], act[7], act[8], act[10]], ['created', 'Rate Quoted', 450000, 'Credit', 'WP-100 @ 1,450']);
+
+  w.s.repAddSite(RIA, { ...GOOD, name: 'Won site', stage: 'Won (Order)', value: '1000000', terms: 'Cash', saveId: 'wonsite001' });
+  const won = w.diary.getSheetByName('Sites').getDataRange().getValues()[5];
+  assert.deepEqual([won[9], won[10], won[13]], ['Won (Order)', 1000000, ''], 'Won has no follow-up');
+  assert.deepEqual(plain(w.s.repAddSite(RIA, { ...GOOD, stage: 'Won (Order)', value: '5', terms: 'Cash', phone: '' })),
+    { ok: false, message: "Type the contact's number: a site at Won (Order) needs one." });
+});

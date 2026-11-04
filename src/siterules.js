@@ -4,7 +4,8 @@
 
 /** @typedef {{ ok: true, phone: string } | { ok: false }} TidyPhone */
 /**
- * A new site's values, checked and tidied.
+ * A new site's values, checked and tidied. Since spec 005 it starts at any stage, with the same
+ * value, terms, reason and note rules as an Update; `followUp` is '' at Won / Lost.
  * @typedef {{
  *   name: string,
  *   buyerType: string,
@@ -14,6 +15,11 @@
  *   area: string,
  *   newArea: boolean,
  *   followUp: string,
+ *   stage: string,
+ *   value: number | null,
+ *   terms: string,
+ *   lostReason: string,
+ *   note: string,
  * }} NewSite
  */
 
@@ -215,17 +221,39 @@ function checkSiteFields_(input, choices) {
 
 /**
  * Checks and tidies what the salesman's page sent for a new site. Never trusts the page.
- * @param {any} input { name, buyerType, contactName, phone, products, area, followUp }
- * @param {{ buyerTypes: string[], categories: string[], areas: string[] }} choices
+ * The stage (Visited / Lead if none was sent) and its value, terms, lost reason, follow-up and
+ * note follow the same rules as an Update (spec 005); a stage that needs a number needs one now.
+ * @param {any} input { name, buyerType, contactName, phone, products, area, followUp, stage,
+ *   value, terms, lostReason, note }
+ * @param {{ buyerTypes: string[], categories: string[], areas: string[], lostReasons?: string[] }} choices
  * @param {string} todayKey yyyy-MM-dd today in Pakistan
  * @returns {{ ok: true, site: NewSite } | Failure}
  */
 function checkNewSite_(input, choices, todayKey) {
   const checked = checkSiteFields_(input, choices);
   if (!checked.ok) return checked;
-  const followUp = followUpKey_(input.followUp, todayKey);
-  if (!followUp) return fail_('Pick a follow-up date from today to a year ahead.');
-  return { ok: true, site: { ...checked.fields, followUp } };
+  const fields = checked.fields;
+  const stage = input.stage === undefined ? FIRST_STAGE : input.stage;
+  if (NUMBER_STAGES.includes(stage) && !fields.phone) {
+    return fail_(`Type the contact's number: a site at ${stage} needs one.`);
+  }
+  /** @type {CurrentSite} */
+  const nothingYet = {
+    stage: '', value: null, terms: '', lostReason: '', followUp: '', phone: fields.phone,
+    name: fields.name, buyerType: fields.buyerType, contactName: fields.contactName,
+    products: fields.products, area: fields.area,
+  };
+  const staged = checkUpdate_({ ...input, stage, phone: '' }, nothingYet,
+    { lostReasons: choices.lostReasons || [] }, todayKey);
+  if (!staged.ok) return staged;
+  const u = staged.update;
+  return {
+    ok: true,
+    site: {
+      ...fields, stage: u.stage, followUp: u.followUp, value: u.value, terms: u.terms,
+      lostReason: u.lostReason, note: u.note,
+    },
+  };
 }
 
 /**

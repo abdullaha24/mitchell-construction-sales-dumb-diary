@@ -161,6 +161,9 @@ test('the new-site check is unchanged by sharing its field rules', () => {
   const result = plain(s.checkNewSite_({ name: 'X', buyerType: 'Dealer', followUp: 'tomorrow' }, CHOICES, TODAY));
   assert.deepEqual(result, {
     ok: true,
-    site: { name: 'X', buyerType: 'Dealer', contactName: '', phone: '', products: [], area: '', newArea: false, followUp: '2026-11-05' },
+    site: {
+      name: 'X', buyerType: 'Dealer', contactName: '', phone: '', products: [], area: '', newArea: false,
+      followUp: '2026-11-05', stage: 'Visited / Lead', value: null, terms: '', lostReason: '', note: '',
+    },
   });
 });

@@ -292,17 +292,22 @@ function saveNewSite_(diary, salesman, input, now, saveId) {
 
     const area = saveArea_(lists, salesman, site.area, site.newArea);
     const siteId = nextId_(sites.rows.map((r) => r.site_id).concat(activity.rows.map((r) => r.site_id)), 'S', 6);
-    const followUp = dayStart_(site.followUp);
+    const followUp = site.followUp ? dayStart_(site.followUp) : '';
+    const valueStage = VALUE_STAGES.includes(site.stage);
     const row = {
       site_id: siteId, rep: salesman.rep, region: salesman.region, site_name: site.name,
       buyer_type: site.buyerType, area, contact_name: site.contactName, contact_phone: site.phone,
-      products: site.products.join(PRODUCTS_SEPARATOR), stage: FIRST_STAGE, next_followup: followUp,
+      products: site.products.join(PRODUCTS_SEPARATOR), stage: site.stage,
+      value_rs: valueStage && site.value !== null ? site.value : '', payment_terms: valueStage ? site.terms : '',
+      lost_reason: site.lostReason, next_followup: followUp, last_note: site.note,
       created_at: now, updated_at: now,
     };
     appendRows_(sites.sheet, [rowFor_(sites.columns, textify_(row))], [sites.columns.contact_phone]);
     appendRows_(activity.sheet, [rowFor_(activity.columns, textify_({
       activity_id: nextId_(activity.rows.map((r) => r.activity_id), 'A', 7), timestamp: now,
-      rep: salesman.rep, site_id: siteId, action: 'created', to_stage: FIRST_STAGE, next_followup: followUp,
+      rep: salesman.rep, site_id: siteId, action: 'created', to_stage: site.stage,
+      value_rs: row.value_rs, payment_terms: row.payment_terms, lost_reason: site.lostReason,
+      note: site.note, next_followup: followUp,
     }))]);
     return { ok: true, site: cardOf_(row), warning, ...(site.newArea ? { areas: areasAfter_(lists, salesman, area) } : {}) };
   });
