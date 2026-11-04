@@ -14,7 +14,7 @@ const SALES_DIARY_ID = '1tuyVPDB33x1Vw8JQYashM4PRQSjGjQq8MBs7l4cJn5Y';
 const LINKS = ['role', 'rep', 'token', 'active', 'issued_at'];
 const SITES = ['site_id', 'rep', 'region', 'site_name', 'buyer_type', 'area', 'contact_name',
   'contact_phone', 'products', 'stage', 'value_rs', 'payment_terms', 'lost_reason',
-  'next_followup', 'last_note', 'created_at', 'updated_at'];
+  'next_followup', 'last_note', 'created_at', 'updated_at', 'worked_at', 'note_at'];
 const LISTS = ['list', 'value', 'region', 'added_by', 'active', 'sort'];
 const siteRow = (id, rep, name, phone) => [id, rep, 'North', name, 'Dealer', 'DHA', `${name} contact`, phone,
   '', 'Visited / Lead', '', '', '', NOW, '', NOW, NOW];

@@ -4,7 +4,7 @@
 > [ADR-0009](../decisions/0009-worked-at-and-note-at.md). One commit per step, `npm run check`
 > (+ `check:browser` when HTML changes) green each time.
 
-## [ ] Step 1: Server: `worked_at`, `note_at`, the card's new dates
+## [x] Step 1: Server: `worked_at`, `note_at`, the card's new dates
 - `DIARY_HEADERS.Sites` gains `worked_at` and `note_at` at the end (a fresh sheet gets them from
   Check setup); data model updated in the same change.
 - + New Site writes both (`note_at` only with a note); Update writes `worked_at` always and

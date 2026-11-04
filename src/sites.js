@@ -12,8 +12,10 @@
  * }} Tab
  */
 /**
- * One site as the salesman's page shows it. Plain values only (no Dates).
- * @typedef {CurrentSite & { id: string, note: string, created: string }} SiteCard
+ * One site as the salesman's page shows it. Plain values only (no Dates). `worked` is the day
+ * it was last really worked (added or updated, spec 007: drives going cold); `noteDay` the day
+ * its note was written ('' if unknown).
+ * @typedef {CurrentSite & { id: string, note: string, created: string, worked: string, noteDay: string }} SiteCard
  */
 
 /**
@@ -192,7 +194,12 @@ function phoneText_(value) {
  * @returns {SiteCard}
  */
 function cardOf_(r) {
-  return { id: text_(r.site_id), ...currentSiteOf_(r), note: text_(r.last_note), created: dayText_(r.created_at) };
+  return {
+    id: text_(r.site_id), ...currentSiteOf_(r), note: text_(r.last_note), created: dayText_(r.created_at),
+    // A row without worked_at (typed by hand) goes cold from the day it was added (spec 007).
+    worked: dayText_(r.worked_at) || dayText_(r.created_at),
+    noteDay: dayText_(r.note_at),
+  };
 }
 
 /**
@@ -300,7 +307,7 @@ function saveNewSite_(diary, salesman, input, now, saveId) {
       products: site.products.join(PRODUCTS_SEPARATOR), stage: site.stage,
       value_rs: valueStage && site.value !== null ? site.value : '', payment_terms: valueStage ? site.terms : '',
       lost_reason: site.lostReason, next_followup: followUp, last_note: site.note,
-      created_at: now, updated_at: now,
+      created_at: now, updated_at: now, worked_at: now, note_at: site.note ? now : '',
     };
     appendRows_(sites.sheet, [rowFor_(sites.columns, textify_(row))], [sites.columns.contact_phone]);
     appendRows_(activity.sheet, [rowFor_(activity.columns, textify_({
@@ -410,9 +417,9 @@ function saveUpdate_(diary, salesman, siteId, input, now, saveId) {
     const valueStage = VALUE_STAGES.includes(update.stage);
 
     // Only what changes: a value or reason the owner typed by hand is never overwritten by an
-    // unrelated update.
+    // unrelated update. A real Update is work on the site: it resets going cold (spec 007, P6-2).
     /** @type {Object<string, any>} */
-    const cells = { updated_at: now };
+    const cells = { updated_at: now, worked_at: now };
     if (update.stage !== before.stage) cells.stage = update.stage;
     if (valueStage && (update.value !== before.value || update.terms !== before.terms)) {
       cells.value_rs = update.value;
@@ -420,7 +427,10 @@ function saveUpdate_(diary, salesman, siteId, input, now, saveId) {
     }
     if (update.lostReason !== before.lostReason) cells.lost_reason = update.lostReason;
     if (update.followUp !== before.followUp) cells.next_followup = followUp;
-    if (update.note) cells.last_note = update.note;
+    if (update.note) {
+      cells.last_note = update.note;
+      cells.note_at = now;
+    }
     if (update.phone) cells.contact_phone = update.phone;
     setCells_(sites, row._row, textify_(cells), ['contact_phone']);
 

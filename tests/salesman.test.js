@@ -13,7 +13,7 @@ const META_DATA_ID = '11rcjx1eZA9BqwSTIoK66hrs7M8rYisL12GirSzLyrkc';
 const SALES_DIARY_ID = '1tuyVPDB33x1Vw8JQYashM4PRQSjGjQq8MBs7l4cJn5Y';
 const SITES = ['site_id', 'rep', 'region', 'site_name', 'buyer_type', 'area', 'contact_name',
   'contact_phone', 'products', 'stage', 'value_rs', 'payment_terms', 'lost_reason',
-  'next_followup', 'last_note', 'created_at', 'updated_at'];
+  'next_followup', 'last_note', 'created_at', 'updated_at', 'worked_at', 'note_at'];
 const ACTIVITY = ['activity_id', 'timestamp', 'rep', 'site_id', 'action', 'from_stage', 'to_stage',
   'value_rs', 'payment_terms', 'lost_reason', 'note', 'next_followup'];
 const LISTS = ['list', 'value', 'region', 'added_by', 'active', 'sort'];
@@ -145,6 +145,7 @@ test('repLoad: pick-lists in sort order, and a card per site with plain values o
     id: 'S000001', name: 'F-11 Tower', area: 'DHA', buyerType: 'Dealer', stage: 'Visited / Lead',
     contactName: 'F-11 Tower contact', phone: '923001234567', followUp: '2026-10-01', created: '2026-10-01',
     value: null, terms: '', lostReason: '', note: '', products: ['Tile Adhesives'],
+    worked: '2026-10-01', noteDay: '', // no worked_at in this row: from created_at (spec 007)
   });
   assert.deepEqual(plainReply.lostReasons, [], 'this test sheet has no lost reasons');
   assert.match(plainReply.today, /^\d{4}-\d{2}-\d{2}$/);
@@ -184,11 +185,13 @@ test('repAddSite: the exact Sites and Activity rows, who and where from the link
   const followUp = row.next_followup;
   assert.equal(followUp.toISOString(), new Date(`${tomorrow}T00:00:00+05:00`).toISOString());
   assert.equal(row.created_at.getTime(), row.updated_at.getTime());
-  assert.deepEqual({ ...row, next_followup: 'D', created_at: 'D', updated_at: 'D' }, {
+  assert.equal(row.worked_at.getTime(), row.created_at.getTime(), 'adding a site is work on it (spec 007)');
+  assert.deepEqual({ ...row, next_followup: 'D', created_at: 'D', updated_at: 'D', worked_at: 'D' }, {
     site_id: 'S000004', rep: 'RIA', region: 'North', site_name: 'New Site', buyer_type: 'Project Owner',
     area: 'DHA', contact_name: 'Bilal', contact_phone: '923331112222',
     products: 'Waterproofing Job | Mortars, Plasters & Putties', stage: 'Visited / Lead', value_rs: '',
     payment_terms: '', lost_reason: '', next_followup: 'D', last_note: '', created_at: 'D', updated_at: 'D',
+    worked_at: 'D', note_at: '', // no note, so no note_at
   });
   assert.equal(w.diary.getSheetByName('Sites')._numberFormat(5, 8), '@', 'phone cell set to text first');
 

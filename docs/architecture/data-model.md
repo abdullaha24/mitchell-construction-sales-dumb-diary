@@ -1,6 +1,6 @@
 # Data model (Google Sheets)
 
-> Status: **v0.5** (2026-11-04). v0.5: targets kept with the salesmen list (spec 006). v0.3 came from the owner interview and session 2 answers; v0.4
+> Status: **v0.6** (2026-11-04). v0.6: `worked_at`, `note_at` and the `snooze` action (spec 007, ADR-0009). v0.5: targets kept with the salesmen list (spec 006). v0.3 came from the owner interview and session 2 answers; v0.4
 > aligns the Meta-Data reading notes with [spec 001](../specs/001-foundations.md) as built. The tabs and headers act as the app's database schema. **Any change
 > here must be made in the same change as the code.**
 
@@ -101,7 +101,9 @@ salesman's link works only while his `rep` is still in Meta-Data `Rep_Mapping`.
 | `next_followup` | 2026-11-06 | A date: midnight Pakistan time. Set when the site is added (Tomorrow by default). Drives *Today's Chase*. Blank at Won (Order) and Lost / Dead (owner P4-3). |
 | `last_note` | Waiting for consultant | The latest quick note (up to 200 letters); kept until a new one is written. Required if the lost reason is Other. |
 | `created_at` | | Server timestamp. |
-| `updated_at` | | Server timestamp. Drives "going cold" (7 days). |
+| `updated_at` | | Server timestamp: the last change of any kind (Update, Edit details, Snooze). |
+| `worked_at` | | Server timestamp: when the site was added or last saved from the **Update** screen (spec 007, ADR-0009). **Drives "going cold"** (Sample / Trial or Rate Quoted, 7 days). Not written by Edit details or Snooze (owner P6-2). Blank (a row typed by hand) → `created_at` is used. |
+| `note_at` | | Server timestamp: when `last_note` was written (adding a site or an Update with a note). The day on the card's last-spoken line. Blank → the note shows without a day. |
 
 ### Tab `Activity`: history, append-only
 One row per change. **Never edited or deleted by the app.**
@@ -152,13 +154,7 @@ Starting contents (filled in by phase 1 setup, only when a list has no rows yet)
 
 ## Proposed changes (not in the code yet)
 
-[Spec 007](../specs/007-card-helpers-areas.md) (Draft) and [ADR-0009](../decisions/0009-worked-at-and-note-at.md)
-(Proposed). Move these into the tables above only together with the code, once approved:
-- `Sites`: two new columns at the end, after `updated_at`: **`worked_at`** (server timestamp: site
-  added or last saved from the Update screen; drives going cold instead of `updated_at`; not
-  written by Edit details or Snooze, owner P6-2) and **`note_at`** (server timestamp: when
-  `last_note` was written; the day on the last-spoken line). `updated_at` stays "last change of
-  any kind".
+[Spec 007](../specs/007-card-helpers-areas.md), being built:
 - `Activity`: new `action` value **`snooze`** (`next_followup` = the new date; other detail
   columns blank).
 

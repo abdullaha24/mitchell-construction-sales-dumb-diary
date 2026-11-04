@@ -28,7 +28,7 @@ test('Sales Diary headers match the data model', () => {
   assert.deepEqual(headers.Sites, [
     'site_id', 'rep', 'region', 'site_name', 'buyer_type', 'area', 'contact_name',
     'contact_phone', 'products', 'stage', 'value_rs', 'payment_terms', 'lost_reason',
-    'next_followup', 'last_note', 'created_at', 'updated_at',
+    'next_followup', 'last_note', 'created_at', 'updated_at', 'worked_at', 'note_at',
   ]);
   assert.deepEqual(headers.Activity, [
     'activity_id', 'timestamp', 'rep', 'site_id', 'action', 'from_stage', 'to_stage',
