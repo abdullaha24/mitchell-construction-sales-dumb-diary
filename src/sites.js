@@ -13,10 +13,7 @@
  */
 /**
  * One site as the salesman's page shows it. Plain values only (no Dates).
- * @typedef {{
- *   id: string, name: string, area: string, buyerType: string, stage: string,
- *   contactName: string, phone: string, followUp: string, created: string,
- * }} SiteCard
+ * @typedef {CurrentSite & { id: string, note: string, created: string }} SiteCard
  */
 
 /**
@@ -73,7 +70,7 @@ function rowFor_(columns, values) {
  * areas of his region (plus any with no region). Sorted by `sort`, then sheet order.
  * @param {Tab} lists
  * @param {string} region
- * @returns {{ buyerTypes: string[], categories: string[], areas: string[] }}
+ * @returns {{ buyerTypes: string[], categories: string[], areas: string[], lostReasons: string[] }}
  */
 function choicesFor_(lists, region) {
   /** @param {string} list @param {(row: Object<string, any>) => boolean} [keep] */
@@ -87,7 +84,87 @@ function choicesFor_(lists, region) {
     buyerTypes: values('buyer_type'),
     categories: values('product_category'),
     areas: values('area', (r) => isBlank_(r.region) || looseText_(r.region) === looseText_(region)),
+    lostReasons: values('lost_reason'),
   };
+}
+
+/**
+ * A cell as trimmed text ('' for blank).
+ * @param {any} value
+ */
+function text_(value) {
+  return isBlank_(value) ? '' : String(value).trim();
+}
+
+/**
+ * A `Sites` row as it is now, the way the update rules see it.
+ * @param {Object<string, any>} r
+ * @returns {CurrentSite}
+ */
+function currentSiteOf_(r) {
+  const value = parseRs_(typeof r.value_rs === 'number' ? r.value_rs : text_(r.value_rs));
+  return {
+    stage: text_(r.stage),
+    value: value !== null && value > 0 ? value : null,
+    terms: text_(r.payment_terms),
+    lostReason: text_(r.lost_reason),
+    followUp: dayText_(r.next_followup),
+    phone: phoneText_(r.contact_phone),
+    name: text_(r.site_name),
+    buyerType: text_(r.buyer_type),
+    contactName: text_(r.contact_name),
+    products: text_(r.products) ? text_(r.products).split(PRODUCTS_SEPARATOR.trim()).map((p) => p.trim()).filter(Boolean) : [],
+    area: text_(r.area),
+  };
+}
+
+/**
+ * His row for a site: found by its ID **and** his code, so nobody can reach another
+ * salesman's site by guessing an ID. Null if it isn't his.
+ * @param {Tab} sites
+ * @param {any} siteId
+ * @param {string} rep
+ */
+function findHisRow_(sites, siteId, rep) {
+  if (typeof siteId !== 'string' || !/^S\d{6,}$/.test(siteId)) return null;
+  return sites.rows.find((r) => text_(r.site_id) === siteId && tidyCode_(r.rep) === rep) || null;
+}
+
+/**
+ * Writes only the given cells of one row (never the whole row: the owner may have added
+ * columns). Columns in `textHeaders` are set to plain text first.
+ * @param {Tab} tab
+ * @param {number} rowNumber
+ * @param {Object<string, any>} values { header: value }
+ * @param {string[]} [textHeaders]
+ */
+function setCells_(tab, rowNumber, values, textHeaders = []) {
+  for (const [header, value] of Object.entries(values)) {
+    const range = tab.sheet.getRange(rowNumber, tab.columns[header] + 1);
+    if (textHeaders.includes(header)) range.setNumberFormat('@');
+    range.setValues([[value]]);
+  }
+}
+
+/**
+ * An area to save: an existing one of his region if it is the same (someone may have added it
+ * a moment ago), otherwise added to `Lists` for his region.
+ * @param {Tab} lists
+ * @param {{ rep: string, region: string }} salesman
+ * @param {string} area
+ * @param {boolean} newArea
+ * @returns {string} the area name to store
+ */
+function saveArea_(lists, salesman, area, newArea) {
+  if (!newArea) return area;
+  const same = areaMatches_(area, choicesFor_(lists, salesman.region).areas).same;
+  if (same) return same;
+  const sorts = lists.rows.filter((r) => looseText_(r.list) === 'area').map((r) => Number(r.sort)).filter(isFinite);
+  appendRows_(lists.sheet, [rowFor_(lists.columns, {
+    list: 'area', value: asText_(area), region: asText_(salesman.region), added_by: asText_(salesman.rep), active: true,
+    sort: (sorts.length ? Math.max(...sorts) : 0) + LIST_SORT_STEP,
+  })]);
+  return area;
 }
 
 /**
@@ -118,15 +195,7 @@ function sitesOf_(sites, rep) {
     .filter((r) => tidyCode_(r.rep) === rep)
     .map((r) => ({
       card: /** @type {SiteCard} */ ({
-        id: String(r.site_id),
-        name: isBlank_(r.site_name) ? '' : String(r.site_name),
-        area: isBlank_(r.area) ? '' : String(r.area),
-        buyerType: isBlank_(r.buyer_type) ? '' : String(r.buyer_type),
-        stage: isBlank_(r.stage) ? '' : String(r.stage),
-        contactName: isBlank_(r.contact_name) ? '' : String(r.contact_name),
-        phone: phoneText_(r.contact_phone),
-        followUp: dayText_(r.next_followup),
-        created: dayText_(r.created_at),
+        id: text_(r.site_id), ...currentSiteOf_(r), note: text_(r.last_note), created: dayText_(r.created_at),
       }),
       when: isDate_(r.created_at) ? r.created_at.getTime() : 0,
       row: r._row,
@@ -192,23 +261,12 @@ const SAVE_ID_SECONDS = 21600;
  * @param {string} [saveId]
  */
 function saveNewSite_(diary, salesman, site, now, saveId) {
-  return withScriptLock_(() => {
-    const cache = CacheService.getScriptCache();
-    const cacheKey = saveId ? `save:${salesman.rep}:${saveId}` : '';
-    const already = cacheKey ? cache.get(cacheKey) : null;
-    if (already) return already;
-
+  return oncePerSave_(salesman.rep, saveId, () => {
     const sites = readTab_(diary, DIARY_TABS.sites);
     const activity = readTab_(diary, DIARY_TABS.activity);
     const lists = readTab_(diary, DIARY_TABS.lists);
 
-    // Someone in his region may have added this area a moment ago: reuse it.
-    let area = site.area;
-    let newArea = site.newArea;
-    if (newArea) {
-      const same = areaMatches_(area, choicesFor_(lists, salesman.region).areas).same;
-      if (same) { area = same; newArea = false; }
-    }
+    const area = saveArea_(lists, salesman, site.area, site.newArea);
 
     const siteId = nextId_(sites.rows.map((r) => r.site_id).concat(activity.rows.map((r) => r.site_id)), 'S', 6);
     const activityId = nextId_(activity.rows.map((r) => r.activity_id), 'A', 7);
@@ -227,14 +285,111 @@ function saveNewSite_(diary, salesman, site, now, saveId) {
       action: 'created', to_stage: asText_(FIRST_STAGE), next_followup: followUp,
     })]);
 
-    if (newArea) {
-      const sorts = lists.rows.filter((r) => looseText_(r.list) === 'area').map((r) => Number(r.sort)).filter(isFinite);
-      appendRows_(lists.sheet, [rowFor_(lists.columns, {
-        list: 'area', value: asText_(area), region: asText_(salesman.region), added_by: asText_(salesman.rep), active: true,
-        sort: (sorts.length ? Math.max(...sorts) : 0) + LIST_SORT_STEP,
-      })]);
-    }
-    if (cacheKey) cache.put(cacheKey, siteId, SAVE_ID_SECONDS);
+    return siteId;
+  });
+}
+
+/**
+ * Runs a save inside the script lock, once per one-time save ID: if a save with this ID
+ * already went through (the reply was lost and he tapped Save again), it isn't done twice.
+ * @param {string} rep
+ * @param {string | undefined} saveId
+ * @param {() => string} work returns the site ID it saved
+ * @returns {string}
+ */
+function oncePerSave_(rep, saveId, work) {
+  return withScriptLock_(() => {
+    const cache = CacheService.getScriptCache();
+    const cacheKey = saveId ? `save:${rep}:${saveId}` : '';
+    const already = cacheKey ? cache.get(cacheKey) : null;
+    if (already) return already;
+    const result = work();
+    if (cacheKey) cache.put(cacheKey, result, SAVE_ID_SECONDS);
+    return result;
+  });
+}
+
+const NOT_YOURS_MESSAGE = "That site isn't in your list.";
+
+/**
+ * Saves an Update (spec 004) to one of his sites: only the cells that change, plus one
+ * `Activity` row. The row is found again inside the lock, by site ID and his code.
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} diary
+ * @param {{ rep: string, region: string }} salesman
+ * @param {string} siteId
+ * @param {SiteUpdate} update
+ * @param {Date} now
+ * @param {string} [saveId]
+ */
+function saveUpdate_(diary, salesman, siteId, update, now, saveId) {
+  return oncePerSave_(salesman.rep, saveId, () => {
+    const sites = readTab_(diary, DIARY_TABS.sites);
+    const activity = readTab_(diary, DIARY_TABS.activity);
+    const row = findHisRow_(sites, siteId, salesman.rep);
+    if (!row) throw new Error(NOT_YOURS_MESSAGE);
+    const before = currentSiteOf_(row);
+    const followUp = update.followUp ? dayStart_(update.followUp) : '';
+
+    /** @type {Object<string, any>} */
+    const cells = {
+      stage: asText_(update.stage),
+      value_rs: update.value === null ? '' : update.value,
+      payment_terms: asText_(update.terms),
+      lost_reason: asText_(update.lostReason),
+      next_followup: followUp,
+      updated_at: now,
+    };
+    if (update.note) cells.last_note = asText_(update.note);
+    if (update.phone) cells.contact_phone = update.phone;
+    setCells_(sites, row._row, cells, ['contact_phone']);
+
+    const stageChanged = update.stage !== before.stage;
+    const valueStage = VALUE_STAGES.includes(update.stage);
+    appendRows_(activity.sheet, [rowFor_(activity.columns, {
+      activity_id: nextId_(activity.rows.map((r) => r.activity_id), 'A', 7),
+      timestamp: now, rep: asText_(salesman.rep), site_id: siteId,
+      action: stageChanged ? 'stage_change' : 'update',
+      from_stage: stageChanged ? asText_(before.stage) : '',
+      to_stage: stageChanged ? asText_(update.stage) : '',
+      value_rs: valueStage && update.value !== null ? update.value : '',
+      payment_terms: valueStage ? asText_(update.terms) : '',
+      lost_reason: asText_(update.lostReason),
+      note: asText_([update.note, update.phone ? `Phone added ${update.phone}` : ''].filter(Boolean).join(' · ')),
+      next_followup: followUp,
+    })]);
+    return siteId;
+  });
+}
+
+/**
+ * Saves Edit details (spec 004) to one of his sites: the changed fields, a new area if any,
+ * and one `details` row in `Activity` listing what changed (old → new number).
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} diary
+ * @param {{ rep: string, region: string }} salesman
+ * @param {string} siteId
+ * @param {SiteFields} fields
+ * @param {string[]} changes
+ * @param {Date} now
+ * @param {string} [saveId]
+ */
+function saveDetails_(diary, salesman, siteId, fields, changes, now, saveId) {
+  return oncePerSave_(salesman.rep, saveId, () => {
+    const sites = readTab_(diary, DIARY_TABS.sites);
+    const activity = readTab_(diary, DIARY_TABS.activity);
+    const lists = readTab_(diary, DIARY_TABS.lists);
+    const row = findHisRow_(sites, siteId, salesman.rep);
+    if (!row) throw new Error(NOT_YOURS_MESSAGE);
+    const area = saveArea_(lists, salesman, fields.area, fields.newArea);
+    setCells_(sites, row._row, {
+      site_name: asText_(fields.name), buyer_type: asText_(fields.buyerType),
+      contact_name: asText_(fields.contactName), contact_phone: fields.phone,
+      products: asText_(fields.products.join(PRODUCTS_SEPARATOR)), area: asText_(area), updated_at: now,
+    }, ['contact_phone']);
+    appendRows_(activity.sheet, [rowFor_(activity.columns, {
+      activity_id: nextId_(activity.rows.map((r) => r.activity_id), 'A', 7),
+      timestamp: now, rep: asText_(salesman.rep), site_id: siteId, action: 'details',
+      note: asText_(changes.join('; ')),
+    })]);
     return siteId;
   });
 }

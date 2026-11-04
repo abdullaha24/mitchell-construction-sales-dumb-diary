@@ -142,7 +142,9 @@ test('repLoad: pick-lists in sort order, and a card per site with plain values o
   assert.deepEqual(plainReply.sites[1], {
     id: 'S000001', name: 'F-11 Tower', area: 'DHA', buyerType: 'Dealer', stage: 'Visited / Lead',
     contactName: 'F-11 Tower contact', phone: '923001234567', followUp: '2026-10-01', created: '2026-10-01',
+    value: null, terms: '', lostReason: '', note: '', products: ['Tile Adhesives'],
   });
+  assert.deepEqual(plainReply.lostReasons, [], 'this test sheet has no lost reasons');
   assert.match(plainReply.today, /^\d{4}-\d{2}-\d{2}$/);
 });
 

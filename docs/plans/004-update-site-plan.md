@@ -17,7 +17,7 @@
 Cash / Credit at Rate Quoted / Won, lost reason (+ Other needs a note), follow-up only for open
 stages, notes up to 200, the number gate, "a number can't be removed", "Nothing to save".
 
-## [ ] Step 2: Saving updates; repUpdateSite / repEditSite
+## [x] Step 2: Saving updates; repUpdateSite / repEditSite
 `src/sites.js`: find his row, write changed cells, append the Activity row (`stage_change`,
 `update`, `details` with old → new number). Cards carry value, terms, reason, note, products.
 `src/salesman.js`: the two public functions. Allow-list → 12.
