@@ -159,6 +159,17 @@ const noSideways = async (page, what) =>
   // ---- His target: his own, this month; nobody else's on his page. ----
   const month = MONTH_NAMES[Number(dayKey(0).slice(5, 7)) - 1];
   assert.equal(await page.textContent('#target'), `${month} target: Rs. 1,234,567`);
+  // On a 360px phone the button stays on one line and the amount stays in one piece, even for
+  // the longest month and an 8-digit target.
+  await page.evaluate(() => {
+    const t = document.querySelector('#target span');
+    t.textContent = 'Rs. 13,800,000';
+    t.parentNode.firstChild.textContent = 'September target: ';
+  });
+  assert.equal(await page.evaluate(() => document.getElementById('newSite').getClientRects().length), 1);
+  assert.ok(await page.evaluate(() => document.getElementById('newSite').getBoundingClientRect().height) < 56, '+ New Site on one line');
+  assert.equal(await page.evaluate(() => document.querySelector('#target span').getClientRects().length), 1, 'amount not split');
+  await noSideways(page, 'header');
   for (const other of ['7654321', '7,654,321', '5555555', '5,555,555', '8888888', '8,888,888']) {
     assert.ok(!html.includes(other), `${other} is not on RIA's page`);
   }

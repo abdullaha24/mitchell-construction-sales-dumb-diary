@@ -12,7 +12,10 @@
       .top { position: sticky; top: 0; z-index: 2; background: #fff; border-bottom: 1px solid var(--line); }
       header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 16px; }
       header h1 { font-size: 20px; margin: 0; }
+      header > div { min-width: 0; }
+      #newSite { flex: none; white-space: nowrap; }
       .target { font-size: 13px; color: var(--soft); margin-top: 1px; }
+      .nowrap { white-space: nowrap; }
       .tabs { display: flex; max-width: 640px; margin: 0 auto; }
       .tab { flex: 1; min-height: 48px; padding: 4px 2px 6px; border: 0; border-bottom: 3px solid transparent;
              background: #fff; color: var(--soft); font-size: 14px; font-weight: 600; line-height: 1.2; }
@@ -653,7 +656,12 @@
         var t = data.target;
         var showTarget = !!(t && t.amount && t.month === today.slice(0, 7));
         $('target').hidden = !showTarget;
-        $('target').textContent = showTarget ? MONTH_NAMES[Number(t.month.slice(5)) - 1] + ' target: ' + rs(t.amount) : '';
+        $('target').textContent = '';
+        if (showTarget) {
+          // "November target:" may wrap, but the amount stays in one piece.
+          $('target').appendChild(document.createTextNode(MONTH_NAMES[Number(t.month.slice(5)) - 1] + ' target: '));
+          $('target').appendChild(el('span', rs(t.amount), 'nowrap'));
+        }
         $('draftBanner').hidden = !hasDraft();
         $('noStorage').hidden = storageWorks;
 
