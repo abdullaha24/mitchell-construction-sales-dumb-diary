@@ -35,7 +35,7 @@
 
 /**
  * How far a number may be from a whole number and still count as one. A formula can give
- * 13799999.999999998 for a cell that shows 13,800,000; getValues() returns the raw number.
+ * 7700000.000000001 for a cell that shows 7,700,000; getValues() returns the raw number.
  */
 const WHOLE_NUMBER_TOLERANCE = 1e-6;
 
