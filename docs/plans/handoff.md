@@ -23,15 +23,29 @@
     deleted).
 
 ## Next
-**Spec 002 (private links) is Approved** (2026-11-04), with ADR-0008 Accepted. Build it with
-`docs/plans/002-private-links-plan.md`: steps 1–5 local, step 6 live with the owner.
+**Phase 2 (private links, spec 002) is built and tested locally** (plan 002 steps 1–5): 154
+tests + `npm run check:browser` pass, also on a fresh clone; an independent review found no way
+past the security checks, and its points were fixed with tests. **Next: plan 002 step 6, the
+live switch-over with the owner** (spec 002 → One-time switch-over):
+1. clasp sign-in (recipe below).
+2. `npx clasp show-file-status`, `npx clasp push --force`, then
+   `npx clasp update-deployment AKfycbwmWhxLQfpkQRfFIfdv9tZD4CvZfeWEB__YiXnGTSk7-6mlZVZUvLEp2aJDwey0HXaF -d "phase 2: private links"`.
+   Check `npx clasp list-deployments` still shows the same ID.
+3. Owner reloads the sheet, taps **Check setup** (adds `Links`; allows any new permission),
+   then **Sales Diary → Links**. Tip: use a browser where **only** the owner's Google account is
+   signed in; with several accounts, calls from a sheet window often fail.
+4. Owner makes his own link and a test RIA link, opens both on his phone (no sign-in), cancels
+   the RIA link and checks it shows "This link doesn't work". A made-up code too.
+5. Agent checks the `Links` tab via the Sheets connector (never copy codes into files), then
+   `npx clasp logout` and delete `~/.clasprc.json`.
 
 Carry forward into phase 2:
 - **Never run `create-deployment` again.** Put new code live with
   `npx clasp push --force` then
   `npx clasp update-deployment AKfycbwmWhxLQfpkQRfFIfdv9tZD4CvZfeWEB__YiXnGTSk7-6mlZVZUvLEp2aJDwey0HXaF -d "<note>"`,
   so the address salesmen get never changes.
-- Access becomes `ANYONE_ANONYMOUS` ("Anyone"), **not** `ANYONE` (forces a Google sign-in).
+- Access is `ANYONE_ANONYMOUS` ("Anyone"), **not** `ANYONE` (forces a Google sign-in). A test
+  pins `src/appsscript.json`.
 - Every new public function must check the link code first (ADR-0002) and only return that
   salesman's data (ADR-0004); update the allow-list in `tests/menu.test.js` on purpose.
 - `menuCheckSetup`'s safety check passes for the owner himself, signed in, even from a web

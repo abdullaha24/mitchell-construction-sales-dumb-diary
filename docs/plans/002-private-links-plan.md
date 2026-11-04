@@ -46,7 +46,7 @@
   contents; new cancels old; allow-list of 7 public functions.
 - Commit: "Add the owner's Links window".
 
-## [ ] Step 5: Open the web app to Anyone; local acceptance
+## [x] Step 5: Open the web app to Anyone; local acceptance
 - `appsscript.json` → `access: "ANYONE_ANONYMOUS"`. Docs (AGENTS, data model, handoff).
 - Fresh-clone check, secrets sweep, independent review.
 - Commit: "Phase 2 local work complete".

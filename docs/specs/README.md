@@ -16,4 +16,4 @@ Status values: `Draft` → `Approved` → `In progress` → `Done` (or `Dropped`
 | # | Spec | Status |
 | --- | --- | --- |
 | [001](001-foundations.md) | Foundations: tooling, Sales Diary sheet, reading Meta-Data | Done |
-| [002](002-private-links.md) | Private links: owner makes, sends and cancels links; a link says who you are | Approved |
+| [002](002-private-links.md) | Private links: owner makes, sends and cancels links; a link says who you are | In progress (local done; live next) |

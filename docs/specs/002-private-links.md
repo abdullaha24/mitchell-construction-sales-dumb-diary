@@ -1,6 +1,6 @@
 # 002: Private links
 
-- **Status:** Approved
+- **Status:** In progress (built and tested locally 2026-11-04; live switch-over next)
 - **Owner approval:** approved by the owner on 2026-11-04 (session 3)
 - **Related:** roadmap phase 2 · ADR-0002 (private links) · ADR-0006 (owner link) ·
   ADR-0008 (Sales Diary ID and web address in code) ·
@@ -140,8 +140,8 @@ then their links would only say "Hello". The owner can still make them early if 
 
 ## Acceptance criteria
 Checked locally:
-- [ ] `npm run check` passes; every rule above has a test.
-- [ ] The public-function test lists exactly the 7 functions above.
+- [x] `npm run check` passes; every rule above has a test. *(154 tests; `npm run check:browser` passes too)*
+- [x] The public-function test lists exactly the 7 functions above.
 
 Checked live with the owner:
 - [ ] Check setup creates `Links` (headers as in the data model) and changes nothing else.
