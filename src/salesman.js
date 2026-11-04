@@ -24,31 +24,37 @@ function forSalesman_(work) {
 }
 
 /**
- * The salesman behind a link code, and the Sales Diary opened once for the whole call
- * (spec 005), or an error with the "doesn't work" message.
+ * The salesman behind a link code (with his own target this month, spec 006), and the Sales
+ * Diary opened once for the whole call (spec 005), or an error with the "doesn't work" message.
  * @param {any} k
- * @returns {{ salesman: { rep: string, region: string }, diary: GoogleAppsScript.Spreadsheet.Spreadsheet }}
+ * @returns {{ salesman: HisSelf, diary: GoogleAppsScript.Spreadsheet.Spreadsheet }}
  */
 function requireRep_(k) {
   if (!isWellFormedCode_(k)) throw new Error(NO_LINK_MESSAGE); // no sheet opened for junk
   const diary = openSalesDiary_();
   const visitor = whoIsVisiting_(k, diary);
   if (visitor.kind !== 'rep') throw new Error(NO_LINK_MESSAGE);
-  return { salesman: { rep: visitor.rep, region: visitor.region }, diary };
+  return { salesman: { rep: visitor.rep, region: visitor.region, target: visitor.target }, diary };
 }
 
+/** @typedef {{ rep: string, region: string, target: MonthTarget | null }} HisSelf */
+
 /**
- * Everything his page needs: his sites and the pick-lists.
- * @param {{ rep: string, region: string }} salesman
+ * Everything his page needs: his sites, the pick-lists, his own target this month (spec 006)
+ * and Google's clock, so his page knows "today" even if the phone's clock is wrong.
+ * @param {HisSelf} salesman
  * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} diary
  */
 function loadFor_(salesman, diary) {
   const lists = readTab_(diary, DIARY_TABS.lists);
+  const now = new Date();
   return {
     ok: true,
     rep: salesman.rep,
     region: salesman.region,
-    today: dayKey_(new Date()),
+    today: dayKey_(now),
+    now: now.getTime(),
+    target: salesman.target,
     sites: sitesOf_(readTab_(diary, DIARY_TABS.sites), salesman.rep),
     ...choicesFor_(lists, salesman.region),
     // The stage rules, so the page asks for the same things the server checks (spec 004).

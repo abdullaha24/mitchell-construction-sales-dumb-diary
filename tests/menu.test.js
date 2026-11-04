@@ -109,14 +109,14 @@ test('the signed-in check needs both emails, and the same one', () => {
 
 // -------------------------------------------------------------------------------- Check setup
 
-test('onOpen adds Sales Diary → Check setup, Links and Refresh salesmen, and nothing else', () => {
+test('onOpen adds Sales Diary → Check setup, Links and Refresh salesmen & targets, and nothing else', () => {
   const { src, ui, diary, calls } = world({ activeEmail: '', effectiveEmail: OWNER });
   src.sandbox.onOpen(); // no signed-in check: Google may not give the email in onOpen
   assert.deepEqual(JSON.parse(JSON.stringify(ui.menus)), [
     { name: 'Sales Diary', items: [
       { caption: 'Check setup', functionName: 'menuCheckSetup' },
       { caption: 'Links', functionName: 'menuLinks' },
-      { caption: 'Refresh salesmen', functionName: 'menuRefreshSalesmen' },
+      { caption: 'Refresh salesmen & targets', functionName: 'menuRefreshSalesmen' },
     ] },
   ]);
   assert.deepEqual(diary._writes(), []);

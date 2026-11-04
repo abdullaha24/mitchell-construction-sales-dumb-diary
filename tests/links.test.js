@@ -9,6 +9,12 @@ const {
 } = require('./helpers/fakes');
 const { META_TIME_ZONE, metaDataTabs } = require('./fixtures/meta-data');
 
+/** Who a visitor is, without his target (that depends on today's month: see target.test.js). */
+function who(visitor) {
+  const { target, ...rest } = plain(visitor);
+  return rest;
+}
+
 const META_DATA_ID = '11rcjx1eZA9BqwSTIoK66hrs7M8rYisL12GirSzLyrkc';
 const SALES_DIARY_ID = '1tuyVPDB33x1Vw8JQYashM4PRQSjGjQq8MBs7l4cJn5Y';
 const WEB_APP_URL = 'https://script.google.com/macros/s/' +
@@ -110,7 +116,7 @@ const STANDARD_LINKS = [
 ];
 
 test("a salesman's working link says who he is", () => {
-  assert.deepEqual(plain(world({ links: STANDARD_LINKS }).s.whoIsVisiting_(RIA_CODE)),
+  assert.deepEqual(who(world({ links: STANDARD_LINKS }).s.whoIsVisiting_(RIA_CODE)),
     { kind: 'rep', rep: 'RIA', region: 'North' });
 });
 
@@ -123,7 +129,7 @@ test("the owner's working link opens the owner, without reading Meta-Data", () =
 test("a salesman's code never opens the owner page, whatever the row says beside it", () => {
   // Role decides, not the code: a rep row stays a rep row.
   const { s } = world({ links: [LINKS, ['rep', 'RIA', OWNER_CODE, true, NOW]] });
-  assert.deepEqual(plain(s.whoIsVisiting_(OWNER_CODE)), { kind: 'rep', rep: 'RIA', region: 'North' });
+  assert.deepEqual(who(s.whoIsVisiting_(OWNER_CODE)), { kind: 'rep', rep: 'RIA', region: 'North' });
 });
 
 test('a cancelled link, owner or salesman, opens nothing', () => {
@@ -190,7 +196,7 @@ test('new link: a working row for that person, cancelling only his older ones', 
     ['rep', 'MUB', MUB_CODE, true, NOW],
     ['rep', 'RIA', newCode, true, NOW],
   ]));
-  assert.deepEqual(plain(s.whoIsVisiting_(newCode)), { kind: 'rep', rep: 'RIA', region: 'North' });
+  assert.deepEqual(who(s.whoIsVisiting_(newCode)), { kind: 'rep', rep: 'RIA', region: 'North' });
   assert.deepEqual(plain(s.whoIsVisiting_(RIA_CODE)), { kind: 'none' });
   assert.deepEqual(plain(s.whoIsVisiting_(OWNER_CODE)), { kind: 'owner' });
 });
@@ -251,18 +257,22 @@ test('cancel: every working link of that person stops; nobody else is touched', 
   assert.equal(s.cancelLinks_(diary, 'owner'), 1);
 });
 
-// ------------------------------------------------------------------------- Salesmen only
+// ------------------------------------------------------------------- Salesmen and targets
 
-test('readSalesmenOnly_ reads Rep_Mapping only, read-only', () => {
+test('readSalesmenAndTargets_ reads Rep_Mapping and Rep-Targets only, read-only', () => {
   const { s, metaData } = world();
-  const read = s.readSalesmenOnly_();
+  const read = s.readSalesmenAndTargets_();
   assert.equal(read.ok, true);
   assert.equal(read.salesmen.length, 7);
+  assert.ok(Object.keys(read.repTargets).length > 0);
   assert.deepEqual(metaData._writes(), []);
-  assert.deepEqual(plain(world({ metaTabs: null }).s.readSalesmenOnly_()).ok, false);
+  const noRegionTargets = metaDataTabs();
+  delete noRegionTargets.Targets;
+  assert.equal(world({ metaTabs: noRegionTargets }).s.readSalesmenAndTargets_().ok, true, 'Targets is not read');
+  assert.deepEqual(plain(world({ metaTabs: null }).s.readSalesmenAndTargets_()).ok, false);
   const tabs = metaDataTabs();
   delete tabs.Rep_Mapping;
-  assert.deepEqual(plain(world({ metaTabs: tabs }).s.readSalesmenOnly_()), {
+  assert.deepEqual(plain(world({ metaTabs: tabs }).s.readSalesmenAndTargets_()), {
     ok: false, message: "The Meta-Data sheet has no 'Rep_Mapping' tab.",
   });
 });

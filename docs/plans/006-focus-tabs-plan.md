@@ -3,7 +3,7 @@
 > For [spec 006](../specs/006-focus-tabs.md) (**Approved** 2026-11-04, session 4). One commit per
 > step, `npm run check` (+ `check:browser` when HTML changes) green each time.
 
-## [ ] Step 1: His target, kept with the salesmen list (server)
+## [x] Step 1: His target, kept with the salesmen list (server)
 - `Rep-Targets` read with `Rep_Mapping` when the kept list is refreshed (Refresh, Check setup,
   Links window, or once a day); this month's and next month's target per current salesman kept in
   the `salesmen` Script Property. A broken `Rep-Targets` never locks a salesman out (no target).

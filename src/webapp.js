@@ -37,7 +37,7 @@ function doGet(e) {
 /**
  * The salesman's app, with his page data inside it so it shows at once on a weak connection.
  * The data goes in as escaped text and the page reads it back with JSON.parse.
- * @param {{ rep: string, region: string }} salesman
+ * @param {HisSelf} salesman
  * @param {string} code his own link code (his page needs it to save)
  * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} diary already open (spec 005)
  * @returns {GoogleAppsScript.HTML.HtmlOutput}

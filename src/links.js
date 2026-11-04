@@ -5,7 +5,11 @@
 // SECRETS: codes must never go into a log, an error message, the Activity tab, or any page
 // except the owner's Links window. Nothing in this file puts a code into a message.
 
-/** @typedef {{ kind: 'rep', rep: string, region: string } | { kind: 'owner' } | { kind: 'none' }} Visitor */
+/** @typedef {{ month: string, amount: number }} MonthTarget his target for one `yyyy-MM` month */
+/**
+ * @typedef {{ kind: 'rep', rep: string, region: string, target: MonthTarget | null }
+ *   | { kind: 'owner' } | { kind: 'none' }} Visitor
+ */
 /**
  * One row of the `Links` tab, tidied.
  * @typedef {{
@@ -115,7 +119,8 @@ function openLinks_(diary) {
  *   `Rep_Mapping`. The two are told apart by `role`, never by the code.
  * Throws if Google fails (a sheet can't be opened), so the page can say "try again" instead of
  * "this link doesn't work". Salesmen come from the kept list (knownSalesmen_, spec 005); `Links`
- * is read every time, so cancelling a link works at once.
+ * is read every time, so cancelling a link works at once. A salesman gets **his own** target for
+ * this month (Pakistan time) from the same kept copy (spec 006), or null for no target.
  * @param {any} code the `k` value from the address
  * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} [diary] the Sales Diary, if already open
  * @returns {Visitor}
@@ -128,10 +133,15 @@ function whoIsVisiting_(code, diary) {
   if (match.role === OWNER_ROLE) return { kind: 'owner' };
   if (match.role !== REP_ROLE || !match.rep) return { kind: 'none' };
 
-  const salesmen = knownSalesmen_(new Date());
+  const now = new Date();
+  const salesmen = knownSalesmen_(now);
   if (!salesmen.ok) throw new Error(salesmen.message);
   const salesman = salesmen.salesmen.find((s) => s.rep === match.rep);
-  return salesman ? { kind: 'rep', rep: salesman.rep, region: salesman.region } : { kind: 'none' };
+  if (!salesman) return { kind: 'none' };
+  return {
+    kind: 'rep', rep: salesman.rep, region: salesman.region,
+    target: hisTarget_(salesmen.repTargets, salesman.rep, now),
+  };
 }
 
 /**

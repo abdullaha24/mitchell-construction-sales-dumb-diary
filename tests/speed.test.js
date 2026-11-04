@@ -119,9 +119,11 @@ test('the salesmen list is read once and then kept: Meta-Data is not opened agai
 test('the kept list is used for up to 24 hours, then read again', () => {
   const w = world();
   const now = Date.now();
-  w.props._store.set('salesmen', JSON.stringify({ at: now - 60 * 60 * 1000, salesmen: [{ rep: 'SH', region: 'Center', row: 5 }] }));
+  w.props._store.set('salesmen', JSON.stringify({ at: now - 60 * 60 * 1000, salesmen: [{ rep: 'SH', region: 'Center', row: 5 }], targets: {} }));
   assert.throws(() => w.s.repLoad(RIA), /This link doesn't work/, 'RIA is not in the kept list, so not yet known');
-  w.props._store.set('salesmen', JSON.stringify({ at: now - 25 * 60 * 60 * 1000, salesmen: [{ rep: 'SH', region: 'Center', row: 5 }] }));
+  w.props._store.set('salesmen', JSON.stringify({ at: now - 60 * 60 * 1000, salesmen: [{ rep: 'SH', region: 'Center', row: 5 }] }));
+  assert.equal(w.s.repLoad(RIA).ok, true, 'a copy kept before targets were (spec 006) is read again');
+  w.props._store.set('salesmen', JSON.stringify({ at: now - 25 * 60 * 60 * 1000, salesmen: [{ rep: 'SH', region: 'Center', row: 5 }], targets: {} }));
   assert.equal(w.s.repLoad(RIA).ok, true, 'older than a day: read again, and RIA is there');
   assert.ok(kept(w).at >= now);
   w.props._store.set('salesmen', 'not json');
@@ -137,14 +139,17 @@ test('cancelling a link still works at once, whatever the kept list says', () =>
 
 // ---------------------------------------------------------- Refresh salesmen and Check setup
 
-test('Sales Diary → Refresh salesmen reads Rep_Mapping now and shows who is there', () => {
+test('Sales Diary → Refresh salesmen & targets reads Rep_Mapping and Rep-Targets now and shows them', () => {
   const w = world();
-  w.props._store.set('salesmen', JSON.stringify({ at: Date.now(), salesmen: [] }));
+  w.props._store.set('salesmen', JSON.stringify({ at: Date.now(), salesmen: [], targets: {} }));
   w.s.menuRefreshSalesmen();
   assert.equal(kept(w).salesmen.length, 7);
   const [title, message] = w.ui.alerts[0].args;
-  assert.equal(title, 'Refresh salesmen');
-  assert.deepEqual(message.split('\n').slice(0, 4), ['Salesmen: 7', '  North: RIA, AUR, WAK', '  Center: SH, SJ, SM', '  South: IB']);
+  assert.equal(title, 'Refresh salesmen & targets');
+  const lines = message.split('\n');
+  assert.deepEqual(lines.slice(0, 4), ['Salesmen: 7', '  North: RIA, AUR, WAK', '  Center: SH, SJ, SM', '  South: IB']);
+  assert.match(lines[5], /^Targets for [A-Z][a-z]+ \d{4}$/);
+  assert.deepEqual(lines.slice(6, 13).map((l) => l.trim().split(/\s+/)[0]), ['RIA', 'AUR', 'WAK', 'SH', 'SJ', 'SM', 'IB']);
   assert.ok(message.endsWith('Nothing to fix.'));
 });
 

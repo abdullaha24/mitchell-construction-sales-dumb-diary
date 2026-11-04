@@ -9,6 +9,12 @@ const {
 } = require('./helpers/fakes');
 const { META_TIME_ZONE, metaDataTabs } = require('./fixtures/meta-data');
 
+/** Who a visitor is, without his target (that depends on today's month: see target.test.js). */
+function who(visitor) {
+  const { target, ...rest } = plain(visitor);
+  return rest;
+}
+
 const META_DATA_ID = '11rcjx1eZA9BqwSTIoK66hrs7M8rYisL12GirSzLyrkc';
 const SALES_DIARY_ID = '1tuyVPDB33x1Vw8JQYashM4PRQSjGjQq8MBs7l4cJn5Y';
 const WEB_APP_URL = 'https://script.google.com/macros/s/' +
@@ -167,7 +173,7 @@ test('New link: a working link for him, his old one cancelled, the list updated'
   assert.match(ria.link, new RegExp(`^${WEB_APP_URL.replace(/[.?/]/g, '\\$&')}\\?k=[0-9a-f]{64}$`));
   assert.notEqual(ria.link, `${WEB_APP_URL}?k=${RIA_CODE}`);
   const code = ria.link.split('?k=')[1];
-  assert.deepEqual(plain(w.s.whoIsVisiting_(code)), { kind: 'rep', rep: 'RIA', region: 'North' });
+  assert.deepEqual(who(w.s.whoIsVisiting_(code)), { kind: 'rep', rep: 'RIA', region: 'North' });
   assert.deepEqual(plain(w.s.whoIsVisiting_(RIA_CODE)), { kind: 'none' });
 });
 
@@ -185,7 +191,7 @@ test('Cancel link: it stops working at once; the list shows No link', () => {
   const list = plain(w.s.ownerCancelLink('SH'));
   assert.equal(list.rows.find((r) => r.who === 'SH').link, '');
   for (const old of [SH_OLD, SH_NEW]) assert.deepEqual(plain(w.s.whoIsVisiting_(old)), { kind: 'none' });
-  assert.deepEqual(plain(w.s.whoIsVisiting_(RIA_CODE)), { kind: 'rep', rep: 'RIA', region: 'North' });
+  assert.deepEqual(who(w.s.whoIsVisiting_(RIA_CODE)), { kind: 'rep', rep: 'RIA', region: 'North' });
 });
 
 test('someone no longer in Rep_Mapping who still has a working link is listed last, to cancel', () => {

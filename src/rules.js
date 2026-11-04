@@ -155,6 +155,15 @@ function currentMonthKey_(now) {
 }
 
 /**
+ * The month after a `yyyy-MM` month: `2026-12` → `2027-01`.
+ * @param {string} key
+ */
+function nextMonthKey_(key) {
+  const [year, month] = key.split('-').map(Number);
+  return month === 12 ? `${year + 1}-01` : `${year}-${String(month + 1).padStart(2, '0')}`;
+}
+
+/**
  * An amount cell as whole rupees, or null if it isn't a whole number of zero or more.
  * Accepts a number (within WHOLE_NUMBER_TOLERANCE of a whole number, so formula results
  * count), or text such as `12,345,000` or `Rs. 12,345,000` (commas, a leading `Rs.` and
@@ -341,6 +350,20 @@ function targetFor_(amounts, key, month) {
 }
 
 /**
+ * One salesman's target for this month (Pakistan time), or null for no target (spec 006). Only
+ * ever his own: the page of one salesman never receives anyone else's.
+ * @param {TargetAmounts} repTargets
+ * @param {string} rep
+ * @param {Date} now
+ * @returns {{ month: string, amount: number } | null}
+ */
+function hisTarget_(repTargets, rep, now) {
+  const month = currentMonthKey_(now);
+  const amount = targetFor_(repTargets || {}, rep, month);
+  return typeof amount === 'number' && Number.isSafeInteger(amount) && amount > 0 ? { month, amount } : null;
+}
+
+/**
  * Reads all three Meta-Data tabs. Salesmen come first: `Rep-Targets` rows for anyone not in
  * `Rep_Mapping` are ignored without a message.
  * @param {MetaDataTables} tables
@@ -395,6 +418,27 @@ function problemLines_(problems) {
 }
 
 /**
+ * "Targets for November 2026" and each salesman's target this month, North, Center, South (Check
+ * setup, Refresh salesmen & targets).
+ * @param {Salesman[]} salesmen
+ * @param {TargetAmounts} repTargets
+ * @param {Date} now
+ * @returns {string[]} lines
+ */
+function repTargetLines_(salesmen, repTargets, now) {
+  const month = currentMonthKey_(now);
+  const ordered = REGIONS.flatMap((region) => salesmen.filter((s) => s.region === region));
+  const lines = [`Targets for ${monthLabel_(month)}`];
+  const width = Math.max(0, ...ordered.map((s) => s.rep.length)) + 2;
+  for (const s of ordered) {
+    const amount = targetFor_(repTargets, s.rep, month);
+    lines.push(`  ${padRight_(s.rep, width)}${amount === null ? 'no target' : formatRs_(amount)}`);
+  }
+  if (ordered.length === 0) lines.push('  No salesmen.');
+  return lines;
+}
+
+/**
  * The Check setup summary: salesmen by region, this month's targets, region targets, and
  * either "Nothing to fix." or "Check these:" with every problem.
  * @param {MetaData} data
@@ -409,21 +453,12 @@ function buildSummary_(data, now, moreProblems = [], moreLines = []) {
   /** @param {number | null} amount */
   const amountText = (amount) => (amount === null ? 'no target' : formatRs_(amount));
   const lines = [`Salesmen: ${data.salesmen.length}`];
-
-  /** @type {Salesman[]} */
-  const ordered = [];
   for (const region of REGIONS) {
     const inRegion = data.salesmen.filter((s) => s.region === region);
-    ordered.push(...inRegion);
     lines.push(`  ${region}: ${inRegion.length ? inRegion.map((s) => s.rep).join(', ') : 'none'}`);
   }
 
-  lines.push('', `Targets for ${label}`);
-  const repWidth = Math.max(0, ...ordered.map((s) => s.rep.length)) + 2;
-  for (const s of ordered) {
-    lines.push(`  ${padRight_(s.rep, repWidth)}${amountText(targetFor_(data.repTargets, s.rep, month))}`);
-  }
-  if (ordered.length === 0) lines.push('  No salesmen.');
+  lines.push('', ...repTargetLines_(data.salesmen, data.repTargets, now));
 
   lines.push('', `Region targets for ${label}`);
   const regions = REGIONS.map((r) => ({ key: r, name: r }))
