@@ -7,7 +7,14 @@ the data model, update those too. The ready-to-ask versions (options and recomme
 
 ## Open
 
-_None right now._ Add new questions here as they come up.
+From [spec 008](../specs/008-owner-screen.md) (phase 7, owner screen); options and the agent's
+recommendation are in the spec's *Open questions*.
+
+| # | Question | Agent recommends |
+| --- | --- | --- |
+| P7-4 | When the owner updates a site with a note, how does the salesman see it on his card? | **"Owner: …"** in front of the note (B: shown as a plain note; C: a "Changed by owner" tag, needs a new column). |
+| P7-5 | Does the owner's Update reset "going cold" (P6-2)? | **No**, only the salesman's own Update (B: any Update, his or the owner's). |
+| P7-6 | Making / cancelling links from the phone owner screen (P2-2 said phase 7)? | **Not in phase 7**: a leaked owner link could otherwise hand out or cancel links; emergency cancel by unticking `active` in the Sheets app (B: Cancel link only; C: New and Cancel). |
 
 ## Answered
 
@@ -94,3 +101,11 @@ Owner, session 4 (phase 6):
 | P6-3 | Spec 007: what does the WhatsApp button open? | **An empty chat** with the contact (no pre-filled text). |
 | P6-4 | Spec 007: are Call / WhatsApp taps written in the history? | **No**, not logged. |
 | P6-5 | Spec 007: a salesman could snooze the same site again and again. Any limit? | **No limit.** Every snooze is kept in `Activity`; the owner screen (phase 7) may show it. (Agent's recommendation.) |
+
+Owner, session 4 (phase 7):
+
+| # | Question | Answer |
+| --- | --- | --- |
+| P7-1 | Spec 008: in which month does a win count? | **The month it was marked Won** (quoted in October, won on 3 November: November). |
+| P7-2 | Spec 008: what counts as "worked today"? | **Any save at all**: a new site, an Update, a Snooze, Edit details. (Agent had recommended only new sites and Updates.) |
+| P7-3 | Spec 008: can the owner change sites from his screen, or only look? | **He can update sites too** (stage, follow-up etc.), and the history must show it was him. (Agent had recommended look-only.) This widens the risk accepted in A8: a leaked owner link could also change data until he cancels it; see ADR-0010 (Proposed). |

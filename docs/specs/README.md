@@ -22,3 +22,4 @@ Status values: `Draft` → `Approved` → `In progress` → `Done` (or `Dropped`
 | [005](005-faster-saves.md) | Instant saves, faster server, stage when adding a site (phase 4b) | Done |
 | [006](006-focus-tabs.md) | Focus tabs: Today's Chase, Hot Pipeline, All My Parties with search; his monthly target | Done |
 | [007](007-card-helpers-areas.md) | Site card helpers: Call / WhatsApp, last-spoken line, going cold, snooze; area filter | Done |
+| [008](008-owner-screen.md) | Owner screen: team against target, who worked today, late and going cold, won / lost this month; owner updates | Draft |
