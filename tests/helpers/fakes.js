@@ -43,6 +43,8 @@ function makeSpreadsheet(tabs = {}, options = {}) {
     const cells = rows.map((row) => row.slice());
     const fontWeights = new Map();
     const numberFormats = new Map();
+    const charts = [];
+    const images = [];
     let frozenRows = 0;
     let maxRows = Math.max(DEFAULT_MAX_ROWS, cells.length);
     let maxColumns = Math.max(DEFAULT_MAX_COLUMNS, ...cells.map((r) => r.length), 0);
@@ -132,6 +134,12 @@ function makeSpreadsheet(tabs = {}, options = {}) {
         return sheet;
       },
       getRange: makeRange,
+      getCharts: () => charts.slice(),
+      getImages: () => images.slice(),
+      /** Test helper: puts a chart on this tab (no cell values change). */
+      _addChart() { charts.push({}); },
+      /** Test helper: puts an image over the cells (no cell values change). */
+      _addImage() { images.push({}); },
       getDataRange() {
         return makeRange(1, 1, Math.max(lastRow(), 1), Math.max(lastColumn(), 1));
       },
