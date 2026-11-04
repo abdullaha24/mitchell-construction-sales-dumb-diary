@@ -21,21 +21,19 @@
 - **No app code yet.**
 
 ## Next
-- **Spec 001 (foundations) is written as `Draft`:** `docs/specs/001-foundations.md`. Waiting for
-  owner approval. **No code until it's `Approved`.**
-- After approval: answer its two open questions with the owner, write a build plan
-  (`docs/plans/001-foundations-plan.md`, small testable steps), then build.
-- Facts checked while writing it (2026-11-04): clasp 3.4.1, TypeScript 7.0.2 (type-checks JSDoc
-  JS fine), Node 22 in the cloud container. `clasp push` needs `--force` in a non-interactive
-  shell or it silently skips. Meta-Data months are dates and must be read in the sheet's own
-  timezone. Details are in the spec's *Gotchas*.
+- **Spec 001 (foundations) is `Draft` v2**, revised after an adversarial review (a separate
+  reviewer agent) and the owner's answers (open questions S1-1 to S1-6, ADR-0007). Its build plan
+  is ready: `docs/plans/001-foundations-plan.md`.
+- **Waiting for the owner to approve spec 001.** Then set it to `Approved` and start build step 1.
+  **No code before approval.**
+- Facts checked (2026-11-04): clasp 3.4.1, TypeScript 7.0.2 (type-checks JSDoc JS fine), Node 22
+  in the cloud container; `clasp push` needs `--force` in a non-interactive shell or it silently
+  skips; Meta-Data months are dates and must be read in the sheet's own timezone; Google's sign-in
+  and Apps Script servers answer from the cloud machine. What a clasp login can access is spelled
+  out in the spec (from clasp's own permission list).
 
 ## Questions for the owner
-Spec 001's two open questions are answered (owner's own Google account; clasp logged in inside
-the agent's cloud session when needed). An adversarial review of spec 001 is in progress; its
-findings become questions for the owner.
-
-Ask the owner's way:
+None open. Ask new ones the owner's way:
 - One question at a time.
 - Tappable options. Use the multiple-choice question tool if you have one (Claude Code:
   `AskUserQuestion`); otherwise give numbered options.

@@ -1,6 +1,6 @@
 # 0005: App data in a new "Sales Diary" sheet; salesmen and targets read from "Mitchell Sales Meta-Data"
 
-- **Status:** Accepted
+- **Status:** Accepted. The bullet on where the Meta-Data ID lives is superseded by ADR-0007.
 - **Date:** 2026-11-04
 - **Deciders:** owner (interview Q13)
 
@@ -15,6 +15,7 @@ per-region targets (`Targets`). He edits it by hand. Other things may already re
   **"Sales Diary"**.
 - The salesman code in `Rep_Mapping` (e.g. `RIA`) is the salesman's ID everywhere in the app.
 - The Meta-Data spreadsheet ID is configuration (e.g. a Script Property), not hard-coded.
+  *(Superseded by [ADR-0007](0007-meta-data-id-in-code.md): the ID is now kept in the code.)*
 
 ## Options considered
 - **Add app tabs to Meta-Data**: one file, but app data mixes with hand-edited settings, and

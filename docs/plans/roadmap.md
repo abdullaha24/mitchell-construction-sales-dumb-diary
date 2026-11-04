@@ -7,8 +7,8 @@
 | Phase | Goal | Done when |
 | --- | --- | --- |
 | **0. Repo shell** | Structure, agent instructions, vision captured, owner interview | ✅ Done (2026-11-04) |
-| **1. Foundations** | clasp + local tests (ADR-0003). Create the Sales Diary sheet and tabs. Read salesmen and targets from Meta-Data (ADR-0005). Seed `Lists` with the 11 product categories | An empty app deploys; tests read a sample of Meta-Data correctly, including stray cells, date months and comma amounts |
-| **2. Private links** | Owner creates, sends and cancels links (ADR-0002), including his own owner link (ADR-0006) | A link shows "Hello, RIA"; a cancelled or fake link shows nothing |
+| **1. Foundations** | clasp + local tests (ADR-0003). Create the Sales Diary sheet and tabs. Read salesmen and targets from Meta-Data (ADR-0005). Seed `Lists` with the 11 product categories. Owner's **Check setup** menu ([spec 001](../specs/001-foundations.md)) | An empty app deploys; tests read a sample of Meta-Data correctly, including stray cells, date months and comma amounts |
+| **2. Private links** | Create the `Links` tab. Owner creates, sends and cancels links (ADR-0002), including his own owner link (ADR-0006). Web app opened to `ANYONE_ANONYMOUS` | A link shows "Hello, RIA"; a cancelled or fake link shows nothing |
 | **3. My sites + add site** | Salesman sees his own list and adds a site: buyer type, contact, product categories, area (pick or add, with "Did you mean …?" suggestions), duplicate warning (ADR-0004) | New site appears in his list and in `Sites`; salesman B can't see it; duplicate phone shows the warning |
 | **4. Update a site** | Stage buttons, Rs. value + Cash/Credit, lost reason (+ Other), follow-up buttons + Pick date, quick note | Each update changes `Sites` and appends to `Activity` |
 | **5. Focus tabs + target** | Today's Chase, Hot Pipeline, All My Parties with search; his monthly target shown | His morning list is correct for overdue and today; target matches `Rep-Targets` |

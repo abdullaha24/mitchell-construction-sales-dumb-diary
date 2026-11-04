@@ -65,6 +65,8 @@ Edits made on 2026-11-04 with the owner's explicit OK (session 2):
 ## Sales Diary (app-owned)
 
 ### Tab `Links`: private link codes (ADR-0002)
+
+**Created in phase 2**, when its design is final (not by phase 1 setup).
 | Column | Example | Notes |
 | --- | --- | --- |
 | `role` | rep | `rep` (a salesman) or `owner` (ADR-0006). |
@@ -127,7 +129,7 @@ So the owner can change buttons without code changes.
 | `active` | TRUE | |
 | `sort` | 10 | Display order. |
 
-Starting contents (seeded when the sheet is created in phase 1):
+Starting contents (filled in by phase 1 setup, only when a list has no rows yet):
 - `product_category`: the owner's 11 categories, in this `sort` order: Tile Adhesives, Waterproofing
   Job, Floor Hardeners, Bonding Agents & Sealants, Waterproofing Products, Tile Grouts, Structural
   Grouts, Restoration & Repair Products, Admixtures, Surface Protection, Mortars, Plasters & Putties.

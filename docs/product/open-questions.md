@@ -54,3 +54,7 @@ Owner, session 2 (2026-11-04):
 | A10 | Duplicate areas ("DHA" vs "D.H.A")? | **The app suggests close existing areas while a salesman types a new one** ("Did you mean DHA?"). Anything that slips through, the owner tidies in the sheet. |
 | S1-1 | Which Google account owns the app and Sales Diary sheet? (spec 001) | **The owner's own account**, the one that owns Meta-Data. |
 | S1-2 | Where is clasp logged in? (spec 001) | **In the agent's cloud session, when needed**, with `clasp logout` at the end of each session. |
+| S1-3 | One menu item or two? (spec 001 review) | **One: "Check setup"**: creates missing tabs, then shows salesmen, this month's targets and anything to fix. |
+| S1-4 | Meta-Data ID: pasted by owner, or in the code? (spec 001 review) | **In the code** (ADR-0007, supersedes that bullet of ADR-0005). |
+| S1-5 | Compare region totals with salesmen's targets? (spec 001 review) | **No.** |
+| S1-6 | Rows in Rep-Targets for people who have left? (spec 001 review) | **Ignored silently.** A typo still shows, because that salesman then has "no target". |

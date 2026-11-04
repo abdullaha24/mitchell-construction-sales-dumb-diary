@@ -1,179 +1,167 @@
 # 001: Foundations
 
-- **Status:** Draft
+- **Status:** Draft (v2, after adversarial review and owner answers, 2026-11-04)
 - **Owner approval:** _pending_
 - **Related:** roadmap phase 1 · ADR-0001 (Sheets + Apps Script) · ADR-0003 (tooling) ·
-  ADR-0004 (private lists) · ADR-0005 (two sheets) · ADR-0006 (owner link) ·
-  [data model](../architecture/data-model.md)
+  ADR-0005 (two sheets) · ADR-0007 (Meta-Data ID in code) ·
+  [data model](../architecture/data-model.md) · build plan:
+  [001-foundations-plan.md](../plans/001-foundations-plan.md)
 
 ## Why
 Nothing can be built until there is a place to keep the data, a safe way to put code live, and a
 reliable way to read salesmen and targets from the owner's Meta-Data sheet. This phase builds that
-base, so every later phase is small, tested and safe. **Salesmen see nothing new yet.**
+base and nothing more. **Salesmen see nothing new yet.**
 
 ## What the owner sees and does
 
 ### Result of this phase
-1. A new Google Sheet called **"Sales Diary"** in the owner's Google Drive, with four tabs:
-   **Sites**, **Activity**, **Lists**, **Links**. Each has its header row and nothing else,
-   except **Lists**, which comes filled with the product categories, lost reasons and buyer types.
-2. A **Sales Diary** menu at the top of that sheet with two items:
-   - **Set up tabs**: creates or repairs the tabs. Safe to run any time; it never deletes your data.
-   - **Check Meta-Data**: reads the Meta-Data sheet and shows a plain-English summary (below).
-3. A web address for the app. For now it shows only a "Sales Diary is set up" page, with no data,
-   and **only the owner can open it**. Salesmen get their links in phase 2.
+1. A new Google Sheet called **"Sales Diary"** in the owner's Google Drive, with three tabs:
+   **Sites**, **Activity**, **Lists**. Sites and Activity have only their header row. Lists comes
+   filled with the product categories, lost reasons and buyer types. (The **Links** tab comes in
+   phase 2.)
+2. One menu at the top of that sheet: **Sales Diary → Check setup**. Tapping it creates any
+   missing tabs, then shows a short summary (below). Safe to tap any time; it never deletes or
+   changes the owner's data.
+3. A web address for the app. For now it shows only "Sales Diary is set up", with no data, and
+   **only the owner can open it**.
 
 > The menu works in Google Sheets **on a computer** (any browser). Google's phone app for Sheets
-> does not show custom menus. The salesmen's app itself (later phases) is phone-first.
+> doesn't show custom menus. The salesmen's app itself (later phases) is phone-first.
 
-### One-time setup (about 15 minutes, with the agent guiding)
-1. **Turn on the Apps Script API** for the Google account (one switch at
-   `script.google.com/home/usersettings`). clasp needs it to send code.
-2. **Log clasp in** to the owner's Google account, inside the agent's cloud session (open question 2).
-3. The agent runs `npx clasp create-script --type sheets --title "Sales Diary" --rootDir src`.
-   This creates the Sales Diary sheet and its attached script together, and writes `.clasp.json`.
-   It also copies Google's starter files into `src/`, overwriting `src/appsscript.json` and adding
-   a starter code file. The agent deletes the starter file, restores ours
-   (`git checkout -- src/appsscript.json`), then runs `npx clasp push --force` to send the code.
-4. The owner opens the Sales Diary sheet on a computer and reloads it. The **Sales Diary** menu
-   appears.
-5. He taps **Sales Diary → Set up tabs**. The first time, Google asks him to allow the script to
-   use his spreadsheets. He allows it. (Expect Google's "Google hasn't verified this app" warning.
-   It's his own script, so he clicks *Advanced*, then *Go to Sales Diary (unsafe)*.)
-6. The first time only, a box asks: **"Paste the link to your Mitchell Sales Meta-Data sheet."**
-   He pastes it. The script checks that it can open it and that it has the `Rep_Mapping`,
-   `Rep-Targets` and `Targets` tabs, then saves it. If not, it says what's wrong and saves nothing.
-   (**Check Meta-Data** asks the same way if the link isn't saved yet.)
-7. Setup creates the tabs and shows **"Sales Diary is ready."**
-8. The agent deploys the web app (`npx clasp create-deployment`) and gives the owner the address.
-   The deployment ID and address are recorded in `docs/plans/handoff.md`. They aren't secret on
-   their own: without a link code (phase 2), the address opens nothing useful.
-
-### Check Meta-Data: what the summary looks like
+### What Check setup shows
+A plain pop-up:
 ```
-Salesmen found: 7
+Salesmen: 7
   North: RIA, AUR, WAK
   Center: SH, SJ, SM
   South: IB
 
 Targets for November 2026
-  RIA  Rs. 13,800,000
+  RIA   Rs. 13,800,000
+  AUR   Rs. 7,200,000
   ...
-  IB   Rs. 1,500,000
+  IB    Rs. 1,500,000
 
 Region targets for November 2026
-  North                 Rs. 21,800,000  (matches its salesmen)
-  Center                Rs. 6,400,000   (matches its salesmen)
-  South                 Rs. 1,500,000   (matches its salesmen)
+  North                 Rs. 21,800,000
+  Center                Rs. 6,400,000
+  South                 Rs. 1,500,000
   House / office sales  Rs. 8,300,000
 
-Problems: none
-
-Notes
-  Targets found for people not in the salesmen list: MUB (1 month). The app ignores them.
+Nothing to fix.
 ```
-Every problem names the **tab and row number** so the owner can find it, e.g.
-*"Rep-Targets row 40: target 'abc' is not a number. That row is ignored."*
+If something is wrong, the last line becomes **"Check these:"** followed by one line per problem,
+each naming the tab and row, e.g. *"Rep-Targets row 40: target 'abc' is not a number."*
 
-### When something goes wrong
-- **Meta-Data can't be opened** (deleted, access removed): *"Can't open the Meta-Data sheet.
-  Check it still exists and this Google account can open it."* Nothing else runs.
-- **A tab or column is missing or renamed:** *"Rep-Targets has no 'Target' column in row 1."*
-  The app never guesses which column to use.
-- **Setup run twice, or by two people at once:** the second run waits, then finds nothing to do.
+If the Meta-Data sheet can't be opened, or a needed tab or column is missing, the pop-up says only
+that, e.g. *"Can't open the Meta-Data sheet. Check it still exists and your Google account can
+open it."* or *"Rep-Targets has no 'Target' column in row 1."*
+
+### One-time setup (about 15 minutes)
+**The owner does three things.** The agent does the rest and guides him through each one.
+
+| # | Who | Step |
+| --- | --- | --- |
+| 1 | **Owner** | Turns on the **Apps Script API** for his Google account: one switch at `script.google.com/home/usersettings`. |
+| 2 | **Owner** | Logs clasp in to his Google account inside the agent's session: the agent runs `npx clasp login --no-localhost`, the owner opens the Google link it prints, signs in, and pastes back the code. |
+| 3 | Agent | Runs `npx clasp create-script --type sheets --title "Sales Diary" --rootDir src`. This creates the Sales Diary sheet and its attached script, and writes `.clasp.json`. It also copies Google's starter files into `src/`, overwriting `src/appsscript.json` and adding a starter code file. The agent deletes the starter file, restores ours with `git checkout -- src/appsscript.json`, then runs `npx clasp push --force`. |
+| 4 | **Owner** | Opens the Sales Diary sheet on a computer, reloads it, and taps **Sales Diary → Check setup**. Google asks him to allow the script to use his spreadsheets. It shows a "Google hasn't verified this app" warning: **this is normal for a script you made yourself, in your own account.** He clicks *Advanced*, then *Go to Sales Diary (unsafe)*, approves the permissions listed, then taps **Check setup** again. |
+| 5 | Agent | Deploys the web app (`npx clasp create-deployment -d "phase 1"`), gives the owner the address, and records the deployment ID and address in `docs/plans/handoff.md`. They aren't secret: the address opens nothing useful without a link code (phase 2). |
+| 6 | Agent | Runs `npx clasp logout` at the end of the session. |
+
+**What the clasp login can do while it's active** (from clasp 3.4.1's own list of permissions):
+see the **names** of files in the owner's Drive (not their contents); open only files that clasp
+itself creates; create and change Apps Script projects; and manage Google Cloud projects. It
+**can't** open his other sheets or documents. It lives only on the session's temporary machine
+and is never committed or printed. If a session ends before `logout`, the login disappears with
+the machine. The owner can also remove it any time in his Google Account's security settings,
+under third-party connections.
 
 ## Rules
 
 ### General
-- **The app never writes to Meta-Data** (ADR-0005). Its code reads Meta-Data through one small
-  set of read-only functions; tests fail if anything tries to write to it.
+- **The app never writes to Meta-Data** (ADR-0005). Only one file of code opens it, read-only;
+  tests fail if anything tries to write to it.
+- **The Meta-Data sheet's ID is in the code** (`src/config.js`, ADR-0007).
 - **Columns are found by their header name in row 1**, ignoring capitals and spaces at the
   ends. Column order doesn't matter. Only row 1 counts as the header.
-- **Dates and months are Pakistan time.** Both spreadsheets and the script use `Asia/Karachi`.
-- The Meta-Data sheet's ID is kept in the script's settings (a *Script Property*), not in the
-  code (ADR-0005). The Sales Diary sheet's ID is saved there too, by setup.
+- **Dates and months are Pakistan time** (`Asia/Karachi`). *This month* means the current month
+  in Pakistan time.
 
 ### Reading `Rep_Mapping` (salesmen)
-- Columns `Rep` and `Region`. Rows with both blank are skipped silently. A row with only one
-  filled in is reported.
+- Columns `Rep` and `Region`. Rows with both blank are skipped.
 - `Rep` is trimmed and made upper-case (`" ria"` → `RIA`).
-- `Region` must be North, Center or South (any capitals). Anything else → reported as a problem;
-  that salesman is left out until fixed.
-- The same `Rep` twice → reported. Same region both times: counted once. Different regions:
-  left out until fixed.
+- `Region` must be North, Center or South (any capitals). Otherwise: *Check these*, and that
+  salesman is left out.
+- A row with only one of the two filled in: *Check these*.
+- The same `Rep` listed twice: *Check these*, and the first row is used.
 
 ### Reading `Rep-Targets` (salesman targets)
-- Columns `Rep`, `Month`, `Target`. **Everything else on the tab is ignored**, including the owner's
-  workings in E2 and E74:I90. A row is read only if `Rep`, `Month` and `Target` are filled in.
-  A row with all three blank is skipped silently. A row with only some filled in is reported.
-- **Month** may be a date cell (how the sheet stores it today) or text `YYYY-MM`. A date
-  cell is turned into a month **using the Meta-Data sheet's own timezone** (`Asia/Karachi`).
-  *Why this matters:* the cell "1 Aug 2026" is 31 Jul, 7 pm in UTC. Reading it in UTC would make
-  every target one month early. A test pins this down.
-- **Target** may be a number or text such as `13,800,000` or `Rs. 13,800,000`. Commas, `Rs.`
-  and spaces are removed. It must then be a whole number of zero or more; anything else is reported
-  and the row ignored.
-- **A target of 0 means "no target"**, the same as a missing row.
-- **The same salesman and month twice** → reported, and that salesman has **no target** for
+- Columns `Rep`, `Month`, `Target`. **Everything else on the tab is ignored**, including the
+  owner's own workings in E2 and E74:I90.
+- Rows with all three blank are skipped. A row with only some filled in: *Check these*.
+- **Month** may be a date cell (how the sheet stores it today) or text `YYYY-MM`. A date cell is
+  turned into a month **using the Meta-Data sheet's own timezone**. *Why:* the cell "1 Aug 2026"
+  is 31 Jul, 7 pm in UTC, so reading it in UTC would make every target one month early.
+  Anything else: *Check these*.
+- **Target** may be a number or text such as `13,800,000` or `Rs. 13,800,000` (commas, `Rs.` and
+  spaces are removed). It must then be a whole number, zero or more. Anything else: *Check these*,
+  and the row is ignored.
+- **A target of 0 means no target**, the same as a missing row.
+- **The same salesman and month twice:** *Check these*, and that salesman has **no target** for
   that month until it's fixed. The app doesn't pick one or add them up.
-- A `Rep` not in `Rep_Mapping` (e.g. MUB's July 2026 row) is ignored and listed under *Notes*,
-  not *Problems*.
-- A salesman with no target for a month simply has none. That's not a problem. The summary
-  shows him with "no target".
-- *This month* always means the current month in Pakistan time.
+- Rows for people **not in `Rep_Mapping`** (e.g. MUB's July 2026 row) are **ignored silently**.
+  A typo like `RAI` still shows up, because RIA then has "no target".
+- A salesman without a target this month shows **"no target"** in the summary. That's not a
+  problem.
 
 ### Reading `Targets` (region targets)
 - Same rules as `Rep-Targets`, with `Region` in place of `Rep`.
-- Allowed regions: North, Center, South, and `UNASSIGNED`, shown as **"House / office sales"**.
-- For North, Center and South, the summary says whether the region target **matches the sum of
-  its salesmen's targets** for that month, counting only salesmen now in `Rep_Mapping`. A mismatch is a *Note* (a warning), never an error.
+- Regions: North, Center, South and `UNASSIGNED`, shown as **"House / office sales"**. Any other
+  region: *Check these*.
+- No comparing region totals with salesmen's targets (owner's choice).
 
-### Setting up the Sales Diary sheet (Set up tabs)
-- Tabs and headers are exactly those in the [data model](../architecture/data-model.md), in that
-  order. The code keeps one list of them; a test checks that it matches the data model doc, so the
-  two can't drift apart.
-- **Missing tab** → created with its header row (bold, frozen).
-- **Tab exists, headers complete** → left alone.
-- **Tab exists, a header missing** → the missing header is added at the **end** of row 1.
-  Existing columns are never moved, renamed or deleted. Columns the owner added are left alone.
-- **No row, tab or value is ever deleted**, with one exception: the blank `Sheet1` tab that
-  Google adds to a new spreadsheet is removed, **only** if it is completely empty, and only after
-  the four tabs exist (Google won't delete a spreadsheet's last tab).
-- The `contact_phone` column in **Sites** is set to plain text, so numbers like `923001234567`
-  keep their exact digits and aren't shown as `9.23E+11`.
-- The sheet's timezone is set to `Asia/Karachi`.
-- **Lists** is filled per list (`product_category`, `lost_reason`, `buyer_type`) **only if
-  that list has no rows yet**. The owner's edits are never overwritten. (If he deletes every
-  row of a list, the next setup refills it.) Values and order are those in the
-  [data model](../architecture/data-model.md) (`Lists` → starting contents), with
+### Setting up the Sales Diary sheet (inside Check setup)
+- Creates **only the tabs that are missing**: `Sites`, `Activity`, `Lists`, with the headers
+  listed in the [data model](../architecture/data-model.md), bold and frozen. **A tab that already
+  exists is never touched**, even if its headers differ.
+- On creating `Sites`, its `contact_phone` column is set to plain text, so `923001234567` keeps its
+  digits instead of showing as `9.23E+11`.
+- Sets the Sales Diary sheet's timezone to `Asia/Karachi`.
+- Fills `Lists` **per list** (`product_category`, `lost_reason`, `buyer_type`) **only when that
+  list has no rows**, with the values and order in the data model (`Lists` → starting contents),
   `added_by` = `owner`, `active` = TRUE, `region` blank, `sort` = 10, 20, 30, …
-  `area` starts empty (owner's answer A2).
-- Setup holds a lock while it runs, so two runs can't collide.
+  `area` starts empty. The owner's edits are never overwritten. (If he deletes every row of a list,
+  the next Check setup refills it.)
+- Deletes the blank `Sheet1` tab that Google adds to a new spreadsheet, **only** if it's
+  completely empty, and only after the other tabs exist (Google won't delete a spreadsheet's last
+  tab).
 
 ### Safety rules for all code (from now on)
-- **A web page can call any of the script's public functions.** Apps Script lets a page call
-  any function whose name doesn't end in `_`. So:
-  - Helper functions **end with `_`**, which keeps pages from calling them.
-  - Public functions are kept to a short, fixed list. In phase 1 that's `doGet`, `onOpen`,
-    `menuSetUpTabs` and `menuCheckMetaData`. A test fails if any other public function appears.
-  - The two menu functions **refuse to run** unless a signed-in person is running them as
-    themselves, which is what happens when the owner uses the menu in his sheet. A web app visitor
-    is never that: the app runs as the owner on their behalf, and Google doesn't tell the script
-    who the visitor is. (In code: the active user's email must be non-empty and equal to the
-    effective user's email.)
-- The web app in this phase is deployed **"only myself"** (only the owner can open it). Phase 2
-  opens it to anyone with a valid link.
+- **A web page can call any public function in the script.** Apps Script lets a page call any
+  function whose name doesn't end in `_`. So:
+  - Every helper function's name **ends in `_`**.
+  - The public functions are a fixed list. In phase 1: `doGet`, `onOpen`, `menuCheckSetup`.
+    A test fails if any other public function appears.
+  - `menuCheckSetup` **refuses to run** unless a signed-in person is running it as themselves
+    (in code: the active user's email is non-empty and equals the effective user's email). That's
+    true when the owner taps the menu, and never true for a web app visitor.
+  - `onOpen` has **no** such check. It only adds the menu, and it runs in a limited mode where
+    Google may not give the user's email, so a check would hide the menu.
+- The web app is deployed for **"only myself"** in this phase (`access: "MYSELF"`). In phase 2
+  it must become **`ANYONE_ANONYMOUS`** ("Anyone" in Google's deploy screen), **not** `ANYONE`,
+  which forces a Google sign-in that salesmen don't have (ADR-0002).
 - **The Sales Diary sheet must never be shared**, and never set to "anyone with the link". From
-  phase 2 it holds the link codes. Salesmen never get access to the sheet.
+  phase 2 it holds the link codes.
 
 ## Data
-- **Reads (never writes):** Meta-Data `Rep_Mapping`, `Rep-Targets`, `Targets`, columns found by
-  header.
-- **Creates / writes:** Sales Diary tabs `Sites`, `Activity`, `Lists`, `Links` (header rows), and
-  the starting rows in `Lists`.
-- **Script settings:** `META_DATA_SPREADSHEET_ID`, `SALES_DIARY_SPREADSHEET_ID`.
-- **Data model changes:** none. This spec builds exactly what
-  [data-model.md](../architecture/data-model.md) v0.3 describes.
+- **Reads (never writes):** Meta-Data `Rep_Mapping`, `Rep-Targets`, `Targets`.
+- **Creates / writes:** Sales Diary tabs `Sites`, `Activity`, `Lists` (when missing), the starting
+  rows in `Lists`, and the sheet's timezone.
+- **Settings:** none. (The Meta-Data ID is in the code. How the web app finds the Sales Diary
+  sheet is decided in phase 2, the first phase that needs it.)
+- **Data model:** `Links` is now created in phase 2. Already updated in
+  [data-model.md](../architecture/data-model.md).
 
 ## How it's built (for agents)
 
@@ -181,119 +169,120 @@ Every problem names the **tab and row number** so the owner can find it, e.g.
 | Tool | Version | Why |
 | --- | --- | --- |
 | Node.js | 22 or newer | Runs clasp, tests and the type check. |
-| `@google/clasp` | 3.4.1 (pinned, dev dependency) | Sends code to Apps Script (ADR-0003). |
-| `typescript` | 7.0.2 (pinned, dev dependency) | Type check only (`tsc`, no output files). Checked: v7 type-checks plain JS with JSDoc, across files, with the Apps Script types. |
-| `@types/google-apps-script` | 2.0.14 (pinned, dev dependency) | Types for `SpreadsheetApp` and the rest. |
+| `@google/clasp` | 3.4.1, pinned dev dependency | Sends code to Apps Script (ADR-0003). |
+| `typescript` | 7.0.2, pinned dev dependency | Type check only. Checked: v7 type-checks plain JS with JSDoc, across files, with the Apps Script types. |
+| `@types/google-apps-script` | 2.0.14, pinned dev dependency | Types for `SpreadsheetApp` and the rest. |
 | Test runner | Node's built-in `node:test` | No extra package. |
 
 `package-lock.json` is committed.
 
-### Commands (add these to `AGENTS.md` → `## Commands` in the same change)
+### Commands (go into `AGENTS.md` → `## Commands`)
 | Command | Does |
 | --- | --- |
-| `npm install` | Installs the tools above. |
-| `npm test` | Runs all tests: `node --test "tests/**/*.test.js"`. No Google account needed. |
+| `npm install` | Installs the tools. |
+| `npm test` | All tests: `node --test "tests/**/*.test.js"`. No Google account needed. |
 | `npm run typecheck` | `tsc -p .`, type-checks `src/`. |
 | `npm run check` | Type check, then tests. **Must pass before every commit.** |
-| `npx clasp push --force` | Sends `src/` to Apps Script. Needs clasp logged in. Always use `--force`: without it, clasp asks before replacing `appsscript.json`, and when nothing can answer (as in an agent session) it **skips the push silently**. Git is the source of truth. |
-| `npx clasp create-deployment -d "<note>"` | Creates the web app **once** (first setup). Its address is new each time, so don't run it again. |
-| `npx clasp update-deployment <deploymentId> -d "<note>"` | Puts the latest pushed code live **at the same address**. Use this for every update after the first. A new deployment would get a new address and break every link already sent. |
+| `npx clasp push --force` | Sends `src/` to Apps Script. Always use `--force`: without it clasp asks before replacing `appsscript.json`, and when nothing can answer (an agent session) it **skips the push silently**. Git is the source of truth. |
+| `npx clasp create-deployment -d "<note>"` | Creates the web app. **Once only**: each run makes a new address. |
+| `npx clasp update-deployment <deploymentId> -d "<note>"` | Puts the latest pushed code live **at the same address**. Use this for every update after the first; a new address would break every link already sent. |
 
 ### Files
 | Path | Holds |
 | --- | --- |
 | `package.json`, `package-lock.json`, `tsconfig.json` | Tooling. `tsconfig`: `allowJs`, `checkJs`, `noEmit`, `strict`, types `google-apps-script`, includes `src/**/*.js`. |
-| `.clasp.json` | Script ID and `rootDir: "src"`. Created by `clasp create-script`. **Committed**: it holds IDs, not credentials. |
+| `.clasp.json` | Script ID and `rootDir: "src"`. Made by `clasp create-script`. Committed: IDs, not credentials. |
 | `src/appsscript.json` | `timeZone: "Asia/Karachi"`, `runtimeVersion: "V8"`, `exceptionLogging: "STACKDRIVER"`, `webapp: { executeAs: "USER_DEPLOYING", access: "MYSELF" }`. |
-| `src/config.js` | Tab names, header lists, starting `Lists` values, Script Property names. |
-| `src/rules_metadata.js` | Pure functions, no Google calls: find columns, tidy rep codes, read months, parse Rs., build salesmen and targets, compare region sums, build the summary text. |
-| `src/sheet_metadata.js` | The **only** code that opens Meta-Data. Read-only. |
-| `src/sheet_setup.js` | Creates and repairs Sales Diary tabs, fills `Lists`. |
-| `src/menu.js` | `onOpen`, `menuSetUpTabs`, `menuCheckMetaData`, owner-only check. |
-| `src/webapp.js`, `src/Index.html` | `doGet` placeholder page. No data. |
+| `src/config.js` | Meta-Data ID, tab names, header lists, starting `Lists` values. |
+| `src/rules.js` | Plain logic that never touches a spreadsheet: find columns, tidy codes, read months, parse and format Rs., read salesmen and targets, build the summary text. Its only Google call is `Utilities.formatDate` for months (faked in tests). |
+| `src/metadata.js` | The **only** code that opens Meta-Data. Read-only. |
+| `src/setup.js` | Creates missing Sales Diary tabs, fills `Lists`. |
+| `src/menu.js` | `onOpen`, `menuCheckSetup`, the signed-in-person check. |
+| `src/webapp.js`, `src/Index.html` | `doGet` and the placeholder page. No data. |
 | `tests/helpers/load-src.js` | Loads every `src/*.js` into one shared sandbox (like Apps Script's single global scope), with fake Google services. |
-| `tests/helpers/fake-sheets.js` | Fake spreadsheets built from plain tables. The fake Meta-Data **throws on any write**. |
-| `tests/fixtures/meta-data-sample.js` | Same **shape** as the real Meta-Data, including the stray cells, the E74:I90 block, SM's rows beside it, months as Karachi-midnight dates, one comma-text target, and MUB's July row. **Made-up amounts**: the owner's real target table stays out of git. |
-| `tests/*.test.js` | The tests listed below. |
+| `tests/helpers/fakes.js` | Fake spreadsheets made from plain tables, plus fake `Utilities`, `Session`, `HtmlService`. The fake Meta-Data **throws on any write**. |
+| `tests/fixtures/meta-data.js` | Same **shape** as the real Meta-Data: stray E2 value, the E74:I90 block, SM's rows beside it, months as Karachi-midnight dates, MUB's July row. **Made-up amounts**: the owner's real target table stays out of git. |
+| `tests/*.test.js` | The tests below. |
 
 ### Gotchas found while checking (2026-11-04)
-- All `src/*.js` files share one global scope. Two functions with the same name in different
-  files clash; `tsc` reports "Duplicate function implementation". Prefer `function`
-  declarations. Top-level `const` values must not depend on other files.
+- All `src/*.js` files share one global scope. Same-named functions in two files clash (`tsc`
+  reports "Duplicate function implementation"). Top-level `const` values must not depend on
+  other files.
 - In the test sandbox, top-level `const` values aren't properties of the sandbox object. Read
   them with `vm.runInContext('NAME', ctx)`.
 - Objects made inside the sandbox fail `assert.deepStrictEqual` against plain test objects
-  (different built-in prototypes). Compare `JSON.parse(JSON.stringify(x))` instead.
-- No `.claspignore` is needed. clasp's default rules push only `appsscript.json`, `*.js`, `*.gs`,
-  `*.ts` and `*.html`, so `src/README.md` stays out. If one is ever added, it goes **next to
-  `.clasp.json`** (repo root), not in `src/`, and its patterns are relative to `src/`.
+  (different built-in prototypes). Compare `JSON.parse(JSON.stringify(x))`.
+- No `.claspignore` needed: clasp's defaults push only `appsscript.json`, `*.js`, `*.gs`, `*.ts`,
+  `*.html`. If one is ever added, it goes **next to `.clasp.json`** (repo root), with patterns
+  relative to `src/`.
 - Use `range.getValues()` (real numbers and dates), not `getDisplayValues()`.
-- Format months with `Utilities.formatDate(date, metaDataTimeZone, 'yyyy-MM')`, where the
-  timezone comes from `getSpreadsheetTimeZone()` on the Meta-Data sheet. Never `toISOString()`.
+- Months: `Utilities.formatDate(date, metaDataTimeZone, 'yyyy-MM')`, with the timezone from
+  the Meta-Data sheet's `getSpreadsheetTimeZone()`. Never `toISOString()`.
+- Pure functions take "now" as a parameter, so tests don't depend on today's date.
 
 ## Tests (all local, no Google account)
-- **Columns:** found by name whatever their order; ignores capitals and edge spaces; a missing
-  column gives the clear error; only row 1 counts as the header (the `rep` text in E74 is ignored).
-- **Salesmen:** the 7 from the fixture; blank rows skipped; codes trimmed and upper-cased;
-  unknown region reported and left out; duplicate rep handled as in *Rules*.
-- **Months:** a date for 1 Aug 2026 00:00 Karachi reads as `2026-08` (not `2026-07`);
-  `2026-11` text reads as `2026-11`; bad text is reported with its row number.
-- **Amounts:** `13800000`, `"13,800,000"`, `"Rs. 13,800,000"` all give 13800000; `"abc"`, `-5`
-  and `1.5` are reported; 0 means no target.
-- **Targets:** stray cells and the E74:I90 block are ignored; SM's rows beside it are read;
-  duplicate salesman + month → no target and a problem; MUB → a note; a missing target → none.
-- **Region targets:** `UNASSIGNED` shows as House / office sales; sums that match are marked so,
-  and a mismatch gives a note.
-- **Never writes to Meta-Data:** the whole Check Meta-Data flow runs against the fake that throws
-  on any write.
-- **Setup:** on an empty spreadsheet creates the 4 tabs with exact headers, removes the empty
-  `Sheet1`, fills Lists. Run a second time, it changes nothing. A tab missing a header gets it
-  added at the end. An owner-added column is kept. A non-empty `Sheet1` is kept. Lists are not
-  refilled when a list already has rows. `contact_phone` is plain text. Timezone is
-  `Asia/Karachi`.
-- **Docs match code:** the header lists in `config.js` equal the column tables for each Sales
-  Diary tab in `docs/architecture/data-model.md`, and the starting Lists values match.
-- **Safety:** the only public functions are `doGet`, `onOpen`, `menuSetUpTabs` and
-  `menuCheckMetaData`. The menu functions refuse when there is no signed-in person, or when
-  the script is running as someone other than that person (as it does for web app visitors).
-- **Summary text:** the fixture produces the expected summary, word for word.
+- **Columns:** found by name in any order; capitals and edge spaces ignored; a missing column
+  gives the clear message; only row 1 is the header (the `rep` text in E74 is ignored).
+- **Salesmen:** the 7 from the fixture; blank rows skipped; codes tidied; unknown region left out
+  and listed; half-filled row listed; duplicate listed, first row used.
+- **Months:** 1 Aug 2026 00:00 Karachi reads as `2026-08`, not `2026-07`; text `2026-11` works;
+  bad text listed with its row.
+- **Amounts:** `13800000`, `"13,800,000"`, `"Rs. 13,800,000"` all give 13800000; `"abc"`, `-5`,
+  `1.5` listed; 0 means no target. Formatting gives `Rs. 13,800,000`.
+- **Targets:** stray cells and the E74:I90 block ignored; SM's rows beside it read; duplicate
+  salesman + month → no target and listed; MUB ignored without a message; missing → no target.
+- **Region targets:** `UNASSIGNED` is House / office sales; an unknown region is listed.
+- **Never writes to Meta-Data:** the whole Check setup runs against the fake that throws on any
+  write.
+- **Setup:** on a new spreadsheet, creates the 3 tabs with exact headers, makes `contact_phone`
+  plain text, sets the timezone, fills Lists, deletes the empty `Sheet1`. Run again: changes
+  nothing. An existing tab is left exactly as it was. A non-empty `Sheet1` is kept. A list
+  with rows isn't refilled.
+- **Summary:** shows each salesman, "no target" where there is none, the region targets, and
+  either "Nothing to fix." or "Check these:" with the problems. (Checks the content, not every
+  word, so wording can be polished freely.)
+- **Safety:** the only public functions are `doGet`, `onOpen`, `menuCheckSetup`.
+  `menuCheckSetup` refuses with no signed-in person, or when the script runs as someone else.
+  `doGet` returns the placeholder with no data.
 
 ## Acceptance criteria
-
 Checked locally by the agent:
 - [ ] `npm install` then `npm run check` pass on a clean clone (Node 22).
-- [ ] Every test listed under *Tests* exists and passes.
-- [ ] No secrets in git: no `.clasprc.json` and no tokens. The fixture uses made-up amounts.
-- [ ] `AGENTS.md` has a `## Commands` section with the exact commands, and its *Status* line is
-      updated.
+- [ ] Every test under *Tests* exists and passes.
+- [ ] No secrets in git (no `.clasprc.json`, no tokens). The fixture uses made-up amounts.
+- [ ] `AGENTS.md` has a `## Commands` section with these commands, and its *Status* is updated.
 
 Checked live with the owner:
-- [ ] The Sales Diary sheet exists in the owner's Drive with the 4 tabs and headers exactly as in
-      the data model, and Lists holds the 11 categories in order, the 5 lost reasons and the
-      4 buyer types.
-- [ ] **Set up tabs** run a second time changes nothing.
-- [ ] **Check Meta-Data** on the real sheet shows 7 salesmen in the right regions, this month's
-      targets matching `Rep-Targets` (spot-check SJ, SM and IB), region targets including House /
-      office sales, and no unexpected problems.
-- [ ] Meta-Data's version history shows **no edits** at the times setup and Check Meta-Data were
-      run. (The script runs as the owner, so check the times, not the name.)
-- [ ] The web app address opens the placeholder page for the owner. In a private browser window
-      (not signed in) it does **not** open.
+- [ ] The Sales Diary sheet is in the owner's Drive with **Sites**, **Activity**, **Lists**,
+      headers exactly as in the data model; Lists holds the 11 categories in order, the 5 lost
+      reasons and the 4 buyer types; no `Sheet1`.
+- [ ] Tapping **Check setup** again changes nothing in the sheet.
+- [ ] The summary shows the 7 salesmen in the right regions, this month's targets matching
+      `Rep-Targets` (spot-check SJ, SM, IB), the region targets including House / office sales,
+      and "Nothing to fix."
+- [ ] Meta-Data's version history shows **no edits** at the times Check setup was run. (The
+      script runs as the owner, so check the times, not the name.)
+- [ ] The web address opens the placeholder page for the owner, and does **not** open in a
+      private browser window.
 - [ ] `npx clasp status` lists only `appsscript.json`, the `.js` files and `Index.html`.
+- [ ] `npx clasp logout` was run at the end of the session.
 
 ## Out of scope
-- Salesman and owner links, link codes, the owner screen (phases 2 and 7).
-- Any screen for salesmen, adding or updating sites (phases 3+).
-- Speed tweaks such as caching Meta-Data (later, if needed).
-- Protecting tabs from accidental edits by the owner.
+- The `Links` tab, link codes, owner link and owner screen (phases 2 and 7).
+- Any salesman screen; adding or updating sites (phases 3+).
+- Repairing tabs whose headers were changed by hand; caching Meta-Data; protecting tabs; a
+  lock around setup (one owner, rarely run).
+- Comparing region totals with salesmen's targets (owner's choice).
 
 ## Open questions
 _None open._ Answered by the owner on 2026-11-04 (session 2):
-1. **Which Google account owns the app and the Sales Diary sheet?** **The owner's own account**,
-   the one that owns Meta-Data.
-2. **Where is clasp logged in?** **In the agent's cloud session, when needed.** The owner signs in
-   with `npx clasp login --no-localhost` (opens a Google link, pastes back a code). The login stays
-   on that session's temporary machine, is never committed or printed, and the agent runs
-   `npx clasp logout` at the end of the session. Each new session needs a fresh login. *Not yet
-   tried from the cloud machine; if Google can't be reached from there, the owner runs the push
+1. **Which Google account owns the app and the Sales Diary sheet?** The owner's own account, the
+   one that owns Meta-Data.
+2. **Where is clasp logged in?** In the agent's cloud session, when needed, with `clasp logout`
+   at the end. *Checked 2026-11-04: Google's sign-in and Apps Script servers answer from the cloud
+   machine. The sign-in itself is first tried in build step 8; if it fails, the owner runs the push
    and deploy commands on his own computer instead.*
+3. **One menu item or two?** One: **Check setup**.
+4. **Meta-Data ID?** In the code (ADR-0007).
+5. **Compare region totals with salesmen's targets?** No.
+6. **Rows for people who have left?** Ignored silently.
