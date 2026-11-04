@@ -349,6 +349,24 @@ let browser;
   assert.deepEqual([followDay(sitesRow('S000002')), sitesRow('S000002').last_note], [followDay(rias2), 'Admin: good, keep at it'],
     "RIA's follow-up stays");
 
+  // ---- Two people, one site (c): after a Refresh, the form's `seen` is what that Refresh brought
+  // (never an older state), so RIA changing the date again while his form is open is kept. ----
+  assert.equal(world.s.repUpdateSite(RIA, 'S000002', { stage: 'Visited / Lead', followUp: '3days', note: 'x' }).ok, true);
+  await page.click('#refresh');
+  await page.waitForFunction(() => document.querySelector('#refresh').textContent === 'Refresh' && !document.querySelector('#refresh').disabled);
+  await tab('team');
+  await page.locator('.card.team[data-rep="RIA"] .chip:has-text("Visited / Lead")').click();
+  await card('Fresh Lead').click();
+  assert.equal(await page.textContent('#u-follow .pill[aria-pressed=true]'), `Keep ${short(dayKey(3))}`);
+  assert.equal(world.s.repUpdateSite(RIA, 'S000002', { stage: 'Visited / Lead', followUp: '1week', note: 'y' }).ok, true);
+  const rias3 = sitesRow('S000002');
+  await page.fill('#u-note', 'third');
+  await page.click('#save');
+  await settled();
+  assert.equal(await page.locator('.card.failed').count(), 0);
+  assert.deepEqual([followDay(sitesRow('S000002')), sitesRow('S000002').last_note], [followDay(rias3), 'Admin: third'],
+    "RIA's latest follow-up stays");
+
   // ---- Refresh: no signal keeps what he has; with signal it reloads. ----
   await page.evaluate(() => { window.__offline = true; });
   await page.click('#refresh');

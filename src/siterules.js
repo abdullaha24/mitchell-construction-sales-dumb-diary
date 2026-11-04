@@ -353,8 +353,9 @@ function checkUpdate_(input, current, choices, todayKey) {
  * Two people, one site (spec 008). An Update form says what it was opened on (`seen`: stage,
  * Rs. value + Cash / Credit, lost reason, follow-up). Each of those he **left as he saw it** keeps
  * whatever the site has **now** (someone else may have changed it meanwhile: his old screen must
- * not undo that). What he **changed** is saved. Only when he and someone else changed the same
- * thing differently is the save refused (`conflict`), so he can look and decide. A form without
+ * not undo that). What he **changed** is saved. When he and someone else changed the same thing
+ * differently, or someone else moved the stage to one that doesn't use a thing he changed, the
+ * save is refused (`conflict`), so he can look and decide. A form without
  * `seen` (a page from before spec 008) is taken as it is.
  * @param {any} input what the page sent
  * @param {CurrentSite} current the site now (inside the lock)
@@ -387,8 +388,14 @@ function mergeSeen_(input, current, todayKey) {
     stage: true, money: VALUE_STAGES.includes(stage), lostReason: stage === LOST_STAGE,
     followUp: !CLOSED_STAGES.includes(stage),
   };
+  // Someone else moved the stage while he left it: a change of his that the new stage doesn't use
+  // (a value or follow-up on a site now Lost) would be lost without a word, so it is a clash.
+  const movedByOther = parts.stage[0] === parts.stage[1] && current.stage !== parts.stage[1];
   for (const [name, [his, saw, now]] of Object.entries(parts)) {
-    if (!used[/** @type {'stage'} */ (name)]) continue;
+    if (!used[/** @type {'stage'} */ (name)]) {
+      if (movedByOther && his !== saw) return { conflict: true, input };
+      continue;
+    }
     if (his !== saw) {
       if (now !== saw && now !== his) return { conflict: true, input };
       continue; // his change

@@ -65,7 +65,7 @@ function stub() {
         return (...args) => {
           window.__calls.push(prop);
           if (window.__offline) {
-            setTimeout(() => failure && failure({ message: 'NetworkError: Connection failure due to HTTP 0' }), 20);
+            setTimeout(() => failure && failure({ message: 'NetworkError: Connection failure due to HTTP 0' }), window.__offDelay || 20);
             return;
           }
           const go = () => window.__server(prop, JSON.stringify(args)).then(
@@ -323,6 +323,55 @@ const want = (name) => !process.env.ONLY || name.split('/').includes(process.env
     await page.waitForSelector('#toast:has-text("Saved")');
     const row = world.diary.getSheetByName('Sites').getDataRange().getValues()[1];
     assert.deepEqual([row[9], row[10], fu(row), row[14]], ['Rate Quoted', 500000, fu(theirs), 'draft note']);
+    await context.close();
+  }
+
+  if (want('J')) {
+    // Spec 008: his Update U1 (Visited → Sample / Trial) is still on its way when he opens the site
+    // again; U1 then fails without landing; he adds a note and saves U2. U2's form was opened over
+    // U1, so it carries U1's stage (the form's `seen` is what Google last confirmed, never U1's
+    // card): the sheet gets the stage and the note, and U1's orange card goes because U2 carried it.
+    console.error('case J');
+    const world = buildWorld();
+    const { page, context } = await open(world);
+    await page.evaluate(() => { window.__offline = true; window.__offDelay = 1500; });
+    await page.click('.card:has-text("F-11 Tower")');
+    await page.click('#u-stage .pill:has-text("Sample / Trial")');
+    await page.click('#save');
+    await page.waitForSelector('.card:has-text("F-11 Tower") .tag.saving');
+    await page.click('.card:has-text("F-11 Tower")');
+    await page.waitForSelector('#siteView:not([hidden])');
+    assert.equal(await page.textContent('#u-stage .pill[aria-pressed=true]'), 'Sample / Trial', 'the form shows his unconfirmed change');
+    await page.waitForFunction(() => queue.length && queue[0].status === 'failed');
+    await page.evaluate(() => { window.__offline = false; window.__offDelay = 0; });
+    await page.fill('#u-note', 'second visit');
+    await page.click('#save');
+    await page.waitForSelector('#toast:has-text("Saved")');
+    const row = world.diary.getSheetByName('Sites').getDataRange().getValues()[1];
+    assert.deepEqual([row[9], row[14]], ['Sample / Trial', 'second visit'], 'his first change was not lost');
+    assert.deepEqual(activityRows(world).map((r) => `${r[4]} ${r[5]}>${r[6]}`), ['stage_change Visited / Lead>Sample / Trial']);
+    assert.deepEqual(await failedNames(page), [], 'U2 carried U1');
+    await context.close();
+  }
+
+  if (want('K')) {
+    // A failed save that a later Update did NOT carry (it joined the queue after that Update's
+    // form was opened, e.g. another tab) is never dropped when that Update lands.
+    console.error('case K');
+    const world = buildWorld();
+    const { page, context } = await open(world);
+    await page.evaluate(() => { window.__delay = 800; });
+    await page.click('.card:has-text("F-11 Tower")');
+    await page.fill('#u-note', 'first');
+    await page.click('#save');
+    await page.evaluate(() => {
+      const card = JSON.parse(JSON.stringify(data.sites[0]));
+      queue.push({ id: 'otherTab001', fn: 'repUpdateSite', siteId: card.id, input: {}, card, state: { stage: card.stage },
+        status: 'failed', message: 'Not saved: no signal.' });
+    });
+    await page.waitForSelector('#toast:has-text("Saved")');
+    assert.equal(await page.evaluate(() => queue.filter((q) => q.id === 'otherTab001').length), 1, 'not carried: kept');
+    await page.evaluate(() => { window.__delay = 0; });
     await context.close();
   }
 

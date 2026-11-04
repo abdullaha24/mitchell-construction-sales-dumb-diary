@@ -57,6 +57,16 @@
      a refresh, or a kept draft; `after` names his own unheard saves. `admin.check.js` (a), (b)
      check `value_rs` and `next_followup`; `queue.check.js` case I; `admin.test.js`.
   3. An Update kept on a phone from version 9 (no `seen`) saves as before: `queue.check.js` case H.
+- [x] Second review: the three fixes hold. Fixed, each with a check that failed on the old code
+  (mutation-checked: 1 server, 4 page):
+  1. His own earlier change could be lost: a form opened over his still-saving Update took `seen`
+     from that unconfirmed card, so if it then failed, the next save kept the old stage. Now the
+     page keeps what Google last confirmed per site (load, Refresh, a reply, a refusal) and `seen`
+     always comes from it; an Update replaces only the failed saves it carried (`carries`).
+     `queue.check.js` cases J, K; `admin.check.js` (c).
+  2. A change the new stage doesn't use (the admin closed the site as Lost while RIA's old form
+     changed value and follow-up) is now a clash, refused, not dropped: `admin.test.js`.
+  `check:browser` run 3 times: green each time.
 
 ## [ ] Step 5: Live (coordinator)
 - Push and update the deployment; owner tests on his phone; TEST rows cleaned up with his OK.

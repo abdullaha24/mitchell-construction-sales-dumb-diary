@@ -376,6 +376,29 @@ test('two people, one site: both changed the same thing differently: refused, no
   assert.equal(sitesRow(w, 'S000002').value_rs, 320000);
 });
 
+test('two people, one site: the admin closed it as Lost; RIA\'s older form changed value and follow-up: refused', () => {
+  const w = world();
+  const a = plain(w.s.adminPageUpdateSite(ADMIN, 'S000002', { stage: LOST, lostReason: 'Price Too High', note: 'gone', seen: MORNING }));
+  assert.equal(a.ok, true, a.message);
+  const before = sitesRow(w, 'S000002');
+  const writes = w.diary._writes().length;
+  for (const input of [
+    { stage: RQ, value: '450000', terms: 'Credit', followUp: '2026-11-06', note: 'he said next week' },
+    { stage: RQ, value: '300000', terms: 'Credit', followUp: '1week', note: 'he said next week' },
+  ]) {
+    const r = plain(w.s.repUpdateSite(RIA, 'S000002', { ...input, seen: MORNING }));
+    assert.equal(r.changed, true, 'a change of his that Lost does not use is never dropped silently');
+    assert.equal(r.site.stage, LOST);
+  }
+  assert.equal(w.diary._writes().length, writes, 'nothing written');
+  assert.equal(sitesRow(w, 'S000002').last_note, 'Admin: gone', "the admin's note stays");
+  assert.equal(sitesRow(w, 'S000002').worked_at.getTime(), before.worked_at.getTime());
+  const note = plain(w.s.repUpdateSite(RIA, 'S000002', { stage: RQ, value: '300000', terms: 'Credit', followUp: '2026-11-06',
+    note: 'noted', seen: MORNING }));
+  assert.equal(note.ok, true, 'only a note: it is added; the site stays Lost');
+  assert.equal(sitesRow(w, 'S000002').stage, LOST);
+});
+
 test('two people, one site: his own saves in a row, a correction after a lost reply, an old page', () => {
   const w = world();
   const first = plain(w.s.repUpdateSite(RIA, 'S000002', { stage: RQ, value: '350000', terms: 'Cash', followUp: '1week', seen: MORNING }));

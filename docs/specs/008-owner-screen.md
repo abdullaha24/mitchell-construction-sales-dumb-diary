@@ -211,13 +211,21 @@ P7-3), and the history shows it was him.
 - **Two people, one site** (salesman's Update **and** admin's Update). *(Rewritten after the
   independent review: the first build compared whole states and could still save a stale form's
   values, and it broke "saved once" after a lost reply.)*
-  - The Update form records, when it opens, what the site was as far as that phone knows (`seen`:
-    stage, Rs. value + Cash / Credit, lost reason, follow-up; before any of the site's saves that
-    failed on this phone), and which of those things he **touches**.
+  - The Update form records, when it opens, the state **Google last confirmed** for the site
+    (`seen`: stage, Rs. value + Cash / Credit, lost reason, follow-up, from the page load, a
+    Refresh, or a save's reply or refusal; **never** a card still saving or not saved), and which
+    of those things he **touches**. A form opened over his own unconfirmed save shows that save's
+    changes, so they differ from `seen` and go with this save as his: if the earlier one fails,
+    nothing of his is lost. *(Second review.)*
+  - The form also lists his earlier saves of the site still in the queue (`carries`); when it
+    lands, it replaces only those failed saves, never one it didn't carry.
   - On the server, inside the lock, each of those he **left as he saw it** keeps what the site has
     **now**, so an old screen can never undo someone else's change; each he **changed** is saved.
     Only what the saved stage uses counts (a Won site's hidden follow-up is never compared).
-  - If he and someone else changed the **same** thing differently, nothing is written and the
+    But if someone else moved the stage while he left it, and he changed something the new stage
+    doesn't use (a value or follow-up on a site now Lost), that is a clash: it would otherwise be
+    dropped without a word. *(Second review.)*
+  - If he and someone else changed the **same** thing differently (or as above), nothing is written and the
     reply is `{ ok: false, changed: true, message, site }`: *"This site was changed a moment ago.
     Here it is now: check it and save again."* His card shows the site as it is now; tapping it
     reopens the form with what he touched kept and everything else from the site now; Save then
@@ -226,7 +234,7 @@ P7-3), and the history shows it was him.
     (`after`); if Google remembers one (its 6-hour save record), the site as that save left it is
     what he saw (so a correction after a lost reply is saved, spec 005).
   - When the page refreshes under an open form, or he reopens a kept Update draft, and the site
-    has changed: the form is brought up to date the same way, with *"This site was changed a
+    shown has changed: the form is brought up to date the same way, with *"This site was changed a
     moment ago. Check and tap Save again."*
   - `seen` and `after` are not part of a save's fingerprint: a retry of a save that landed is the
     same save, saved once.

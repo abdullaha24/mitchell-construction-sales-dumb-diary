@@ -458,12 +458,15 @@
       // Google confirmed a save (possibly late, after it was shown as not saved).
       function applySuccess(entry, r) {
         removeEntry(entry);
+        if (r.site) confirmed[r.site.id] = snap(r.site); // what Google has now (spec 008)
         if (ADMIN && r.site) r.site = adminMerge(r.site);
         // Older failed saves of the same site are replaced by this newer one. An Update also
-        // replaces a failed snooze: it set the follow-up itself (spec 007).
+        // replaces a failed snooze: it set the follow-up itself (spec 007). An Update replaces only
+        // the saves its form was opened over (`carries`: their changes went with it, spec 008).
         for (var i = queue.length - 1; i >= 0; i--) {
           var q = queue[i];
           var replaced = q.fn === entry.fn || (entry.fn === 'repUpdateSite' && q.fn === 'repSnoozeSite');
+          if (entry.carries && entry.carries.indexOf(q.id) < 0) replaced = false;
           if (q.status === 'failed' && replaced && q.card.id === entry.card.id) queue.splice(i, 1);
         }
         if (!r.site) {
@@ -492,6 +495,7 @@
         var run = google.script.run.withSuccessHandler(function (r) {
           if (!r || !r.ok) { if (onFail) onFail(); return; }
           var keepK = k; data = r; data.k = keepK; setClock();
+          confirmAll(data.sites);
           queue.forEach(function (e) { showCard(e.card); });
           if (ADMIN) adminLoaded();
           if (screen === 'list') renderList();
@@ -534,10 +538,9 @@
                 var fresh = ADMIN ? adminMerge(r.site) : r.site;
                 showCard(fresh);
                 entry.card = clone(fresh);
-                var now = snap(fresh);
-                queue.forEach(function (q) { if (q.card.id === fresh.id && q.status === 'failed') q.base = now; });
+                confirmed[fresh.id] = snap(fresh);
                 // His changes stay; the rest now shows the site as it is (spec 008).
-                if (entry.state && entry.state.seen) entry.state = rebased(entry.state, fresh, now);
+                if (entry.state && entry.state.seen) entry.state = rebased(entry.state, fresh);
               }
               saveQueue();
               if (screen === 'list') renderList();
@@ -979,7 +982,7 @@
         return { stage: s.stage, value: s.value ? String(s.value) : '', terms: s.terms,
           lostReason: has(data.lostReasons, s.lostReason) ? s.lostReason : '',
           followUp: keepsDate(s) ? 'keep' : 'tomorrow', date: '', note: '', phone: '', saveId: newSaveId(),
-          seen: baseFor(s), touched: {} };
+          seen: confirmedFor(s), shown: snap(s), touched: {} };
       }
       function renderSiteHead(s) {
         var head = $('siteHead'); head.textContent = '';
@@ -1068,21 +1071,18 @@
         return a.stage === b.stage && a.value === b.value && a.terms === b.terms && a.lostReason === b.lostReason &&
           a.followUp === b.followUp;
       }
-      // The site as Google has it, as far as this page knows: before any of its saves that failed
-      // (their cards show what he typed, not what was saved). Saves still on their way count as
-      // saved: they go first. An Update form records this when it opens (`seen`).
-      function baseFor(s) {
-        for (var i = 0; i < queue.length; i++) {
-          var q = queue[i];
-          if (q.card.id !== s.id || q.status !== 'failed') continue;
-          if (q.base) return q.base;
-          if (q.before) return snap(q.before);
-        }
-        return snap(s);
+      // What Google last confirmed for each site (page load, Refresh, a save's reply or refusal):
+      // never a card still saving or not saved. An Update form records it when it opens (`seen`),
+      // so a form opened over his own unconfirmed save carries that save's changes as his.
+      var confirmed = {};
+      function confirmAll(sites) {
+        confirmed = {};
+        sites.forEach(function (c) { confirmed[c.id] = snap(c); });
       }
+      function confirmedFor(s) { return confirmed[s.id] ? clone(confirmed[s.id]) : snap(s); }
       // The form on a newer state of the site: what he changed stays; what he left takes the site's
-      // value now, so he sees it before saving. `base`: what Google has (default: as known here).
-      function rebased(u, s, base) {
+      // value now, so he sees it before saving.
+      function rebased(u, s) {
         var d = emptyUpdate(s);
         var t = u.touched || {};
         var out = clone(u);
@@ -1090,18 +1090,19 @@
         if (!t.money) { out.value = d.value; out.terms = d.terms; }
         if (!t.lostReason) out.lostReason = d.lostReason;
         if (!t.followUp) { out.followUp = d.followUp; out.date = ''; }
-        out.seen = base || d.seen;
+        out.seen = d.seen;
+        out.shown = d.shown;
         out.touched = t;
         out.saveId = newSaveId();
         return out;
       }
       var CHANGED_TEXT = 'This site was changed a moment ago. Check and tap Save again.';
-      // The open form was made on an older state of its site (the page refreshed, or a draft kept on
-      // the phone): bring it up to date and say so.
+      // The open form shows an older state of its site than the page now has (it refreshed, or a
+      // draft kept on the phone): bring it up to date and say so.
       function rebaseOpenForm() {
-        if (screen !== 'site' || !upd || !upd.seen) return;
+        if (screen !== 'site' || !upd || !upd.seen || !upd.shown) return;
         var s = siteById(openId);
-        if (!s || sameSnap(upd.seen, baseFor(s))) return;
+        if (!s || sameSnap(upd.shown, snap(s))) return;
         upd = rebased(upd, s);
         if (retrying) { retrying.state = clone(upd); saveQueue(); } else store(updKey(openId), upd);
         renderSiteHead(s);
@@ -1122,13 +1123,14 @@
           stage: upd.stage, value: upd.value, terms: upd.terms, lostReason: upd.lostReason,
           followUp: upd.followUp === 'keep' ? s.followUp : upd.followUp === 'date' ? upd.date : upd.followUp,
           note: upd.note, phone: upd.phone, saveId: upd.saveId,
-          // What the form was opened on: a save made over someone else's newer change is refused (spec 008).
         };
-        // What the form was opened on, and his own saves of this site that may have landed unheard.
+        // His earlier saves of this site still in the queue: this form was opened over them, so it
+        // carries their changes; Google checks whether any of them landed unheard (spec 008).
+        var earlier = queue.filter(function (q) { return q.card.id === s.id; }).map(function (q) { return q.id; });
+        // What Google had when the form opened.
         if (upd.seen) {
           input.seen = clone(upd.seen);
-          input.after = queue.filter(function (q) { return q.card.id === s.id && q.status === 'failed'; })
-            .map(function (q) { return q.id; });
+          input.after = earlier.slice(-10);
         }
         var card = clone(s);
         card.stage = upd.stage;
@@ -1142,7 +1144,7 @@
         if (ADMIN && card.stage !== s.stage) card.closed = has(r.closedStages, card.stage) ? todayKey() : '';
         var replaces = retrying;
         enqueue({ id: upd.saveId, fn: ADMIN ? 'adminPageUpdateSite' : 'repUpdateSite', siteId: openId, input: input, card: card,
-          state: clone(upd), fromStage: upd.seen ? upd.seen.stage : s.stage, base: clone(upd.seen || baseFor(s)) }, replaces);
+          state: clone(upd), fromStage: upd.shown ? upd.shown.stage : s.stage, carries: earlier }, replaces);
         store(updKey(openId), null); // the queue carries it now
         retrying = null;
         showList(true);
@@ -1473,6 +1475,7 @@
       window.addEventListener('pageshow', newDayCheck);
       setInterval(newDayCheck, 60000);
 
+      confirmAll(data.sites);
       if (ADMIN) adminStart();
       loadQueue();
       showList();
