@@ -7,11 +7,7 @@ the data model, update those too. The ready-to-ask versions (options and recomme
 
 ## Open
 
-From [spec 001](../specs/001-foundations.md#open-questions) (ask after the spec is reviewed):
-1. **Which Google account owns the app and the Sales Diary sheet?** It must be able to open
-   Meta-Data; the app runs as this account. (Recommended: the account that owns Meta-Data.)
-2. **Where is clasp logged in** to send code: in the agent's cloud session when needed
-   (recommended), or on the owner's own computer?
+_None right now._ Add new questions here as they come up.
 
 ## Answered
 
@@ -56,3 +52,5 @@ Owner, session 2 (2026-11-04):
 | A8 | How does the owner open his screen? | **A private owner link**, the same kind as the salesmen's (ADR-0006). Owner accepted the risk that a leaked owner link exposes everything until he cancels it. |
 | A9 | Salesman leaves? | **Owner edits `rep` in the Sales Diary `Sites` tab.** No button. |
 | A10 | Duplicate areas ("DHA" vs "D.H.A")? | **The app suggests close existing areas while a salesman types a new one** ("Did you mean DHA?"). Anything that slips through, the owner tidies in the sheet. |
+| S1-1 | Which Google account owns the app and Sales Diary sheet? (spec 001) | **The owner's own account**, the one that owns Meta-Data. |
+| S1-2 | Where is clasp logged in? (spec 001) | **In the agent's cloud session, when needed**, with `clasp logout` at the end of each session. |

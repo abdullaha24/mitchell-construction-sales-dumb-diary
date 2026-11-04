@@ -31,11 +31,9 @@
   timezone. Details are in the spec's *Gotchas*.
 
 ## Questions for the owner
-Spec 001's two open questions, to ask **after** he approves (or comments on) the spec:
-1. Which Google account owns the app and the Sales Diary sheet? *(Recommended: the account that
-   owns Meta-Data.)*
-2. Where is clasp logged in? *(Recommended: in the agent's cloud session when needed, with
-   `clasp logout` at the end.)* · on the owner's own computer.
+Spec 001's two open questions are answered (owner's own Google account; clasp logged in inside
+the agent's cloud session when needed). An adversarial review of spec 001 is in progress; its
+findings become questions for the owner.
 
 Ask the owner's way:
 - One question at a time.

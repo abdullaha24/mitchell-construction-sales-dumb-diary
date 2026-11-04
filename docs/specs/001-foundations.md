@@ -29,7 +29,7 @@ base, so every later phase is small, tested and safe. **Salesmen see nothing new
 ### One-time setup (about 15 minutes, with the agent guiding)
 1. **Turn on the Apps Script API** for the Google account (one switch at
    `script.google.com/home/usersettings`). clasp needs it to send code.
-2. **Log clasp in** to that Google account (see open question 2 for where).
+2. **Log clasp in** to the owner's Google account, inside the agent's cloud session (open question 2).
 3. The agent runs `npx clasp create-script --type sheets --title "Sales Diary" --rootDir src`.
    This creates the Sales Diary sheet and its attached script together, and writes `.clasp.json`.
    It also copies Google's starter files into `src/`, overwriting `src/appsscript.json` and adding
@@ -288,16 +288,12 @@ Checked live with the owner:
 - Protecting tabs from accidental edits by the owner.
 
 ## Open questions
-1. **Which Google account owns the app and the Sales Diary sheet?** It must be able to open
-   Meta-Data, and the app runs as this account. *(Recommended: the account that owns Meta-Data
-   today.)* Alternative: a separate company account, with Meta-Data shared to it.
-2. **Where is clasp logged in?** clasp needs a one-time login to that Google account to send code.
-   - *(Recommended)* **In the agent's cloud session, when needed.** The owner signs in with
-     `clasp login --no-localhost` (he opens a Google link and pastes back a code). The agent can then
-     push and deploy without the owner running commands. The login stays inside that session's
-     temporary machine, is never committed or printed, and the agent runs `clasp logout` at the end.
-     Each new session needs a fresh login. *Not yet tried from the cloud machine; if Google's
-     servers can't be reached from there, fall back to the next option.*
-   - **On the owner's own computer.** He installs Node 22 and runs the push and deploy commands
-     himself, following a short guide. His login never leaves his computer, but every code change
-     needs him at that computer.
+_None open._ Answered by the owner on 2026-11-04 (session 2):
+1. **Which Google account owns the app and the Sales Diary sheet?** **The owner's own account**,
+   the one that owns Meta-Data.
+2. **Where is clasp logged in?** **In the agent's cloud session, when needed.** The owner signs in
+   with `npx clasp login --no-localhost` (opens a Google link, pastes back a code). The login stays
+   on that session's temporary machine, is never committed or printed, and the agent runs
+   `npx clasp logout` at the end of the session. Each new session needs a fresh login. *Not yet
+   tried from the cloud machine; if Google can't be reached from there, the owner runs the push
+   and deploy commands on his own computer instead.*
