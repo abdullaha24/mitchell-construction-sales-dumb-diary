@@ -24,8 +24,9 @@ Read before any product or UI work:
 
 ## Status
 
-Phases 0–5 are **done and live** (specs 001–006, deployment version 7). Next: the phase 6 spec
-(site card helpers + areas). Current state, next step and IDs: `docs/plans/handoff.md`.
+Phases 0–5 are **done and live** (specs 001–006, deployment version 7). Phase 6 (spec 007: site
+card helpers + areas) is **built and checked locally**, not live yet: the live `Sites` tab needs
+its two new headers before the deploy. Current state, next step and IDs: `docs/plans/handoff.md`.
 
 ## Commands
 

@@ -29,10 +29,11 @@
 - Area filter on All My Parties, combined with search; cleared after + New Site.
 - Browser check `tests/browser/cards.check.js` in `check:browser`; existing checks still pass.
 
-## [ ] Step 4: Docs, review, local acceptance
-- Data model, src/README.md, tests/README.md, AGENTS.md, roadmap ("built and checked locally"),
-  spec criteria ticked.
+## [x] Step 4: Docs, local acceptance
+- Data model, src/README.md, tests/README.md, AGENTS.md, glossary, roadmap ("built and checked
+  locally"), spec criteria ticked.
 - Mutation checks on the key assertions; fresh-clone check; secrets sweep.
+- [ ] Independent review: still to do, with the go-live routine.
 
 ## [ ] Step 5: Live with the owner (coordinator)
 - Add the two `Sites` headers to the live sheet **first**, then push and update the deployment;

@@ -1,6 +1,6 @@
 # 007: Site card helpers (Call, WhatsApp, last note, going cold, snooze) and the area filter
 
-- **Status:** Approved
+- **Status:** In progress (built and checked locally 2026-11-04; not live yet)
 - **Owner approval:** approved by the owner on 2026-11-04 (session 4)
 - **Related:** roadmap phase 6 · [vision](../product/vision.md) → 2 "Site card", 5 "Route
   planning" · ADR-0004 (his own data only) · [ADR-0009](../decisions/0009-worked-at-and-note-at.md)
@@ -190,20 +190,20 @@ From the top, as today plus the new lines (marked **new**):
 
 ## Acceptance criteria
 Checked locally:
-- [ ] Tests for every rule above: going cold (6 days not cold, 7 cold; only Sample / Trial and
+- [x] Tests for every rule above: going cold (6 days not cold, 7 cold; only Sample / Trial and
       Rate Quoted; `worked_at` blank → `created_at`; both blank → not cold); `worked_at` written by
       add and Update, **not** by Edit details or Snooze; `note_at` written only with a note;
       the card's `worked` and `noteDay`.
-- [ ] Snooze tests: Tomorrow / 3 days / 1 week from today; a typed date refused; Won / Lost
+- [x] Snooze tests: Tomorrow / 3 days / 1 week from today; a typed date refused; Won / Lost
       refused; never earlier (nothing written, card returned, notice); writes only
       `next_followup` + `updated_at` and one `snooze` row; text as text; a repeated save ID saves
       once and `repSaveStatus` reports it; **another salesman's site ID: refused, nothing written,
       nothing about that site in the reply** (ADR-0004); a junk link code: "This link doesn't
       work", no sheet opened.
-- [ ] Speed test: opening the app never reads `Activity`; a snooze opens Sales Diary once and
+- [x] Speed test: opening the app never reads `Activity`; a snooze opens Sales Diary once and
       reads `Links`, `Sites`, `Activity` once each, `Lists` not at all.
-- [ ] Allow-list test lists 15 public functions, including `repSnoozeSite`.
-- [ ] Browser check at 360 px: Call and WhatsApp links carry the right number; a landline gets
+- [x] Allow-list test lists 15 public functions, including `repSnoozeSite`.
+- [x] Browser check at 360 px: Call and WhatsApp links carry the right number; a landline gets
       Call only; no number → no buttons; tapping a button doesn't open the site screen; Snooze →
       Tomorrow takes the card out of Today's Chase at once with "Saving…", then it clears; a
       failed snooze shows orange on every tab and its tap reopens the panel; a 7-day-old Rate
@@ -211,7 +211,10 @@ Checked locally:
       Snooze or Edit details it still is; the last-spoken line; the area row (counts, order,
       DHA / D.H.A as one), area + search together, ✕ and All areas; no sideways scrolling of the
       page.
-- [ ] `npm run check` and `npm run check:browser` pass on a fresh clone; independent review.
+- [x] `npm run check` (287 tests) and `npm run check:browser` (6 checks, new: `cards.check.js`)
+      pass on a fresh clone. Key new assertions mutation-checked (each broken on purpose, the
+      check failed, then restored). Secrets sweep clean.
+- [ ] Independent review (not run yet: for the go-live routine).
 
 Checked live (on RIA's test link, TEST rows deleted afterwards with the owner's OK):
 - [ ] The two headers are in live `Sites` before the deploy; Check setup (or a read through the

@@ -26,7 +26,9 @@ Owner: correct anything wrong here; agents should treat this file as the authori
 | **Area** | Rough neighbourhood or sector, e.g. DHA, Bahria, Gulberg, F-11, SITE. No starting list: salesmen add areas as they go, and pick from the areas already used in their region. The app suggests close matches to avoid duplicates. Route planning only, **not** a territory. |
 | **Update / activity** | One logged action on a site: a stage change, note, snooze or follow-up change. |
 | **Follow-up date** | When the salesman should next contact this site. Drives *Today's Chase*. |
-| **Going cold** | A site at *Sample / Trial* or *Rate Quoted* with no update for **7 days**. Shown in yellow. |
+| **Going cold** | A site at *Sample / Trial* or *Rate Quoted* with no update for **7 days**. Shown in yellow. Only a real Update resets it, not Snooze or Edit details (owner, P6-2). |
+| **Snooze** | Push a due site's follow-up to Tomorrow, 3 days or 1 week from its card, without the Update screen (owner, P6-1). Kept in the history; not counted as work. |
+| **Last-spoken line** | The last note on a site and the day it was written, on its card: *"22 Oct: Quoted WP-100 @ Rs. 1,450, waiting for consultant"*. |
 | **Follow-up buttons** | Tomorrow · 3 days · 1 week · Pick date. |
 | **Duplicate warning** | "Someone in the team already works with this contact." Shown when a contact's phone number is already with another salesman. Reveals nothing else. |
 

@@ -22,7 +22,7 @@ All files share **one global scope** in Apps Script, so:
 | `links.js` | Link codes: make, look up (who is visiting), new and cancel, inside a lock. |
 | `menu.js` | `onOpen` (the Sales Diary menu), `menuCheckSetup` and `menuRefreshSalesmen` (Refresh salesmen & targets). |
 | `linkswindow.js`, `Links.html` | The owner's Links window and the three `owner…` functions it calls. |
-| `siterules.js` | Plain logic for sites: tidy phone numbers, areas and "Did you mean", follow-up dates, checking a new site, IDs. |
-| `sites.js` | Reading tabs by header; a salesman's sites; the yes/no phone check; saving a site inside the lock; no-number counts. |
-| `salesman.js` | `repLoad`, `repCheckPhone`, `repAddSite`, `repUpdateSite`, `repEditSite`, `repSaveStatus`: what a salesman's page calls. Working salesman link only. His page data includes only his own target. |
+| `siterules.js` | Plain logic for sites: tidy phone numbers, areas and "Did you mean", follow-up dates, checking a new site, an Update, Edit details and a Snooze, IDs. |
+| `sites.js` | Reading tabs by header; a salesman's sites as cards (with `worked` and `noteDay`, spec 007); the yes/no phone check; saving a site, an Update, Edit details and a Snooze inside the lock (`worked_at` / `note_at` only where spec 007 says); no-number counts. |
+| `salesman.js` | `repLoad`, `repCheckPhone`, `repAddSite`, `repUpdateSite`, `repEditSite`, `repSnoozeSite`, `repSaveStatus`: what a salesman's page calls. Working salesman link only. His page data includes only his own target. |
 | `webapp.js`, `App.html`, `Page.html` | `doGet`: a salesman gets his app (`App.html`); the owner "Hello, owner"; anything else "This link doesn't work" / "Something went wrong". |
