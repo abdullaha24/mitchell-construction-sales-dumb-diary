@@ -24,8 +24,9 @@ const PAGE_TEXT = {
 function doGet(e) {
   const code = e && e.parameter ? e.parameter[LINK_PARAM] : undefined;
   try {
-    const visitor = whoIsVisiting_(code);
-    if (visitor.kind === 'rep') return renderApp_(visitor, String(code));
+    const diary = isWellFormedCode_(code) ? openSalesDiary_() : undefined;
+    const visitor = whoIsVisiting_(code, diary);
+    if (visitor.kind === 'rep' && diary) return renderApp_(visitor, String(code), diary);
     return renderPage_(pageTextFor_(visitor));
   } catch (error) {
     // Deliberately not logged: keep it simple and keep codes out of logs.
@@ -38,11 +39,12 @@ function doGet(e) {
  * The data goes in as escaped text and the page reads it back with JSON.parse.
  * @param {{ rep: string, region: string }} salesman
  * @param {string} code his own link code (his page needs it to save)
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} diary already open (spec 005)
  * @returns {GoogleAppsScript.HTML.HtmlOutput}
  */
-function renderApp_(salesman, code) {
+function renderApp_(salesman, code, diary) {
   const template = HtmlService.createTemplateFromFile('App');
-  template.data = JSON.stringify({ ...loadFor_(salesman), k: code });
+  template.data = JSON.stringify({ ...loadFor_(salesman, diary), k: code });
   return template.evaluate()
     .setTitle('Sales Diary')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');

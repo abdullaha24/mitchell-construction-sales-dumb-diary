@@ -17,6 +17,7 @@ function onOpen() {
     .createMenu('Sales Diary')
     .addItem('Check setup', 'menuCheckSetup')
     .addItem('Links', 'menuLinks')
+    .addItem('Refresh salesmen', 'menuRefreshSalesmen')
     .addToUi();
 }
 
@@ -44,6 +45,8 @@ function menuCheckSetup() {
   // Setup first, so the tabs exist even when Meta-Data can't be read.
   const setup = setUpSalesDiary_(diary);
   const metaData = readMetaData_();
+  // Check setup also refreshes the salesmen list the app keeps (spec 005).
+  if (metaData.ok) keepSalesmen_(metaData.salesmen, new Date());
   const problems = setup.problems.slice();
   /** @type {string[]} */
   let siteLines = [];
@@ -62,4 +65,24 @@ function menuCheckSetup() {
 
   const ui = SpreadsheetApp.getUi();
   ui.alert('Check setup', message, ui.ButtonSet.OK);
+}
+
+/**
+ * Sales Diary → Refresh salesmen (spec 005): reads `Rep_Mapping` now, so a salesman added,
+ * moved or removed there takes effect at once instead of within a day.
+ */
+function menuRefreshSalesmen() {
+  if (!isSignedInSelf_()) {
+    throw new Error('Refresh salesmen can only be run by the owner, from the Sales Diary menu.');
+  }
+  const read = refreshSalesmen_(new Date());
+  const ui = SpreadsheetApp.getUi();
+  const message = read.ok
+    ? [`Salesmen: ${read.salesmen.length}`]
+      .concat(REGIONS.map((region) => {
+        const reps = read.salesmen.filter((s) => s.region === region).map((s) => s.rep);
+        return `  ${region}: ${reps.length ? reps.join(', ') : 'none'}`;
+      }), [''], problemLines_(read.problems)).join('\n')
+    : read.message;
+  ui.alert('Refresh salesmen', message, ui.ButtonSet.OK);
 }

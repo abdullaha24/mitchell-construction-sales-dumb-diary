@@ -7,6 +7,7 @@ const path = require('node:path');
 const { loadSrc, srcFiles, SRC_DIR } = require('./helpers/load-src');
 const {
   makeSpreadsheet, makeSpreadsheetApp, makeUtilities, makeSession, makeHtmlService,
+  makePropertiesService,
 } = require('./helpers/fakes');
 const { META_TIME_ZONE, metaDataTabs } = require('./fixtures/meta-data');
 
@@ -48,6 +49,7 @@ function world(options = {}) {
     getActiveSpreadsheet() { calls.getActiveSpreadsheet++; return app.getActiveSpreadsheet(); },
   };
   const src = loadSrc({
+    PropertiesService: makePropertiesService(),
     SpreadsheetApp,
     Session: makeSession({ activeEmail, effectiveEmail }),
     Utilities: makeUtilities(),
@@ -58,13 +60,13 @@ function world(options = {}) {
 
 // ----------------------------------------------------------------------------------- Safety
 
-test('the only public functions are the 12 specs 002 to 004 list', () => {
+test('the only public functions are the 13 specs 002 to 005 list', () => {
   const { src } = world();
   const publicFunctions = Object.keys(src.sandbox)
     .filter((name) => !src.globalNamesBefore.has(name))
     .filter((name) => typeof src.sandbox[name] === 'function' && !name.endsWith('_'));
   assert.deepEqual(publicFunctions.sort(), [
-    'doGet', 'menuCheckSetup', 'menuLinks', 'onOpen',
+    'doGet', 'menuCheckSetup', 'menuLinks', 'menuRefreshSalesmen', 'onOpen',
     'ownerCancelLink', 'ownerListLinks', 'ownerNewLink',
     'repAddSite', 'repCheckPhone', 'repEditSite', 'repLoad', 'repUpdateSite',
   ]);
@@ -107,13 +109,14 @@ test('the signed-in check needs both emails, and the same one', () => {
 
 // -------------------------------------------------------------------------------- Check setup
 
-test('onOpen adds Sales Diary → Check setup and Links, and nothing else', () => {
+test('onOpen adds Sales Diary → Check setup, Links and Refresh salesmen, and nothing else', () => {
   const { src, ui, diary, calls } = world({ activeEmail: '', effectiveEmail: OWNER });
   src.sandbox.onOpen(); // no signed-in check: Google may not give the email in onOpen
   assert.deepEqual(JSON.parse(JSON.stringify(ui.menus)), [
     { name: 'Sales Diary', items: [
       { caption: 'Check setup', functionName: 'menuCheckSetup' },
       { caption: 'Links', functionName: 'menuLinks' },
+      { caption: 'Refresh salesmen', functionName: 'menuRefreshSalesmen' },
     ] },
   ]);
   assert.deepEqual(diary._writes(), []);

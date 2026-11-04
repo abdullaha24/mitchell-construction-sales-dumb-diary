@@ -5,6 +5,7 @@ const assert = require('node:assert/strict');
 const { loadSrc, plain } = require('./helpers/load-src');
 const {
   makeSpreadsheet, makeSpreadsheetApp, makeUtilities, makeLockService, makeCacheService,
+  makePropertiesService,
 } = require('./helpers/fakes');
 const { META_TIME_ZONE, metaDataTabs } = require('./fixtures/meta-data');
 
@@ -45,6 +46,7 @@ function world() {
   const metaData = makeSpreadsheet(metaDataTabs(), { readOnly: true, timeZone: META_TIME_ZONE, name: 'Meta-Data' });
   const lockService = makeLockService();
   const src = loadSrc({
+    PropertiesService: makePropertiesService(),
     SpreadsheetApp: makeSpreadsheetApp({ byId: { [SALES_DIARY_ID]: diary, [META_DATA_ID]: metaData }, onFlush: () => lockService._events.push('flush') }),
     Utilities: makeUtilities(), LockService: lockService, CacheService: makeCacheService(),
   });
@@ -176,13 +178,17 @@ test('the same Update saved twice (reply lost) is saved once', () => {
   assert.equal(w.diary.getSheetByName('Activity').getLastRow(), 3);
 });
 
-test('the reply is his refreshed page: his sites only, plain values', () => {
+test('the reply carries only the updated site (spec 005), plain values only', () => {
   const reply = world().s.repUpdateSite(RIA, 'S000001', QUOTE);
   assert.equal(holdsDate(reply), false);
-  const card = plain(reply).sites.find((x) => x.id === 'S000001');
-  assert.deepEqual([card.stage, card.value, card.terms, card.note], ['Rate Quoted', 450000, 'Credit', 'WP-100 @ 1,450']);
-  assert.ok(!JSON.stringify(plain(reply)).includes('Gulberg Mall'));
-  assert.deepEqual(plain(reply).lostReasons, ['Price Too High', 'Credit Terms', 'Competitor Approved', 'Site Delayed', 'Other']);
+  const r = plain(reply);
+  assert.equal(r.sites, undefined, 'not his whole list');
+  assert.deepEqual([r.site.id, r.site.stage, r.site.value, r.site.terms, r.site.note, r.site.name],
+    ['S000001', 'Rate Quoted', 450000, 'Credit', 'WP-100 @ 1,450', 'F-11 Tower']);
+  assert.ok(!JSON.stringify(r).includes('Gulberg Mall'));
+  const edit = plain(world().s.repEditSite(RIA, 'S000001', { ...DETAILS, name: 'F-11 B', area: 'Saddar' }));
+  assert.deepEqual([edit.site.name, edit.site.area], ['F-11 B', 'Saddar']);
+  assert.deepEqual(edit.areas, ['DHA', 'Saddar'], 'a new area comes back so his page can offer it');
 });
 
 test('updates run inside the script lock and save before letting go', () => {
@@ -232,10 +238,9 @@ test("Edit details: the duplicate warning counts other sites, not this one", () 
 test('inside the lock the site is found again by ID and his code (e.g. owner just reassigned it)', () => {
   const w = world();
   const ria = { rep: 'RIA', region: 'North' };
-  const choices = { lostReasons: [], buyerTypes: ['Dealer'], categories: [], areas: [] };
-  assert.throws(() => w.s.saveUpdate_(w.diary, ria, 'S000002', { stage: 'Visited / Lead', followUp: 'tomorrow', note: 'x' }, choices, new Date(), ''),
+  assert.throws(() => w.s.saveUpdate_(w.diary, ria, 'S000002', { stage: 'Visited / Lead', followUp: 'tomorrow', note: 'x' }, new Date(), ''),
     /That site isn't in your list/);
-  assert.throws(() => w.s.saveDetails_(w.diary, ria, 'S000002', { name: 'X', buyerType: 'Dealer' }, choices, new Date(), ''),
+  assert.throws(() => w.s.saveDetails_(w.diary, ria, 'S000002', { name: 'X', buyerType: 'Dealer' }, new Date(), ''),
     /That site isn't in your list/);
   assert.deepEqual(w.diary._writes(), []);
 });
@@ -319,11 +324,10 @@ test("Edit details keeps an area or product the owner has since turned off, with
 test('the locked save itself refuses to remove a number (the check runs inside the lock)', () => {
   const w = world();
   const ria = { rep: 'RIA', region: 'North' };
-  const choices = { lostReasons: [], buyerTypes: ['Dealer'], categories: ['Tile Adhesives'], areas: ['DHA'] };
-  const outcome = plain(w.s.saveDetails_(w.diary, ria, 'S000001', { ...DETAILS, name: 'X', phone: '' }, choices, new Date(), ''));
+  const outcome = plain(w.s.saveDetails_(w.diary, ria, 'S000001', { ...DETAILS, name: 'X', phone: '' }, new Date(), ''));
   assert.deepEqual(outcome.result, { ok: false, message: "A site's number can be changed, not removed." });
   const gate = plain(w.s.saveUpdate_(w.diary, ria, 'S000003', { stage: 'Won (Order)', value: '5', terms: 'Cash' },
-    { lostReasons: [] }, new Date(), ''));
+    new Date(), ''));
   assert.deepEqual(gate.result, { ok: false, message: "Add the contact's number to move this site to Won (Order)." });
   assert.deepEqual(w.diary._writes(), []);
 });

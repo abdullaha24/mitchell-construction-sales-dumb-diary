@@ -5,6 +5,7 @@ const assert = require('node:assert/strict');
 const { loadSrc, plain } = require('./helpers/load-src');
 const {
   makeSpreadsheet, makeSpreadsheetApp, makeUtilities, makeLockService, makeHtmlService, makeSession,
+  makePropertiesService,
 } = require('./helpers/fakes');
 const { META_TIME_ZONE, metaDataTabs } = require('./fixtures/meta-data');
 
@@ -38,6 +39,7 @@ function world({ activeEmail = OWNER, effectiveEmail = OWNER, links, metaTabs = 
   const calls = { openById: 0 };
   const lockService = makeLockService();
   const src = loadSrc({
+    PropertiesService: makePropertiesService(),
     SpreadsheetApp: { ...app, openById(id) { calls.openById++; return app.openById(id); } },
     Utilities: makeUtilities(),
     LockService: lockService,

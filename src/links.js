@@ -114,19 +114,21 @@ function openLinks_(diary) {
  * - Owner row → owner. A salesman's row → that salesman, but only while he is still in
  *   `Rep_Mapping`. The two are told apart by `role`, never by the code.
  * Throws if Google fails (a sheet can't be opened), so the page can say "try again" instead of
- * "this link doesn't work".
+ * "this link doesn't work". Salesmen come from the kept list (knownSalesmen_, spec 005); `Links`
+ * is read every time, so cancelling a link works at once.
  * @param {any} code the `k` value from the address
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} [diary] the Sales Diary, if already open
  * @returns {Visitor}
  */
-function whoIsVisiting_(code) {
+function whoIsVisiting_(code, diary) {
   if (!isWellFormedCode_(code)) return { kind: 'none' };
-  const { links } = openLinks_(openSalesDiary_());
+  const { links } = openLinks_(diary || openSalesDiary_());
   const match = links.rows.find((r) => r.active && r.token === code);
   if (!match) return { kind: 'none' };
   if (match.role === OWNER_ROLE) return { kind: 'owner' };
   if (match.role !== REP_ROLE || !match.rep) return { kind: 'none' };
 
-  const salesmen = readSalesmenOnly_();
+  const salesmen = knownSalesmen_(new Date());
   if (!salesmen.ok) throw new Error(salesmen.message);
   const salesman = salesmen.salesmen.find((s) => s.rep === match.rep);
   return salesman ? { kind: 'rep', rep: salesman.rep, region: salesman.region } : { kind: 'none' };

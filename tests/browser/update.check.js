@@ -20,6 +20,7 @@ try {
 const { loadSrc } = require('../helpers/load-src');
 const {
   makeSpreadsheet, makeSpreadsheetApp, makeUtilities, makeLockService, makeHtmlService, makeCacheService,
+  makePropertiesService,
 } = require('../helpers/fakes');
 const { META_TIME_ZONE, metaDataTabs } = require('../fixtures/meta-data');
 
@@ -52,6 +53,7 @@ function buildWorld() {
   }, { name: 'Sales Diary' });
   const metaData = makeSpreadsheet(metaDataTabs(), { readOnly: true, timeZone: META_TIME_ZONE, name: 'Meta-Data' });
   const src = loadSrc({
+    PropertiesService: makePropertiesService(),
     SpreadsheetApp: makeSpreadsheetApp({ byId: { [SALES_DIARY_ID]: diary, [META_DATA_ID]: metaData } }),
     Utilities: makeUtilities(), LockService: makeLockService(), HtmlService: makeHtmlService(),
     CacheService: makeCacheService(),

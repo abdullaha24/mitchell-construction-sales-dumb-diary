@@ -24,22 +24,25 @@ function forSalesman_(work) {
 }
 
 /**
- * The salesman behind a link code, or an error with the "doesn't work" message.
+ * The salesman behind a link code, and the Sales Diary opened once for the whole call
+ * (spec 005), or an error with the "doesn't work" message.
  * @param {any} k
- * @returns {{ rep: string, region: string }}
+ * @returns {{ salesman: { rep: string, region: string }, diary: GoogleAppsScript.Spreadsheet.Spreadsheet }}
  */
 function requireRep_(k) {
-  const visitor = whoIsVisiting_(k);
+  if (!isWellFormedCode_(k)) throw new Error(NO_LINK_MESSAGE); // no sheet opened for junk
+  const diary = openSalesDiary_();
+  const visitor = whoIsVisiting_(k, diary);
   if (visitor.kind !== 'rep') throw new Error(NO_LINK_MESSAGE);
-  return { rep: visitor.rep, region: visitor.region };
+  return { salesman: { rep: visitor.rep, region: visitor.region }, diary };
 }
 
 /**
  * Everything his page needs: his sites and the pick-lists.
  * @param {{ rep: string, region: string }} salesman
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} diary
  */
-function loadFor_(salesman) {
-  const diary = openSalesDiary_();
+function loadFor_(salesman, diary) {
   const lists = readTab_(diary, DIARY_TABS.lists);
   return {
     ok: true,
@@ -61,7 +64,10 @@ function loadFor_(salesman) {
  * @param {any} k his link code
  */
 function repLoad(k) {
-  return forSalesman_(() => loadFor_(requireRep_(k)));
+  return forSalesman_(() => {
+    const { salesman, diary } = requireRep_(k);
+    return loadFor_(salesman, diary);
+  });
 }
 
 /**
@@ -72,40 +78,32 @@ function repLoad(k) {
  */
 function repCheckPhone(k, phone) {
   return forSalesman_(() => {
-    const salesman = requireRep_(k);
     const tidy = tidyPhone_(phone);
+    const { salesman, diary } = requireRep_(k);
     if (!tidy.ok) return { ok: true, valid: false, team: false, mine: [] };
     if (!tidy.phone) return { ok: true, valid: true, team: false, mine: [] };
-    const owners = phoneOwners_(readTab_(openSalesDiary_(), DIARY_TABS.sites), tidy.phone, salesman.rep);
+    const owners = phoneOwners_(readTab_(diary, DIARY_TABS.sites), tidy.phone, salesman.rep);
     return { ok: true, valid: true, team: owners.team, mine: owners.mine };
   });
 }
 
 /**
- * Saves a new site for him and returns his updated page data, or { ok: false, message } if
- * something he typed needs fixing. `warning` repeats the duplicate check for the number, so he
- * sees it even if he tapped Save before the check while typing came back.
+ * Saves a new site for him. The reply carries only the new site's card (and his areas if one was
+ * added), or { ok: false, message } if something he typed needs fixing. `warning` repeats the
+ * duplicate check, in case he tapped Save before the check while typing came back.
  * @param {any} k his link code
  * @param {any} input { name, buyerType, contactName, phone, products, area, followUp, saveId }
  */
 function repAddSite(k, input) {
   return forSalesman_(() => {
-    const salesman = requireRep_(k);
-    const diary = openSalesDiary_();
-    const now = new Date();
-    const choices = choicesFor_(readTab_(diary, DIARY_TABS.lists), salesman.region);
-    const checked = checkNewSite_(input, choices, dayKey_(now));
-    if (!checked.ok) return checked;
-    const saveId = saveIdOf_(input);
-    const warning = checked.site.phone
-      ? phoneOwners_(readTab_(diary, DIARY_TABS.sites), checked.site.phone, salesman.rep)
-      : { team: false, mine: [] };
-    const outcome = saveNewSite_(diary, salesman, checked.site, now, saveId, fingerprintOf_('', input));
+    const { salesman, diary } = requireRep_(k);
+    const outcome = saveNewSite_(diary, salesman, input, new Date(), saveIdOf_(input));
+    if (!outcome.result || !outcome.result.ok) return outcome.result;
     // The same form sent again with changes after its first save landed: never make the site
     // twice; tell him it's already saved.
     const notice = outcome.repeat && outcome.changed
       ? 'This site was already saved. Open it from your list to change anything.' : '';
-    return { ...loadFor_(salesman), warning, notice };
+    return { ...outcome.result, notice };
   });
 }
 
@@ -119,39 +117,29 @@ function saveIdOf_(input) {
 
 
 /**
- * Saves an Update to one of his sites (spec 004) and returns his refreshed page data, or
- * { ok: false, message } if something needs fixing. The check runs inside the lock (see
- * saveUpdate_). If he added a number on the way, `warning` repeats the duplicate check.
+ * Saves an Update to one of his sites (spec 004). The reply carries only that site's card, or
+ * { ok: false, message }. Checks run inside the lock (saveUpdate_).
  * @param {any} k his link code
  * @param {any} siteId
  * @param {any} input { stage, value, terms, lostReason, followUp, note, phone, saveId }
  */
 function repUpdateSite(k, siteId, input) {
   return forSalesman_(() => {
-    const salesman = requireRep_(k);
-    const diary = openSalesDiary_();
-    const choices = choicesFor_(readTab_(diary, DIARY_TABS.lists), salesman.region);
-    const outcome = saveUpdate_(diary, salesman, siteId, input, choices, new Date(), saveIdOf_(input));
-    if (!outcome.result.ok) return outcome.result;
-    return { ...loadFor_(salesman), warning: outcome.result.warning };
+    const { salesman, diary } = requireRep_(k);
+    return saveUpdate_(diary, salesman, siteId, input, new Date(), saveIdOf_(input)).result;
   });
 }
 
 /**
- * Saves Edit details for one of his sites (spec 004) and returns his refreshed page data, or
- * { ok: false, message }. The check runs inside the lock (see saveDetails_). If the number
- * changed, `warning` repeats the duplicate check (his other sites only).
+ * Saves Edit details for one of his sites (spec 004). The reply carries only that site's card
+ * (and his areas if one was added), or { ok: false, message }. Checks run inside the lock.
  * @param {any} k his link code
  * @param {any} siteId
  * @param {any} input { name, buyerType, contactName, phone, products, area, saveId }
  */
 function repEditSite(k, siteId, input) {
   return forSalesman_(() => {
-    const salesman = requireRep_(k);
-    const diary = openSalesDiary_();
-    const choices = choicesFor_(readTab_(diary, DIARY_TABS.lists), salesman.region);
-    const outcome = saveDetails_(diary, salesman, siteId, input, choices, new Date(), saveIdOf_(input));
-    if (!outcome.result.ok) return outcome.result;
-    return { ...loadFor_(salesman), warning: outcome.result.warning };
+    const { salesman, diary } = requireRep_(k);
+    return saveDetails_(diary, salesman, siteId, input, new Date(), saveIdOf_(input)).result;
   });
 }

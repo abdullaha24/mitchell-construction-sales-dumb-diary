@@ -3,7 +3,7 @@
 > For [spec 005](../specs/005-faster-saves.md) (**Approved** 2026-11-04). One commit per step,
 > `npm run check` (+ `check:browser` when HTML changes) green each time.
 
-## [ ] Step 1: Server does less per call
+## [x] Step 1: Server does less per call
 - Open Sales Diary once per call and pass it along (`whoIsVisiting_`, `requireRep_`, saves).
 - Every save checks and writes inside the lock, reading `Sites`, `Activity`, `Lists` once each.
 - Replies carry only the saved site's card (plus areas if one was added).

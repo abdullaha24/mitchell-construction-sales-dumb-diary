@@ -187,6 +187,15 @@ function phoneText_(value) {
 }
 
 /**
+ * A `Sites` row as the card his page shows (plain values only).
+ * @param {Object<string, any>} r
+ * @returns {SiteCard}
+ */
+function cardOf_(r) {
+  return { id: text_(r.site_id), ...currentSiteOf_(r), note: text_(r.last_note), created: dayText_(r.created_at) };
+}
+
+/**
  * One salesman's sites as cards, newest first. Only his rows; nobody else's.
  * @param {Tab} sites
  * @param {string} rep
@@ -195,15 +204,24 @@ function phoneText_(value) {
 function sitesOf_(sites, rep) {
   return sites.rows
     .filter((r) => tidyCode_(r.rep) === rep)
-    .map((r) => ({
-      card: /** @type {SiteCard} */ ({
-        id: text_(r.site_id), ...currentSiteOf_(r), note: text_(r.last_note), created: dayText_(r.created_at),
-      }),
-      when: isDate_(r.created_at) ? r.created_at.getTime() : 0,
-      row: r._row,
-    }))
+    .map((r) => ({ card: cardOf_(r), when: isDate_(r.created_at) ? r.created_at.getTime() : 0, row: r._row }))
     .sort((a, b) => b.when - a.when || b.row - a.row)
     .map((x) => x.card);
+}
+
+/**
+ * Values ready to write: every text as plain text (asText_, no formulas), except the phone,
+ * whose cell is plain-text formatted already (an apostrophe there would be kept).
+ * @param {Object<string, any>} values
+ * @returns {Object<string, any>}
+ */
+function textify_(values) {
+  /** @type {Object<string, any>} */
+  const out = {};
+  for (const [key, value] of Object.entries(values)) {
+    out[key] = key !== 'contact_phone' && typeof value === 'string' ? asText_(value) : value;
+  }
+  return out;
 }
 
 /**
@@ -252,45 +270,53 @@ function noNumberLines_(sites, salesmen) {
 const SAVE_ID_SECONDS = 21600;
 
 /**
- * Saves a checked new site for a salesman, inside the script lock: the `Sites` row, the
- * `created` row in `Activity`, and a new area in `Lists` if needed. Returns oncePerSave_'s
- * outcome (result: the new site ID).
- * `saveId` is the page's one-time ID for this form: if a save with it already went through
- * (the reply was lost on a weak signal and he tapped Save again), nothing is saved twice.
+ * Checks and saves a new site (spec 003) **inside the lock**: reads `Sites`, `Activity` and
+ * `Lists` once, checks what the page sent, writes the `Sites` row, the `created` row and a new
+ * area if any. The result carries only the new site's card (spec 005).
  * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} diary
  * @param {{ rep: string, region: string }} salesman
- * @param {NewSite} site
+ * @param {any} input what the page sent
  * @param {Date} now
  * @param {string} [saveId]
- * @param {string} [fingerprint] what was sent, to tell a plain repeat from a changed resend
+ * @returns {SaveOutcome} result: { ok: true, site, warning, areas? } or { ok: false, message }
  */
-function saveNewSite_(diary, salesman, site, now, saveId, fingerprint = '') {
-  return oncePerSave_(salesman.rep, saveId, fingerprint, 'report', () => {
+function saveNewSite_(diary, salesman, input, now, saveId) {
+  return oncePerSave_(salesman.rep, saveId, fingerprintOf_('', input), 'report', () => {
     const sites = readTab_(diary, DIARY_TABS.sites);
     const activity = readTab_(diary, DIARY_TABS.activity);
     const lists = readTab_(diary, DIARY_TABS.lists);
+    const checked = checkNewSite_(input, choicesFor_(lists, salesman.region), dayKey_(now));
+    if (!checked.ok) return checked;
+    const site = checked.site;
+    const warning = site.phone ? phoneOwners_(sites, site.phone, salesman.rep) : { team: false, mine: [] };
 
     const area = saveArea_(lists, salesman, site.area, site.newArea);
-
     const siteId = nextId_(sites.rows.map((r) => r.site_id).concat(activity.rows.map((r) => r.site_id)), 'S', 6);
-    const activityId = nextId_(activity.rows.map((r) => r.activity_id), 'A', 7);
     const followUp = dayStart_(site.followUp);
-
-    appendRows_(sites.sheet, [rowFor_(sites.columns, {
-      site_id: siteId, rep: asText_(salesman.rep), region: asText_(salesman.region),
-      site_name: asText_(site.name), buyer_type: asText_(site.buyerType), area: asText_(area),
-      contact_name: asText_(site.contactName), contact_phone: site.phone,
-      products: asText_(site.products.join(PRODUCTS_SEPARATOR)), stage: asText_(FIRST_STAGE),
-      next_followup: followUp, created_at: now, updated_at: now,
-    })], [sites.columns.contact_phone]);
-
-    appendRows_(activity.sheet, [rowFor_(activity.columns, {
-      activity_id: activityId, timestamp: now, rep: asText_(salesman.rep), site_id: siteId,
-      action: 'created', to_stage: asText_(FIRST_STAGE), next_followup: followUp,
-    })]);
-
-    return siteId;
+    const row = {
+      site_id: siteId, rep: salesman.rep, region: salesman.region, site_name: site.name,
+      buyer_type: site.buyerType, area, contact_name: site.contactName, contact_phone: site.phone,
+      products: site.products.join(PRODUCTS_SEPARATOR), stage: FIRST_STAGE, next_followup: followUp,
+      created_at: now, updated_at: now,
+    };
+    appendRows_(sites.sheet, [rowFor_(sites.columns, textify_(row))], [sites.columns.contact_phone]);
+    appendRows_(activity.sheet, [rowFor_(activity.columns, textify_({
+      activity_id: nextId_(activity.rows.map((r) => r.activity_id), 'A', 7), timestamp: now,
+      rep: salesman.rep, site_id: siteId, action: 'created', to_stage: FIRST_STAGE, next_followup: followUp,
+    }))]);
+    return { ok: true, site: cardOf_(row), warning, ...(site.newArea ? { areas: areasAfter_(lists, salesman, area) } : {}) };
   });
+}
+
+/**
+ * His region's areas after one was added (so his page can show the new one).
+ * @param {Tab} lists read before the area was added
+ * @param {{ region: string }} salesman
+ * @param {string} added
+ */
+function areasAfter_(lists, salesman, added) {
+  const areas = choicesFor_(lists, salesman.region).areas;
+  return areas.includes(added) ? areas : areas.concat([added]);
 }
 
 
@@ -358,17 +384,17 @@ function hisRow_(sites, siteId, rep) {
  * @param {{ rep: string, region: string }} salesman
  * @param {any} siteId
  * @param {any} input what the page sent
- * @param {{ lostReasons: string[] }} choices
  * @param {Date} now
  * @param {string} saveId
- * @returns {SaveOutcome} result: { ok: true, warning } or { ok: false, message }
+ * @returns {SaveOutcome} result: { ok: true, site, warning } or { ok: false, message }
  */
-function saveUpdate_(diary, salesman, siteId, input, choices, now, saveId) {
+function saveUpdate_(diary, salesman, siteId, input, now, saveId) {
   return oncePerSave_(salesman.rep, saveId, fingerprintOf_(siteId, input), 'redo', () => {
     const sites = readTab_(diary, DIARY_TABS.sites);
     const activity = readTab_(diary, DIARY_TABS.activity);
     const row = hisRow_(sites, siteId, salesman.rep);
     const before = currentSiteOf_(row);
+    const choices = choicesFor_(readTab_(diary, DIARY_TABS.lists), salesman.region);
     const checked = checkUpdate_(input, before, choices, dayKey_(now));
     if (!checked.ok) return checked;
     const update = checked.update;
@@ -380,16 +406,16 @@ function saveUpdate_(diary, salesman, siteId, input, choices, now, saveId) {
     // unrelated update.
     /** @type {Object<string, any>} */
     const cells = { updated_at: now };
-    if (update.stage !== before.stage) cells.stage = asText_(update.stage);
+    if (update.stage !== before.stage) cells.stage = update.stage;
     if (valueStage && (update.value !== before.value || update.terms !== before.terms)) {
       cells.value_rs = update.value;
-      cells.payment_terms = asText_(update.terms);
+      cells.payment_terms = update.terms;
     }
-    if (update.lostReason !== before.lostReason) cells.lost_reason = asText_(update.lostReason);
+    if (update.lostReason !== before.lostReason) cells.lost_reason = update.lostReason;
     if (update.followUp !== before.followUp) cells.next_followup = followUp;
-    if (update.note) cells.last_note = asText_(update.note);
+    if (update.note) cells.last_note = update.note;
     if (update.phone) cells.contact_phone = update.phone;
-    setCells_(sites, row._row, cells, ['contact_phone']);
+    setCells_(sites, row._row, textify_(cells), ['contact_phone']);
 
     const stageChanged = update.stage !== before.stage;
     appendRows_(activity.sheet, [rowFor_(activity.columns, {
@@ -404,7 +430,7 @@ function saveUpdate_(diary, salesman, siteId, input, choices, now, saveId) {
       note: asText_([update.note, update.phone ? `Phone added ${update.phone}` : ''].filter(Boolean).join(' · ')),
       next_followup: followUp,
     })]);
-    return { ok: true, warning };
+    return { ok: true, site: cardOf_({ ...row, ...cells }), warning };
   });
 }
 
@@ -416,19 +442,18 @@ function saveUpdate_(diary, salesman, siteId, input, choices, now, saveId) {
  * @param {{ rep: string, region: string }} salesman
  * @param {any} siteId
  * @param {any} input what the page sent
- * @param {{ buyerTypes: string[], categories: string[], areas: string[] }} choices
  * @param {Date} now
  * @param {string} saveId
- * @returns {SaveOutcome} result: { ok: true, warning } or { ok: false, message }
+ * @returns {SaveOutcome} result: { ok: true, site, warning, areas? } or { ok: false, message }
  */
-function saveDetails_(diary, salesman, siteId, input, choices, now, saveId) {
+function saveDetails_(diary, salesman, siteId, input, now, saveId) {
   return oncePerSave_(salesman.rep, saveId, fingerprintOf_(siteId, input), 'redo', () => {
     const sites = readTab_(diary, DIARY_TABS.sites);
     const activity = readTab_(diary, DIARY_TABS.activity);
     const lists = readTab_(diary, DIARY_TABS.lists);
     const row = hisRow_(sites, siteId, salesman.rep);
     const before = currentSiteOf_(row);
-    const checked = checkDetails_(input, before, choices);
+    const checked = checkDetails_(input, before, choicesFor_(lists, salesman.region));
     if (!checked.ok) return checked;
     const fields = checked.fields;
     let warning = { team: false, mine: /** @type {string[]} */ ([]) };
@@ -436,17 +461,20 @@ function saveDetails_(diary, salesman, siteId, input, choices, now, saveId) {
       warning = phoneOwners_({ ...sites, rows: sites.rows.filter((r) => r !== row) }, fields.phone, salesman.rep);
     }
     const area = saveArea_(lists, salesman, fields.area, fields.newArea);
-    setCells_(sites, row._row, {
-      site_name: asText_(fields.name), buyer_type: asText_(fields.buyerType),
-      contact_name: asText_(fields.contactName), contact_phone: fields.phone,
-      products: asText_(fields.products.join(PRODUCTS_SEPARATOR)), area: asText_(area), updated_at: now,
-    }, ['contact_phone']);
+    const cells = {
+      site_name: fields.name, buyer_type: fields.buyerType, contact_name: fields.contactName,
+      contact_phone: fields.phone, products: fields.products.join(PRODUCTS_SEPARATOR), area, updated_at: now,
+    };
+    setCells_(sites, row._row, textify_(cells), ['contact_phone']);
     appendRows_(activity.sheet, [rowFor_(activity.columns, {
       activity_id: nextId_(activity.rows.map((r) => r.activity_id), 'A', 7),
       timestamp: now, rep: asText_(salesman.rep), site_id: siteId, action: 'details',
       note: asText_(checked.changes.join('; ')),
     })]);
-    return { ok: true, warning };
+    return {
+      ok: true, site: cardOf_({ ...row, ...cells }), warning,
+      ...(fields.newArea ? { areas: areasAfter_(lists, salesman, area) } : {}),
+    };
   });
 }
 

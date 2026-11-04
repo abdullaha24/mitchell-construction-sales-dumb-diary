@@ -67,3 +67,52 @@ function readSalesmenOnly_() {
   if (!tab.ok) return tab;
   return readSalesmen_(tab.values, META_TABS.salesmen);
 }
+
+/** Where the salesmen list is kept between calls (Script Properties), and for how long. */
+const SALESMEN_KEY = 'salesmen';
+const SALESMEN_KEEP_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Keeps the salesmen list (codes and regions only) for SALESMEN_KEEP_MS.
+ * @param {Salesman[]} salesmen
+ * @param {Date} now
+ */
+function keepSalesmen_(salesmen, now) {
+  PropertiesService.getScriptProperties().setProperty(SALESMEN_KEY, JSON.stringify({
+    at: now.getTime(),
+    salesmen: salesmen.map((s) => ({ rep: s.rep, region: s.region, row: s.row })),
+  }));
+}
+
+/**
+ * Reads `Rep_Mapping` now and keeps it (Refresh salesmen, Check setup, or when the kept list is
+ * older than a day).
+ * @param {Date} now
+ * @returns {SalesmenRead | Failure}
+ */
+function refreshSalesmen_(now) {
+  const read = readSalesmenOnly_();
+  if (read.ok) keepSalesmen_(read.salesmen, now);
+  return read;
+}
+
+/**
+ * The salesmen list for salesman calls (spec 005, owner P4b-3): the kept copy if it is less than
+ * a day old, so a save doesn't open the Meta-Data sheet; otherwise read and kept again.
+ * @param {Date} now
+ * @returns {SalesmenRead | Failure}
+ */
+function knownSalesmen_(now) {
+  const stored = PropertiesService.getScriptProperties().getProperty(SALESMEN_KEY);
+  if (stored) {
+    try {
+      const kept = JSON.parse(stored);
+      if (Array.isArray(kept.salesmen) && now.getTime() - kept.at >= 0 && now.getTime() - kept.at < SALESMEN_KEEP_MS) {
+        return { ok: true, salesmen: kept.salesmen, problems: [] };
+      }
+    } catch (e) {
+      // Unreadable copy: read again below.
+    }
+  }
+  return refreshSalesmen_(now);
+}

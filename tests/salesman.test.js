@@ -5,6 +5,7 @@ const assert = require('node:assert/strict');
 const { loadSrc, plain } = require('./helpers/load-src');
 const {
   makeSpreadsheet, makeSpreadsheetApp, makeUtilities, makeLockService, makeCacheService,
+  makePropertiesService,
 } = require('./helpers/fakes');
 const { META_TIME_ZONE, metaDataTabs } = require('./fixtures/meta-data');
 
@@ -68,7 +69,8 @@ function world({ metaTabs = metaDataTabs(), sites, activity, busyLock = false, d
   const lockService = makeLockService({ busy: busyLock });
   const app = makeSpreadsheetApp({ byId, onFlush: () => lockService._events.push('flush') });
   const cacheService = makeCacheService();
-  const src = loadSrc({ SpreadsheetApp: app, Utilities: makeUtilities(), LockService: lockService, CacheService: cacheService });
+  const src = loadSrc({
+    PropertiesService: makePropertiesService(), SpreadsheetApp: app, Utilities: makeUtilities(), LockService: lockService, CacheService: cacheService });
   return { s: src.sandbox, diary, lockService, cacheService };
 }
 
@@ -200,11 +202,16 @@ test('repAddSite: the exact Sites and Activity rows, who and where from the link
   });
 });
 
-test('repAddSite: the reply is his refreshed page, new site first, plain values only', () => {
+test('repAddSite: the reply carries only the new site (spec 005), plain values only', () => {
   const reply = world().s.repAddSite(RIA, GOOD);
   assert.equal(holdsDate(reply), false);
-  assert.deepEqual(plain(reply).sites.map((x) => x.id), ['S000004', 'S000003', 'S000001']);
-  assert.ok(!JSON.stringify(plain(reply)).includes('Gulberg Mall'));
+  const r = plain(reply);
+  assert.equal(r.sites, undefined, 'not his whole list');
+  assert.equal(r.site.id, 'S000004');
+  assert.deepEqual([r.site.name, r.site.stage, r.site.phone, r.site.products],
+    ['New Site', 'Visited / Lead', '923331112222', ['Waterproofing Job', 'Mortars, Plasters & Putties']]);
+  assert.equal(r.areas, undefined, 'no new area, so no area list');
+  assert.ok(!JSON.stringify(r).includes('Gulberg Mall'));
 });
 
 test('repAddSite: a new area goes into Lists for his region, and only his region sees it', () => {
@@ -246,7 +253,7 @@ test('repAddSite: something to fix → a plain message, and nothing is written',
 test('repAddSite: saving without a number is allowed (the page asks twice)', () => {
   const w = world();
   const reply = plain(w.s.repAddSite(RIA, { ...GOOD, phone: '' }));
-  assert.equal(reply.sites[0].phone, '');
+  assert.equal(reply.site.phone, '');
 });
 
 test('IDs are never reused, even when a site row was deleted by hand', () => {
@@ -289,7 +296,8 @@ test('the same form saved twice (reply lost on a weak signal) is saved once', ()
   const again = plain(w.s.repAddSite(RIA, { ...GOOD, saveId: 'abc12345XYZ' }));
   assert.equal(w.diary.getSheetByName('Sites').getLastRow(), 5, 'one new row, not two');
   assert.equal(w.diary.getSheetByName('Activity').getLastRow(), 3);
-  assert.deepEqual(again.sites.map((x) => x.id), first.sites.map((x) => x.id));
+  assert.equal(again.ok, true);
+  assert.equal(again.site.id, first.site.id, 'the repeat answers with the same site');
   w.s.repAddSite(RIA, { ...GOOD, saveId: 'anotherForm1' });
   assert.equal(w.diary.getSheetByName('Sites').getLastRow(), 6, 'a new form saves again');
   // The one-time ID is per salesman: SH can't block RIA's save by guessing it.

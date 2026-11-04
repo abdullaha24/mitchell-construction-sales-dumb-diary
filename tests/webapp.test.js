@@ -5,6 +5,7 @@ const assert = require('node:assert/strict');
 const { loadSrc } = require('./helpers/load-src');
 const {
   makeSpreadsheet, makeSpreadsheetApp, makeUtilities, makeLockService, makeHtmlService, makeCacheService,
+  makePropertiesService,
 } = require('./helpers/fakes');
 const { META_TIME_ZONE, metaDataTabs } = require('./fixtures/meta-data');
 
@@ -42,6 +43,7 @@ function world({ links, metaTabs = metaDataTabs(), diaryOpens = true, sites } = 
   const app = makeSpreadsheetApp({ byId });
   const opened = [];
   const src = loadSrc({
+    PropertiesService: makePropertiesService(),
     SpreadsheetApp: { ...app, openById(id) { opened.push(id); return app.openById(id); } },
     Utilities: makeUtilities(),
     LockService: makeLockService(),

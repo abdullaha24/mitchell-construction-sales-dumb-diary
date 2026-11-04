@@ -165,8 +165,11 @@ function makeSpreadsheet(tabs = {}, options = {}) {
       /** Test helper: puts an image over the cells (no cell values change). */
       _addImage() { images.push({}); },
       getDataRange() {
+        sheet._reads++;
         return makeRange(1, 1, Math.max(lastRow(), 1), Math.max(lastColumn(), 1));
       },
+      /** Test helper: how many times the whole tab was read. */
+      _reads: 0,
       /** Test helper (not a Google method): everything about this tab, as plain data. */
       _snapshot() {
         const sorted = (map) => Object.fromEntries([...map].sort());
@@ -394,6 +397,16 @@ function escapeHtml(value) {
   })[ch]);
 }
 
+/** Fake `PropertiesService`: the script's own small key-value store. */
+function makePropertiesService() {
+  const store = new Map();
+  const props = {
+    getProperty: (key) => (store.has(key) ? store.get(key) : null),
+    setProperty(key, value) { store.set(key, String(value)); return props; },
+  };
+  return { getScriptProperties: () => props, _store: store };
+}
+
 /** Fake `CacheService`: one script cache; expiry is recorded, not enforced. */
 function makeCacheService() {
   const store = new Map();
@@ -440,4 +453,5 @@ module.exports = {
   makeHtmlService,
   makeLockService,
   makeCacheService,
+  makePropertiesService,
 };
