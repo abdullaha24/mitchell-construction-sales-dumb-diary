@@ -85,20 +85,20 @@ salesman's link works only while his `rep` is still in Meta-Data `Rep_Mapping`.
 ### Tab `Sites`: current state, one row per site
 | Column | Example | Notes |
 | --- | --- | --- |
-| `site_id` | `S000123` | App-generated. |
+| `site_id` | `S000123` | App-generated: `S` + 6 digits, one more than the highest ID ever seen in `Sites` or `Activity` (never reused). |
 | `rep` | RIA | The one salesman who owns it (ADR-0004). The owner edits this to hand sites over when a salesman leaves. `Activity` rows keep the original salesman (history). |
 | `region` | North | Copied from `Rep_Mapping` when created. If the owner hands a site to a salesman in another region, he updates this too. |
 | `site_name` | F-11 Commercial Tower | |
 | `buyer_type` | Contractor / Applicator | Contractor / Applicator, Project Owner, Consultant, Dealer. |
 | `area` | DHA | Picked from areas in `Lists` for his region, or a new one he added. |
 | `contact_name` | Asif (site engineer) | |
-| `contact_phone` | 923001234567 | Stored in **one normalised format**: used for Call/WhatsApp and the duplicate warning. Phase 1 setup formats this column as plain text for the tab's first 1,000 rows (Google's default size); code that writes phones must still write them as text. |
-| `products` | Waterproofing, Tile Bond | Product **categories**, from `Lists`. Storage format set in spec. |
+| `contact_phone` | 923001234567 | Stored in **one tidy form** (spec 003): digits only, Pakistani numbers as `92…` (a mobile is exactly 12 digits). Blank allowed, but the app nudges against it and the owner sees counts. Used for Call/WhatsApp and the duplicate warning. Written as plain text (the app sets each new cell to text first). |
+| `products` | Tile Adhesives \| Tile Grouts | Product **categories** from `Lists`, joined by ` \| ` (names can contain commas). In `Lists` order. |
 | `stage` | Rate Quoted | One of the five glossary stages. |
 | `value_rs` | 450000 | Latest quoted or won value. Set at Rate Quoted / Won. |
 | `payment_terms` | Credit | Cash / Credit. Set at Rate Quoted / Won. |
 | `lost_reason` | Other | Required when stage = Lost / Dead. |
-| `next_followup` | 2026-11-06 | Drives *Today's Chase*. |
+| `next_followup` | 2026-11-06 | A date: midnight Pakistan time. Set when the site is added (Tomorrow by default). Drives *Today's Chase*. |
 | `last_note` | Waiting for consultant | Shown on the card. Required if lost reason is Other. |
 | `created_at` | | Server timestamp. |
 | `updated_at` | | Server timestamp. Drives "going cold" (7 days). |
@@ -108,7 +108,7 @@ One row per change. **Never edited or deleted by the app.**
 
 | Column | Example | Notes |
 | --- | --- | --- |
-| `activity_id` | `A0004567` | |
+| `activity_id` | `A0004567` | `A` + 7 digits, one more than the highest in `Activity`. |
 | `timestamp` | | Server time. |
 | `rep` | RIA | Who made the change. |
 | `site_id` | `S000123` | |

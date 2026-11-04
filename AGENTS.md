@@ -25,7 +25,8 @@ Read before any product or UI work:
 ## Status
 
 Phases 0–2 are done and live (2026-11-04): foundations (spec 001) and private links
-(spec 002). Next: the phase 3 spec (my sites + add site). See `docs/plans/handoff.md`.
+(spec 002). **Phase 3 (my sites + add a site, spec 003) is built and tested locally**; going
+live needs the owner. See `docs/plans/handoff.md`.
 
 ## Commands
 
@@ -37,7 +38,7 @@ Node 22 or newer. All checks run locally with no Google account.
 | `npm test` | All tests: `node --test "tests/**/*.test.js"`. |
 | `npm run typecheck` | `tsc -p .`: type-checks `src/` (plain JS with JSDoc). |
 | `npm run check` | Type check, then tests. **Must pass before every commit.** |
-| `npm run check:browser` | Drives the owner's Links window (`src/Links.html`) in Chromium with a stand-in for Google. Needs Playwright; skips if it isn't installed. Run it when `Links.html` changes. |
+| `npm run check:browser` | Drives the owner's Links window and the salesman's page in Chromium (the page runs against the real server code and fake sheets). Needs Playwright; skips if it isn't installed. Run it when any `.html` changes. |
 | `npx clasp push --force` | Sends `src/` to Apps Script. Always `--force`: without it, in a non-interactive shell clasp **silently skips** the push. Git is the source of truth. |
 | `npx clasp show-file-status` | Lists the files a push would send (should be `appsscript.json`, the `.js` files and `Index.html`). |
 | `npx clasp create-deployment -d "<note>"` | Creates the web app. **Once only**: each run makes a new address. |
@@ -46,13 +47,15 @@ Node 22 or newer. All checks run locally with no Google account.
 Code rules that tests enforce:
 - Helper functions end in `_`. A web page can call any public function, with any arguments.
   The only public ones are `doGet`, `onOpen`, `menuCheckSetup`, `menuLinks`, `ownerListLinks`,
-  `ownerNewLink`, `ownerCancelLink`; every `menu…`/`owner…` one starts with the signed-in-owner
-  check. Adding one means updating `tests/menu.test.js` and saying why in the spec.
+  `ownerNewLink`, `ownerCancelLink`, `repLoad`, `repCheckPhone`, `repAddSite`. Every `menu…`/
+  `owner…` one starts with the signed-in-owner check; every `rep…` one with `requireRep_(k)`
+  (working salesman link only) and returns only that salesman's data (ADR-0004). Adding one means updating `tests/menu.test.js` and saying why in the spec.
 - No function name may be defined in two `src/` files (tsc does **not** catch this for JS; the
   last-loaded file would silently win in Apps Script).
 - Only `src/metadata.js` opens the Meta-Data sheet, read-only. Only `src/diary.js` opens the
   Sales Diary sheet by ID.
-- Link codes never go into git, logs, error messages or any page but the owner's Links window.
+- Link codes never go into git, logs or error messages, and onto no page except the owner's
+  Links window and the code holder's own page.
 - `src/appsscript.json` is pinned by a test: access `ANYONE_ANONYMOUS`, never `ANYONE`.
 
 ## Where things live

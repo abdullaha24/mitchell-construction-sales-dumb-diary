@@ -22,4 +22,7 @@ All files share **one global scope** in Apps Script, so:
 | `links.js` | Link codes: make, look up (who is visiting), new and cancel, inside a lock. |
 | `menu.js` | `onOpen` (the Sales Diary menu) and `menuCheckSetup`. |
 | `linkswindow.js`, `Links.html` | The owner's Links window and the three `owner…` functions it calls. |
-| `webapp.js`, `Page.html` | `doGet`: "Hello, RIA" / "Hello, owner" / "This link doesn't work" / "Something went wrong". |
+| `siterules.js` | Plain logic for sites: tidy phone numbers, areas and "Did you mean", follow-up dates, checking a new site, IDs. |
+| `sites.js` | Reading tabs by header; a salesman's sites; the yes/no phone check; saving a site inside the lock; no-number counts. |
+| `salesman.js` | `repLoad`, `repCheckPhone`, `repAddSite`: what a salesman's page calls. Working salesman link only. |
+| `webapp.js`, `App.html`, `Page.html` | `doGet`: a salesman gets his app (`App.html`); the owner "Hello, owner"; anything else "This link doesn't work" / "Something went wrong". |
