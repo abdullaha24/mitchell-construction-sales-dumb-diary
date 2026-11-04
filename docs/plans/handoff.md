@@ -23,9 +23,9 @@ Specs 001–006: **all Done**. Build plans 001–006 in `docs/plans/` are all ti
 ### Live state (2026-11-04, end of session 4)
 - `Sites` and `Activity`: **empty** (phase 5 TEST rows deleted with the owner's OK, pinned to the
   revision read just before). `Lists`: 11 categories, 5 lost reasons, 4 buyer types; no areas.
-- `Links`: the owner's link, plus **test links for RIA and SJ** (active). **Cancel both before
-  launch** (owner: Sales Diary → Links). **RIA's test link was pasted into the session 4 chat**
-  at the owner's request: cancel it soon (it can only see TEST data now; nothing else).
+- `Links`: the owner's link, plus **test links for RIA and SJ** (active). **Owner (session 4):
+  keep RIA's test link** (it was pasted into the session 4 chat at his request): agents use it to
+  test live; cancel it and SJ's **only when the owner says** (and in any case before launch).
 - The kept salesmen list in Script Properties now also holds this month's and next month's
   targets (refreshed on the first salesman call after the deploy).
 - Live speed (agent, Chromium at phone size, 2026-11-04): page opens in 3.2–3.8 s (mostly
@@ -52,6 +52,17 @@ Notes for phase 6:
   nested Google frame, find the frame with `#who`). Keep the link code in a scratch file, never in
   logs or git; delete it afterwards.
 
+## Owner's working rules (session 4)
+- He often works **from his phone, away from a computer**: he gives commands in chat; the agent
+  builds **and tests live itself** by driving **RIA's test link** in Chromium (see "Testing live"
+  in the phase 6 notes). Test rows are named **TEST …** and deleted only with his OK.
+- **Keep clasp signed in for the whole session** until he explicitly says to sign out. Don't run
+  `clasp logout` or delete `~/.clasprc.json` at the end of a phase. (A new chat is a fresh
+  machine, so it needs one sign-in; within one chat, sign in once.)
+- To get RIA's link: read `Links` columns A, B and D (role, rep, active) to find RIA's active
+  row, then read **only that row's** `token` cell, and keep the code in a scratch file. Never put
+  it in git, logs, commit messages or docs; don't repeat it in chat unless he asks.
+
 ## How every phase goes live (the routine)
 1. `npm run check` and `npm run check:browser` green; independent review agent; fixes with
    tests; fresh-clone check; secrets sweep (no real target amounts, no link codes, no
@@ -62,7 +73,8 @@ Notes for phase 6:
 3. Owner tests on his phone (TEST-named rows); agent reads the tabs through the Google Sheets
    connector (never the `token` column); deletes test rows **only with the owner's OK**, pinned
    to the revision just read.
-4. `npx clasp logout`; delete `~/.clasprc.json` if left; close the spec / plan / roadmap.
+4. Close the spec / plan / roadmap. **Stay signed in to clasp** (owner, session 4) unless he
+   says to sign out; then `npx clasp logout` and delete `~/.clasprc.json`.
 
 ### Signing clasp in from a cloud session
 `npx clasp login --no-localhost` prints a Google link and waits for the address Google sends the
