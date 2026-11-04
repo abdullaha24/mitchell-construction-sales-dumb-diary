@@ -16,7 +16,7 @@
 (`S000001`, `A0000001`, never reusing one seen in `Sites` or `Activity`); joining products
 with ` | `. Fakes: `Utilities.formatDate 'yyyy-MM-dd'`, `Utilities.parseDate`.
 
-## [ ] Step 2: Reading and saving sites; the salesman's server functions
+## [x] Step 2: Reading and saving sites; the salesman's server functions
 `src/sites.js`: read `Sites` / `Activity` / `Lists` by header; his sites; the yes/no phone
 check; save a site (+ activity, + new area) inside the lock. `src/salesman.js`: `repLoad`,
 `repCheckPhone`, `repAddSite`. Tests: privacy (A never sees B), refusals (owner link,

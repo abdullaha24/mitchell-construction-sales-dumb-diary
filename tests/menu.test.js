@@ -58,7 +58,7 @@ function world(options = {}) {
 
 // ----------------------------------------------------------------------------------- Safety
 
-test('the only public functions are the 7 spec 002 lists', () => {
+test('the only public functions are the 10 specs 002 and 003 list', () => {
   const { src } = world();
   const publicFunctions = Object.keys(src.sandbox)
     .filter((name) => !src.globalNamesBefore.has(name))
@@ -66,6 +66,7 @@ test('the only public functions are the 7 spec 002 lists', () => {
   assert.deepEqual(publicFunctions.sort(), [
     'doGet', 'menuCheckSetup', 'menuLinks', 'onOpen',
     'ownerCancelLink', 'ownerListLinks', 'ownerNewLink',
+    'repAddSite', 'repCheckPhone', 'repLoad',
   ]);
 });
 

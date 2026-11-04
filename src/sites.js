@@ -1,0 +1,194 @@
+// @ts-check
+// Reading and saving sites in the Sales Diary sheet (spec 003). Everything here works on one
+// salesman at a time; only phoneOwners_ looks across salesmen, and it answers yes/no for
+// everyone else (ADR-0004).
+
+/**
+ * A Sales Diary tab, read by header name.
+ * @typedef {{
+ *   sheet: GoogleAppsScript.Spreadsheet.Sheet,
+ *   columns: Object<string, number>,
+ *   rows: Array<Object<string, any>>,
+ * }} Tab
+ */
+/**
+ * One site as the salesman's page shows it. Plain values only (no Dates).
+ * @typedef {{
+ *   id: string, name: string, area: string, buyerType: string, stage: string,
+ *   contactName: string, phone: string, followUp: string, created: string,
+ * }} SiteCard
+ */
+
+/**
+ * Reads a Sales Diary tab: every non-blank row as { header: value }, plus `_row` (its row
+ * number). Throws if the tab or one of its data-model headers is missing (no code or data in
+ * the message).
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} diary
+ * @param {string} tabName
+ * @returns {Tab}
+ */
+function readTab_(diary, tabName) {
+  const sheet = diary.getSheetByName(tabName);
+  if (!sheet) throw new Error(`The Sales Diary sheet has no '${tabName}' tab. Run Check setup.`);
+  const values = sheet.getDataRange().getValues();
+  const found = findColumns_(values, DIARY_HEADERS[tabName], tabName);
+  if (!found.ok) throw new Error(found.message);
+  const columns = found.columns;
+  const rows = [];
+  for (let i = 1; i < values.length; i++) {
+    if (values[i].every(isBlank_)) continue;
+    /** @type {Object<string, any>} */
+    const row = { _row: i + 1 };
+    for (const [name, index] of Object.entries(columns)) row[name] = values[i][index];
+    rows.push(row);
+  }
+  return { sheet, columns, rows };
+}
+
+/**
+ * A row built from { header: value }, as wide as the tab's known columns.
+ * @param {Object<string, number>} columns
+ * @param {Object<string, any>} values
+ */
+function rowFor_(columns, values) {
+  const row = new Array(Math.max(...Object.values(columns)) + 1).fill('');
+  for (const [name, value] of Object.entries(values)) row[columns[name]] = value;
+  return row;
+}
+
+/**
+ * The active pick-list values for a salesman: buyer types and product categories, and the
+ * areas of his region (plus any with no region). Sorted by `sort`, then sheet order.
+ * @param {Tab} lists
+ * @param {string} region
+ * @returns {{ buyerTypes: string[], categories: string[], areas: string[] }}
+ */
+function choicesFor_(lists, region) {
+  /** @param {string} list @param {(row: Object<string, any>) => boolean} [keep] */
+  const values = (list, keep = () => true) => lists.rows
+    .filter((r) => looseText_(r.list) === list && isActiveCell_(r.active) && !isBlank_(r.value) && keep(r))
+    .map((r, i) => ({ value: String(r.value).trim(), sort: Number(r.sort), i }))
+    .sort((a, b) => (isFinite(a.sort) ? a.sort : Infinity) - (isFinite(b.sort) ? b.sort : Infinity) || a.i - b.i)
+    .map((r) => r.value)
+    .filter((v, i, all) => all.indexOf(v) === i);
+  return {
+    buyerTypes: values('buyer_type'),
+    categories: values('product_category'),
+    areas: values('area', (r) => isBlank_(r.region) || looseText_(r.region) === looseText_(region)),
+  };
+}
+
+/**
+ * A date cell as yyyy-MM-dd in Pakistan time, or '' if it isn't a date.
+ * @param {any} value
+ */
+function dayText_(value) {
+  return isDate_(value) && !isNaN(value.getTime()) ? dayKey_(value) : '';
+}
+
+/**
+ * A phone cell in tidy form; if it can't be tidied (typed by hand), as it is.
+ * @param {any} value
+ */
+function phoneText_(value) {
+  const tidy = tidyPhone_(value);
+  return tidy.ok ? tidy.phone : String(value).trim();
+}
+
+/**
+ * One salesman's sites as cards, newest first. Only his rows; nobody else's.
+ * @param {Tab} sites
+ * @param {string} rep
+ * @returns {SiteCard[]}
+ */
+function sitesOf_(sites, rep) {
+  return sites.rows
+    .filter((r) => tidyCode_(r.rep) === rep)
+    .map((r) => ({
+      card: /** @type {SiteCard} */ ({
+        id: String(r.site_id),
+        name: isBlank_(r.site_name) ? '' : String(r.site_name),
+        area: isBlank_(r.area) ? '' : String(r.area),
+        buyerType: isBlank_(r.buyer_type) ? '' : String(r.buyer_type),
+        stage: isBlank_(r.stage) ? '' : String(r.stage),
+        contactName: isBlank_(r.contact_name) ? '' : String(r.contact_name),
+        phone: phoneText_(r.contact_phone),
+        followUp: dayText_(r.next_followup),
+        created: dayText_(r.created_at),
+      }),
+      when: isDate_(r.created_at) ? r.created_at.getTime() : 0,
+      row: r._row,
+    }))
+    .sort((a, b) => b.when - a.when || b.row - a.row)
+    .map((x) => x.card);
+}
+
+/**
+ * Who has a tidy phone number. For everyone else, only yes/no (ADR-0004); for him, the names
+ * of his own sites with it.
+ * @param {Tab} sites
+ * @param {string} phone tidy form, not blank
+ * @param {string} rep
+ * @returns {{ team: boolean, mine: string[] }}
+ */
+function phoneOwners_(sites, phone, rep) {
+  let team = false;
+  /** @type {string[]} */
+  const mine = [];
+  for (const r of sites.rows) {
+    const tidy = tidyPhone_(r.contact_phone);
+    if (!tidy.ok || tidy.phone !== phone) continue;
+    if (tidyCode_(r.rep) === rep) mine.push(isBlank_(r.site_name) ? String(r.site_id) : String(r.site_name));
+    else team = true;
+  }
+  return { team, mine };
+}
+
+/**
+ * Saves a checked new site for a salesman, inside the script lock: the `Sites` row, the
+ * `created` row in `Activity`, and a new area in `Lists` if needed. Returns the new site ID.
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} diary
+ * @param {{ rep: string, region: string }} salesman
+ * @param {NewSite} site
+ * @param {Date} now
+ */
+function saveNewSite_(diary, salesman, site, now) {
+  return withScriptLock_(() => {
+    const sites = readTab_(diary, DIARY_TABS.sites);
+    const activity = readTab_(diary, DIARY_TABS.activity);
+    const lists = readTab_(diary, DIARY_TABS.lists);
+
+    // Someone in his region may have added this area a moment ago: reuse it.
+    let area = site.area;
+    let newArea = site.newArea;
+    if (newArea) {
+      const same = areaMatches_(area, choicesFor_(lists, salesman.region).areas).same;
+      if (same) { area = same; newArea = false; }
+    }
+
+    const siteId = nextId_(sites.rows.map((r) => r.site_id).concat(activity.rows.map((r) => r.site_id)), 'S', 6);
+    const activityId = nextId_(activity.rows.map((r) => r.activity_id), 'A', 7);
+    const followUp = dayStart_(site.followUp);
+
+    appendRows_(sites.sheet, [rowFor_(sites.columns, {
+      site_id: siteId, rep: salesman.rep, region: salesman.region, site_name: site.name,
+      buyer_type: site.buyerType, area, contact_name: site.contactName, contact_phone: site.phone,
+      products: site.products.join(PRODUCTS_SEPARATOR), stage: FIRST_STAGE, next_followup: followUp,
+      created_at: now, updated_at: now,
+    })], [sites.columns.contact_phone]);
+
+    appendRows_(activity.sheet, [rowFor_(activity.columns, {
+      activity_id: activityId, timestamp: now, rep: salesman.rep, site_id: siteId,
+      action: 'created', to_stage: FIRST_STAGE, next_followup: followUp,
+    })]);
+
+    if (newArea) {
+      const sorts = lists.rows.filter((r) => looseText_(r.list) === 'area').map((r) => Number(r.sort)).filter(isFinite);
+      appendRows_(lists.sheet, [rowFor_(lists.columns, {
+        list: 'area', value: area, region: salesman.region, added_by: salesman.rep, active: true,
+        sort: (sorts.length ? Math.max(...sorts) : 0) + LIST_SORT_STEP,
+      })]);
+    }
+    return siteId;
+  });
+}

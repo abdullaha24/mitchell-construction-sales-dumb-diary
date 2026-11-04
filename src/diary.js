@@ -13,16 +13,21 @@ function openSalesDiary_() {
 /**
  * Writes rows below the last row in use. Google refuses to write past a tab's last row, so
  * rows are added first when needed. All rows must be the same width; columns beyond that
- * width are left alone.
+ * width are left alone. Columns listed in `textColumns` (0-based) are set to plain text on the
+ * new rows before writing, so phone numbers and codes are never turned into numbers.
  * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
  * @param {any[][]} rows
+ * @param {number[]} [textColumns]
  * @returns {number} the row number of the first row written (0 if there were none)
  */
-function appendRows_(sheet, rows) {
+function appendRows_(sheet, rows, textColumns = []) {
   if (rows.length === 0) return 0;
   const firstNewRow = sheet.getLastRow() + 1;
   const shortBy = firstNewRow + rows.length - 1 - sheet.getMaxRows();
   if (shortBy > 0) sheet.insertRowsAfter(sheet.getMaxRows(), shortBy);
+  for (const column of textColumns) {
+    sheet.getRange(firstNewRow, column + 1, rows.length, 1).setNumberFormat('@');
+  }
   sheet.getRange(firstNewRow, 1, rows.length, rows[0].length).setValues(rows);
   return firstNewRow;
 }

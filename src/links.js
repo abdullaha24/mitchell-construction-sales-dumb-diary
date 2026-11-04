@@ -207,7 +207,7 @@ function newLink_(diary, who, now) {
     row[c.token] = code;
     row[c.active] = true;
     row[c.issued_at] = now;
-    appendRows_(sheet, [row]);
+    appendRows_(sheet, [row], [c.token]);
     return code;
   });
 }
