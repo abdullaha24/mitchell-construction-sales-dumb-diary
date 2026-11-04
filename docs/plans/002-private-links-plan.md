@@ -51,10 +51,10 @@
 - Fresh-clone check, secrets sweep, independent review.
 - Commit: "Phase 2 local work complete".
 
-## [ ] Step 6: Live switch-over (with the owner)
+## [x] Step 6: Live switch-over (with the owner)
 Spec 002 → One-time switch-over. `clasp push --force`, then
 `update-deployment AKfycbwmWhxLQfpkQRfFIfdv9tZD4CvZfeWEB__YiXnGTSk7-6mlZVZUvLEp2aJDwey0HXaF`.
 Never `create-deployment`.
 
-## [ ] Step 7: Close out
+## [x] Step 7: Close out
 Spec 002 → Done, roadmap phase 2 ✅, handoff → phase 3 spec.

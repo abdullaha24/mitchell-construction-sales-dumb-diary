@@ -24,9 +24,8 @@ Read before any product or UI work:
 
 ## Status
 
-Phase 0 (planning) and **phase 1 (foundations, spec 001) are done and live** (2026-11-04).
-**Phase 2 (private links, spec 002) is built and tested locally**; its live switch-over needs
-the owner. See `docs/plans/handoff.md` for IDs, the deployment and the next step.
+Phases 0–2 are done and live (2026-11-04): foundations (spec 001) and private links
+(spec 002). Next: the phase 3 spec (my sites + add site). See `docs/plans/handoff.md`.
 
 ## Commands
 

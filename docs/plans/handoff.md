@@ -23,23 +23,16 @@
     deleted).
 
 ## Next
-**Phase 2 (private links, spec 002) is built and tested locally** (plan 002 steps 1–5): 154
-tests + `npm run check:browser` pass, also on a fresh clone; an independent review found no way
-past the security checks, and its points were fixed with tests. **Next: plan 002 step 6, the
-live switch-over with the owner** (spec 002 → One-time switch-over):
-1. clasp sign-in (recipe below).
-2. `npx clasp show-file-status`, `npx clasp push --force`, then
-   `npx clasp update-deployment AKfycbwmWhxLQfpkQRfFIfdv9tZD4CvZfeWEB__YiXnGTSk7-6mlZVZUvLEp2aJDwey0HXaF -d "phase 2: private links"`.
-   Check `npx clasp list-deployments` still shows the same ID.
-3. Owner reloads the sheet, taps **Check setup** (adds `Links`; allows any new permission),
-   then **Sales Diary → Links**. Tip: use a browser where **only** the owner's Google account is
-   signed in; with several accounts, calls from a sheet window often fail.
-4. Owner makes his own link and a test RIA link, opens both on his phone (no sign-in), cancels
-   the RIA link and checks it shows "This link doesn't work". A made-up code too.
-5. Agent checks the `Links` tab via the Sheets connector (never copy codes into files), then
-   `npx clasp logout` and delete `~/.clasprc.json`.
+**Phase 2 (private links) is Done and live** (deployment version 2, same address). The owner
+has a working owner link and a test RIA link (both active; leave them). Live cancel check was
+skipped at his request; tests and `npm run check:browser` cover it.
 
-Carry forward into phase 2:
+**Next: write the phase 3 spec** (`docs/specs/003-my-sites.md`): a salesman sees his own sites
+and adds a site (buyer type, contact, product categories, area with "Did you mean …?", the
+duplicate-phone warning, ADR-0004). Ask the owner only the business questions; decide the
+technical ones and show them in the draft.
+
+Carry forward (phase 3 and later):
 - **Never run `create-deployment` again.** Put new code live with
   `npx clasp push --force` then
   `npx clasp update-deployment AKfycbwmWhxLQfpkQRfFIfdv9tZD4CvZfeWEB__YiXnGTSk7-6mlZVZUvLEp2aJDwey0HXaF -d "<note>"`,

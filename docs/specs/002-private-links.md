@@ -1,6 +1,6 @@
 # 002: Private links
 
-- **Status:** In progress (built and tested locally 2026-11-04; live switch-over next)
+- **Status:** Done (live 2026-11-04, session 3, deployment version 2)
 - **Owner approval:** approved by the owner on 2026-11-04 (session 3)
 - **Related:** roadmap phase 2 · ADR-0002 (private links) · ADR-0006 (owner link) ·
   ADR-0008 (Sales Diary ID and web address in code) ·
@@ -144,15 +144,17 @@ Checked locally:
 - [x] The public-function test lists exactly the 7 functions above.
 
 Checked live with the owner:
-- [ ] Check setup creates `Links` (headers as in the data model) and changes nothing else.
-- [ ] The Links window lists the 7 salesmen and the owner; **New link**, **Copy**, **Send on
-      WhatsApp** and **Cancel link** work.
-- [ ] The test RIA link shows "Hello, RIA" on a phone with no Google sign-in; the owner link
-      shows "Hello, owner".
-- [ ] After **Cancel link**, the RIA link shows "This link doesn't work…"; a made-up code does
-      too.
-- [ ] The web address is the same as in phase 1.
-- [ ] clasp signed out at the end.
+- [x] Check setup creates `Links` (headers as in the data model) and changes nothing else.
+- [x] The Links window lists the 7 salesmen and the owner; **New link** works (owner and RIA
+      links made). *Copy, Send on WhatsApp and Cancel link were not tried live (owner's call);
+      they are covered by `npm run check:browser` and the tests.*
+- [x] The test RIA link shows "Hello, RIA" on the owner's phone; the owner link works (owner
+      confirmed "all works").
+- [ ] ~~After **Cancel link**, the RIA link shows "This link doesn't work…"~~ **Skipped live at
+      the owner's request** (covered by tests). A junk code was checked live from the agent's
+      machine: "This link doesn't work".
+- [x] The web address is the same as in phase 1 (deployment `AKfycbwmWh…`, now version 2).
+- [x] clasp signed out at the end.
 
 ## Out of scope
 - Anything a salesman does after "Hello" (phase 3+). The owner screen itself (phase 7).
