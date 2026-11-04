@@ -143,3 +143,22 @@ function repEditSite(k, siteId, input) {
     return saveDetails_(diary, salesman, siteId, input, new Date(), saveIdOf_(input)).result;
   });
 }
+
+/**
+ * Which of his recent saves already reached the sheet (spec 005): asked once when his page
+ * reopens with saves it never heard back about, so they aren't shown as unsaved or sent twice.
+ * Only his own save IDs can match (the record is keyed by his code). Sends nothing new.
+ * @param {any} k his link code
+ * @param {any} saveIds up to 50 one-time save IDs
+ * @returns {{ ok: true, landed: string[] }}
+ */
+function repSaveStatus(k, saveIds) {
+  return forSalesman_(() => {
+    const { salesman } = requireRep_(k);
+    const ids = Array.isArray(saveIds) ? saveIds.slice(0, 50) : [];
+    const cache = CacheService.getScriptCache();
+    const landed = ids.filter((id) => typeof id === 'string' && /^[A-Za-z0-9]{8,40}$/.test(id) &&
+      cache.get(`save:${salesman.rep}:${id}`) !== null);
+    return { ok: true, landed };
+  });
+}

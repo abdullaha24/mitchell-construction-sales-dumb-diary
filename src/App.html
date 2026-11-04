@@ -277,13 +277,22 @@
       }
       function formKey() { return mode.kind === 'edit' ? DRAFT_KEY + '.edit.' + mode.siteId : DRAFT_KEY; }
       function updKey(id) { return DRAFT_KEY + '.update.' + id; }
-      function saveDraft() { store(formKey(), form); }
+      function saveDraft() {
+        if (retrying) { retrying.state = clone(form); saveQueue(); } else store(formKey(), form);
+      }
       function hasDraft() {
         var d = fetchStored(DRAFT_KEY);
         return !!(d && (d.name || d.contactName || d.phone || d.newArea || (d.products && d.products.length)));
       }
 
       // ---- Instant saves: a queue sent one at a time, in order (spec 005) ----
+      // Each entry keeps its own copy of what he typed (entry.state), so retrying never depends
+      // on phone storage and entries can't overwrite each other. Statuses: 'saving' (waiting or
+      // being sent), 'checking' (after reopening: asking whether it landed), 'failed'.
+      // (A browser check may shorten these through window.__timing; nothing else sets it.)
+      var SLOW_MS = (window.__timing && window.__timing.slow) || 30000;      // then "Still sending…"
+      var GIVE_UP_MS = (window.__timing && window.__timing.giveUp) || 120000; // then "not saved" and the next goes
+      var retrying = null;      // the failed entry the open form / update is bound to
       function saveQueue() { store(QUEUE_KEY, queue); }
       function readable(error) {
         var message = (error && error.message) || String(error || '');
@@ -300,25 +309,63 @@
         else if (w.mine && w.mine.length) toast('Saved. You already have this number: ' + w.mine.join(', ') + '.');
         else toast('Saved');
       }
-      // Puts a save in the queue and shows its result in his list at once.
-      function enqueue(entry) {
+      function removeEntry(entry) {
+        var at = queue.indexOf(entry);
+        if (at >= 0) queue.splice(at, 1);
+      }
+      // Puts a save in the queue (replacing the failed one it retries) and shows it at once.
+      function enqueue(entry, replaces) {
+        if (replaces) removeEntry(replaces);
         entry.status = 'saving';
         entry.message = '';
         queue.push(entry);
         saveQueue();
-        showCard(entry);
+        showCard(entry.card);
         sendNext();
       }
-      // The list shows what he just saved straight away (marked "Saving…" until Google confirms).
-      function showCard(entry) {
-        var card = clone(entry.card);
+      function showCard(card) {
         var at = -1;
         for (var i = 0; i < data.sites.length; i++) if (data.sites[i].id === card.id) at = i;
-        if (at >= 0) data.sites[at] = card; else data.sites.unshift(card);
+        if (at >= 0) data.sites[at] = clone(card); else data.sites.unshift(clone(card));
       }
       function entryFor(siteId) {
         for (var i = queue.length - 1; i >= 0; i--) if (queue[i].card.id === siteId) return queue[i];
         return null;
+      }
+      function laterPending(entry) {
+        var after = queue.indexOf(entry);
+        for (var i = after + 1; i < queue.length; i++) {
+          if (queue[i].card.id === entry.card.id && queue[i].status !== 'failed') return true;
+        }
+        return false;
+      }
+      // Google confirmed a save (possibly late, after it was shown as not saved).
+      function applySuccess(entry, r) {
+        removeEntry(entry);
+        // Older failed saves of the same site are replaced by this newer one.
+        for (var i = queue.length - 1; i >= 0; i--) {
+          if (queue[i].status === 'failed' && queue[i].fn === entry.fn && queue[i].card.id === entry.card.id) queue.splice(i, 1);
+        }
+        if (!r.site) {
+          refreshAll(); // a reply from before this version: just reload his list
+        } else if (!laterPending(entry)) {
+          // The server's card replaces what he saw (a new site gets its real ID), unless a later
+          // change of the same site is still on its way.
+          for (var j = 0; j < data.sites.length; j++) if (data.sites[j].id === entry.card.id) { data.sites.splice(j, 1); break; }
+          showCard(r.site);
+        }
+        if (r.areas) data.areas = r.areas;
+        saveQueue();
+        savedToast(r);
+        if (screen === 'list') renderList();
+      }
+      function refreshAll() {
+        google.script.run.withSuccessHandler(function (r) {
+          if (!r || !r.ok) return;
+          var keepK = k; data = r; data.k = keepK;
+          queue.forEach(function (e) { showCard(e.card); });
+          if (screen === 'list') renderList();
+        }).withFailureHandler(function () { /* no signal: the list stays as it is */ }).repLoad(k);
       }
       function sendNext() {
         if (sending) return;
@@ -326,80 +373,96 @@
         for (var i = 0; i < queue.length; i++) if (queue[i].status === 'saving') { entry = queue[i]; break; }
         if (!entry) return;
         sending = true;
-        var done = false;
-        function finish(ok, r, message) {
-          if (done) return;
-          done = true;
+        entry.slow = false;
+        var settled = false;
+        function release() {
+          if (settled) return false;
+          settled = true;
+          clearTimeout(slow); clearTimeout(giveUp);
           sending = false;
-          clearTimeout(giveUp);
-          if (ok) {
-            queue.splice(queue.indexOf(entry), 1);
-            // The server's card replaces what he saw (a new site gets its real ID).
-            var at = -1;
-            for (var j = 0; j < data.sites.length; j++) if (data.sites[j].id === entry.card.id) at = j;
-            if (at >= 0) data.sites[at] = r.site; else data.sites.unshift(r.site);
-            if (r.areas) data.areas = r.areas;
-            if (entry.draftKey) store(entry.draftKey, null);
-            savedToast(r);
-          } else {
-            entry.status = 'failed';
-            entry.message = message;
-          }
+          return true;
+        }
+        var slow = setTimeout(function () { entry.slow = true; if (screen === 'list') renderList(); }, SLOW_MS);
+        var giveUp = setTimeout(function () {
+          if (!release()) return;
+          entry.status = 'failed'; entry.message = 'Not saved: no signal.';
           saveQueue();
           if (screen === 'list') renderList();
           sendNext();
-        }
-        // If Google never answers, show it as not saved; he can try again (saved once at most).
-        var giveUp = setTimeout(function () { finish(false, null, 'Not saved: no signal.'); }, SAVE_WAIT_MS);
+        }, GIVE_UP_MS);
         var run = google.script.run
           .withSuccessHandler(function (r) {
-            if (r && r.ok) finish(true, r, '');
-            else finish(false, null, (r && r.message) || 'Something went wrong.');
+            var mine = release();
+            if (r && r.ok) {
+              applySuccess(entry, r); // honoured even if it arrives after the give-up
+            } else if (mine) {
+              entry.status = 'failed'; entry.message = (r && r.message) || 'Something went wrong.';
+              saveQueue();
+              if (screen === 'list') renderList();
+            }
+            if (mine) sendNext();
           })
-          .withFailureHandler(function (error) { finish(false, null, readable(error)); });
+          .withFailureHandler(function (error) {
+            if (!release()) return;
+            entry.status = 'failed'; entry.message = readable(error);
+            saveQueue();
+            if (screen === 'list') renderList();
+            sendNext();
+          });
         if (entry.fn === 'repAddSite') run.repAddSite(k, entry.input);
         else if (entry.fn === 'repUpdateSite') run.repUpdateSite(k, entry.siteId, entry.input);
         else run.repEditSite(k, entry.siteId, entry.input);
       }
-      // Tapping a card that didn't save reopens it exactly as he left it, with the reason.
+      // Tapping a card that didn't save reopens it exactly as he left it, with the reason. It stays
+      // in the queue (still "Not saved") until he saves it again; Back keeps it.
       function retry(entry) {
-        queue.splice(queue.indexOf(entry), 1);
-        saveQueue();
         if (entry.fn === 'repAddSite') {
-          for (var i = 0; i < data.sites.length; i++) if (data.sites[i].id === entry.card.id) { data.sites.splice(i, 1); break; }
-          store(DRAFT_KEY, entry.form);
-          showForm('');
+          showForm('', entry);
         } else if (entry.fn === 'repEditSite') {
-          if (entry.before) restoreCard(entry.before);
-          store(DRAFT_KEY + '.edit.' + entry.siteId, entry.form);
           showSite(entry.siteId);
-          showForm(entry.siteId);
+          showForm(entry.siteId, entry);
         } else {
-          if (entry.before) restoreCard(entry.before);
-          store(updKey(entry.siteId), entry.upd);
-          showSite(entry.siteId);
+          showSite(entry.siteId, entry);
         }
         problemHere(entry.message + ' Check and tap Save again.');
-      }
-      function restoreCard(card) {
-        for (var i = 0; i < data.sites.length; i++) if (data.sites[i].id === card.id) { data.sites[i] = clone(card); return; }
       }
       function problemHere(text) {
         var box = screen === 'site' ? $('u-problem') : $('formNote');
         box.textContent = text; box.hidden = false; toast(text, true);
       }
-      // Saves left over from last time (the app was closed while sending): shown, not sent.
+      // Saves left over from last time (the app was closed while sending): first ask Google which
+      // already landed (that sends nothing new); show the rest as not sent. Never resent on their own.
       function loadQueue() {
         var stored = null;
         try { stored = JSON.parse(localStorage.getItem(QUEUE_KEY) || 'null'); } catch (e) { stored = null; }
         if (!Array.isArray(stored)) return;
         stored.forEach(function (entry) {
-          if (!entry || !entry.card) return;
-          entry.status = 'failed';
-          if (!entry.message) entry.message = 'Not sent: the app was closed.';
+          if (!entry || !entry.card || !entry.state) return;
+          entry.status = 'checking';
           queue.push(entry);
-          showCard(entry);
+          if (entry.fn !== 'repAddSite' || !siteById(entry.card.id)) showCard(entry.card);
         });
+        if (!queue.length) return;
+        function settle(landed) {
+          queue.slice().forEach(function (entry) {
+            if (entry.status !== 'checking') return;
+            if (landed && landed.indexOf(entry.id) >= 0) {
+              removeEntry(entry);
+              if (entry.fn === 'repAddSite') {
+                for (var i = 0; i < data.sites.length; i++) if (data.sites[i].id === entry.card.id) { data.sites.splice(i, 1); break; }
+              }
+            } else {
+              entry.status = 'failed';
+              entry.message = landed ? 'Not sent: the app was closed.' : 'Not sure it was saved (no signal).';
+            }
+          });
+          saveQueue();
+          if (landed && landed.length) refreshAll();
+          if (screen === 'list') renderList();
+        }
+        google.script.run.withSuccessHandler(function (r) { settle(r && r.ok ? r.landed : null); })
+          .withFailureHandler(function () { settle(null); })
+          .repSaveStatus(k, queue.map(function (e) { return e.id; }));
       }
 
       function renderSave() {
@@ -443,7 +506,8 @@
           if (s.followUp) card.appendChild(el('div', 'Follow up: ' + shortDay(s.followUp), 'meta'));
           card.appendChild(el('span', s.stage, 'tag' + stageClass(s.stage)));
           if (!s.phone) card.appendChild(el('span', 'No number yet', 'tag nonum'));
-          if (entry && entry.status === 'saving') card.appendChild(el('span', 'Saving…', 'tag saving'));
+          if (entry && entry.status === 'saving') card.appendChild(el('span', entry.slow ? 'Still sending…' : 'Saving…', 'tag saving'));
+          if (entry && entry.status === 'checking') card.appendChild(el('span', 'Checking…', 'tag saving'));
           if (entry && entry.status === 'failed') {
             card.appendChild(el('span', 'Not saved. Tap to try again.', 'tag failed'));
             card.appendChild(el('div', entry.message, 'meta'));
@@ -515,7 +579,10 @@
         renderSave();
       }
       // Any change makes it a new save: a corrected resend is saved, not taken for a repeat.
-      function updTouched() { upd.saveId = newSaveId(); clearProblem(); store(updKey(openId), upd); }
+      function updTouched() {
+        upd.saveId = newSaveId(); clearProblem();
+        if (retrying) { retrying.state = clone(upd); saveQueue(); } else store(updKey(openId), upd);
+      }
       function updChanged() { updTouched(); renderUpdate(); }
       // The same checks the server makes, so a save rarely comes back refused.
       function stageProblem(st, value, terms, lostReason, note, followUp, date, hasNumber, numberWord) {
@@ -555,8 +622,10 @@
         card.followUp = followUp;
         if (upd.note.trim()) card.note = upd.note.trim();
         if (upd.phone.trim()) card.phone = upd.phone.trim();
-        enqueue({ id: upd.saveId, fn: 'repUpdateSite', siteId: openId, input: input, card: card, before: clone(s),
-          upd: clone(upd), draftKey: updKey(openId) });
+        var replaces = retrying;
+        enqueue({ id: upd.saveId, fn: 'repUpdateSite', siteId: openId, input: input, card: card, state: clone(upd) }, replaces);
+        store(updKey(openId), null); // the queue carries it now
+        retrying = null;
         showList();
       }
       function checkUpdPhone() {
@@ -744,18 +813,20 @@
             followUp: closed ? '' : followKey(form.followUp, form.date, ''), phone: form.phone.trim(),
             contactName: form.contactName.trim(), products: form.products.slice(), note: form.note.trim(), created: data.today };
           var saved = clone(form);
-          form = emptyForm(); store(DRAFT_KEY, null); phoneCheck = { valid: true };
-          enqueue({ id: saved.saveId, fn: 'repAddSite', input: input, card: card, form: saved, draftKey: null });
+          var replaces = retrying;
+          if (!replaces) store(DRAFT_KEY, null); // a retried site leaves his other new-site draft alone
+          form = emptyForm(); phoneCheck = { valid: true }; retrying = null;
+          enqueue({ id: saved.saveId, fn: 'repAddSite', input: input, card: card, state: saved }, replaces);
           showList();
         } else {
           var id = mode.siteId;
           card = clone(site);
           card.name = form.name.trim(); card.buyerType = form.buyerType; card.contactName = form.contactName.trim();
           card.phone = form.phone.trim() || site.phone; card.products = form.products.slice(); card.area = area;
-          var key = formKey();
-          enqueue({ id: form.saveId, fn: 'repEditSite', siteId: id, input: input, card: card, before: clone(site),
-            form: clone(form), draftKey: key });
-          phoneCheck = { valid: true };
+          var editReplaces = retrying;
+          store(formKey(), null); // the queue carries it now
+          enqueue({ id: form.saveId, fn: 'repEditSite', siteId: id, input: input, card: card, state: clone(form) }, editReplaces);
+          phoneCheck = { valid: true }; retrying = null;
           showSite(id);
         }
       }
@@ -772,11 +843,12 @@
         window.scrollTo(0, 0);
       }
       function showList() { showOnly('list'); renderList(); }
-      function showSite(id) {
+      function showSite(id, retryEntry) {
         var s = siteById(id);
         if (!s) return showList();
         openId = id;
-        var draft = fetchStored(updKey(id));
+        retrying = retryEntry || null;
+        var draft = retryEntry ? clone(retryEntry.state) : fetchStored(updKey(id));
         upd = draft ? Object.assign(emptyUpdate(s), draft) : emptyUpdate(s);
         if (!upd.saveId) upd.saveId = newSaveId();
         $('u-phoneNote').hidden = true;
@@ -784,9 +856,10 @@
         renderSiteHead(s);
         renderUpdate();
       }
-      function showForm(editId) {
+      function showForm(editId, retryEntry) {
         mode = editId ? { kind: 'edit', siteId: editId } : { kind: 'new' };
-        var draft = fetchStored(formKey());
+        retrying = retryEntry || null;
+        var draft = retryEntry ? clone(retryEntry.state) : fetchStored(formKey());
         if (draft) {
           form = Object.assign(emptyForm(), draft);
         } else if (editId) {
@@ -805,11 +878,14 @@
       }
 
       $('newSite').addEventListener('click', function () { showForm(''); });
-      $('editDetails').addEventListener('click', function () { showForm(openId); });
+      $('editDetails').addEventListener('click', function () { retrying = null; showForm(openId); });
       // Back throws away an unsaved update or edit (a new site's draft is kept: the list says so).
+      // A failed save he reopened stays in the queue as "Not saved" when he goes Back.
       $('cancel').addEventListener('click', function () {
-        if (screen === 'form' && mode.kind === 'edit') { store(formKey(), null); showSite(mode.siteId); return; }
-        if (screen === 'site') store(updKey(openId), null);
+        var wasRetrying = !!retrying;
+        retrying = null;
+        if (screen === 'form' && mode.kind === 'edit') { if (!wasRetrying) store(formKey(), null); showSite(mode.siteId); return; }
+        if (screen === 'site' && !wasRetrying) store(updKey(openId), null);
         showList();
       });
       $('save').addEventListener('click', function () { if (screen === 'site') saveUpdate(); else saveForm(); });

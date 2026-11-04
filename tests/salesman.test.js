@@ -359,3 +359,32 @@ test('repAddSite straight to Rate Quoted or Won: stage, value, terms and note in
   assert.deepEqual(plain(w.s.repAddSite(RIA, { ...GOOD, stage: 'Won (Order)', value: '5', terms: 'Cash', phone: '' })),
     { ok: false, message: "Type the contact's number: a site at Won (Order) needs one." });
 });
+
+test("another salesman can't learn about RIA's saves through repSaveStatus", () => {
+  const w = world();
+  w.s.repAddSite(RIA, { ...GOOD, saveId: 'riasave001' });
+  assert.deepEqual(plain(w.s.repSaveStatus(SH, ['riasave001'])), { ok: true, landed: [] });
+  assert.deepEqual(plain(w.s.repSaveStatus(RIA, ['riasave001'])), { ok: true, landed: ['riasave001'] });
+});
+
+test('a save is remembered (for repeats) only after the sheet has taken it', () => {
+  const w = world();
+  const events = w.lockService._events;
+  const cache = w.cacheService.getScriptCache();
+  const put = cache.put.bind(cache);
+  cache.put = (...args) => { events.push('remember'); put(...args); };
+  w.s.repAddSite(RIA, { ...GOOD, saveId: 'ordered001' });
+  assert.deepEqual(events, ['waitLock 10000', 'flush', 'remember', 'flush', 'releaseLock']);
+});
+
+test('repAddSite straight to Lost: reason and note in Sites and in the created row', () => {
+  const w = world();
+  w.diary.getSheetByName('Lists').getRange(w.diary.getSheetByName('Lists').getLastRow() + 1, 1, 1, 6)
+    .setValues([['lost_reason', 'Other', '', 'owner', true, 50]]);
+  const reply = plain(w.s.repAddSite(RIA, { ...GOOD, phone: '', stage: 'Lost / Dead', lostReason: 'Other', note: 'went local' }));
+  assert.equal(reply.ok, true, reply.message);
+  const row = w.diary.getSheetByName('Sites').getDataRange().getValues()[4];
+  assert.deepEqual([row[9], row[12], row[13], row[14]], ['Lost / Dead', 'Other', '', 'went local']);
+  const act = w.diary.getSheetByName('Activity').getDataRange().getValues().pop();
+  assert.deepEqual([act[4], act[6], act[9], act[10], act[11]], ['created', 'Lost / Dead', 'Other', 'went local', '']);
+});

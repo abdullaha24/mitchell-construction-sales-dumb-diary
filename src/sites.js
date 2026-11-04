@@ -359,6 +359,8 @@ function oncePerSave_(rep, saveId, fingerprint, ifChanged, work) {
       if (!changed || ifChanged === 'report') return { repeat: true, changed, result: earlier.result };
     }
     const result = work();
+    // Remember the save only once the sheet has really taken it.
+    if (cacheKey && !(result && result.ok === false)) SpreadsheetApp.flush();
     if (cacheKey && !(result && result.ok === false)) {
       cache.put(cacheKey, JSON.stringify({ fingerprint, result }), SAVE_ID_SECONDS);
     }

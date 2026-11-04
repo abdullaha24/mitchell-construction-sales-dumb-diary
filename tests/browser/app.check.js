@@ -112,7 +112,7 @@ function stub() {
   const context = await browser.newContext({ viewport: { width: 360, height: 740 }, deviceScaleFactor: 1, hasTouch: true });
   const page = await context.newPage();
   await page.exposeFunction('__server', (name, argsJson) => {
-    const allowed = ['repLoad', 'repCheckPhone', 'repAddSite'];
+    const allowed = ['repLoad', 'repCheckPhone', 'repAddSite', 'repSaveStatus'];
     if (!allowed.includes(name)) throw new Error(`page called ${name}`);
     return JSON.stringify(world.s[name](...JSON.parse(argsJson)));
   });
@@ -192,7 +192,7 @@ function stub() {
   await page.click('.card.failed');
   assert.equal(await page.inputValue('#f-name'), 'Askari Heights', 'reopened exactly as he left it');
   assert.equal(await page.inputValue('#f-phone'), '0321 5556666');
-  assert.equal(await page.textContent('#formNote'), 'Not saved: no signal. Check and tap Save again.');
+  assert.equal(await page.textContent('#formNote'), 'Not sent: the app was closed. Check and tap Save again.');
   await page.evaluate(() => { window.__offline = false; });
 
   // ---- Without a number: the first tap only asks. ----

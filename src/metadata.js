@@ -73,14 +73,15 @@ const SALESMEN_KEY = 'salesmen';
 const SALESMEN_KEEP_MS = 24 * 60 * 60 * 1000;
 
 /**
- * Keeps the salesmen list (codes and regions only) for SALESMEN_KEEP_MS.
+ * Keeps the salesmen list (codes and regions only) for SALESMEN_KEEP_MS. A salesman moved to
+ * another region keeps his old region on new sites until the list is refreshed.
  * @param {Salesman[]} salesmen
  * @param {Date} now
  */
 function keepSalesmen_(salesmen, now) {
   PropertiesService.getScriptProperties().setProperty(SALESMEN_KEY, JSON.stringify({
     at: now.getTime(),
-    salesmen: salesmen.map((s) => ({ rep: s.rep, region: s.region, row: s.row })),
+    salesmen: salesmen.map((s) => ({ rep: s.rep, region: s.region })),
   }));
 }
 

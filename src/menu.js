@@ -46,7 +46,9 @@ function menuCheckSetup() {
   const setup = setUpSalesDiary_(diary);
   const metaData = readMetaData_();
   // Check setup also refreshes the salesmen list the app keeps (spec 005).
+  // (Even if a targets tab has a problem, the salesmen list is still refreshed.)
   if (metaData.ok) keepSalesmen_(metaData.salesmen, new Date());
+  else refreshSalesmen_(new Date());
   const problems = setup.problems.slice();
   /** @type {string[]} */
   let siteLines = [];

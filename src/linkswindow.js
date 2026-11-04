@@ -1,6 +1,9 @@
 // @ts-check
 // The owner's Links window (spec 002): Sales Diary → Links, on a computer.
 //
+// The Links window reads Rep_Mapping fresh and keeps it (refreshSalesmen_), so a salesman the
+// owner has just added can use the link made for him at once (spec 005).
+//
 // SAFETY: ownerListLinks, ownerNewLink and ownerCancelLink are public (the window calls them
 // with google.script.run), so ANY page of this script could try to call them. Each one first
 // checks that the signed-in owner is running it (isSignedInSelf_); a salesman isn't signed in
@@ -81,7 +84,7 @@ function ownerCancelLink(who) {
 function checkPerson_(who, formerToo) {
   if (who === OWNER_ROLE) return OWNER_ROLE;
   if (typeof who !== 'string' || isBlank_(who)) throw new Error("That isn't one of your salesmen.");
-  const salesmen = readSalesmenOnly_();
+  const salesmen = refreshSalesmen_(new Date());
   if (!salesmen.ok) throw new Error(salesmen.message);
   const rep = tidyCode_(who);
   if (salesmen.salesmen.some((s) => s.rep === rep)) return rep;
@@ -99,7 +102,7 @@ function checkPerson_(who, formerToo) {
  * @returns {LinkList}
  */
 function listLinks_() {
-  const salesmen = readSalesmenOnly_();
+  const salesmen = refreshSalesmen_(new Date());
   if (!salesmen.ok) return salesmen;
   /** @type {LinksRead} */
   let links;

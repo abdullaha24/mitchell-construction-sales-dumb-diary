@@ -26,7 +26,16 @@ Measured on the live app the same day (anonymous requests, no real data):
   if any, shows then as a message.
 - If it fails (no signal, busy, a problem with what he typed), the card turns orange: **"Not
   saved. Tap to try again."** Tapping it reopens the form exactly as he left it, with the reason.
-  Nothing he typed is lost, even if he closes the app (it stays on the phone, as today).
+  Nothing he typed is lost, even if he closes the app (it stays on the phone, as today), and
+  even on a phone that blocks storage (each unsaved save keeps its own copy while the app is
+  open). **Back keeps it** in the list as not saved. *(Added after review.)*
+- On a very weak signal, after 30 seconds the card says **"Still sending…"**; only after 2
+  minutes does it count as not saved, and only then is the next save sent, so saves never
+  overtake each other. A "saved" answer that arrives later still counts. *(Added after review.)*
+- **Reopening the app with saves it never heard back about:** it first asks Google which of them
+  landed (this sends nothing new). Those disappear quietly; the rest show *"Not sent: the app was
+  closed."* *(Added after review.)*
+- A newer save of the same site replaces an older one that failed.
 - Saves are sent **one at a time, in order**, and only while the app is open: nothing is sent
   later on its own (owner, P3-3).
 - A brand-new site that is still "Saving…" can't be opened yet (it has no ID until Google
@@ -65,7 +74,13 @@ same extra fields as Update when he picks another stage:
   stage, value, terms, reason and note.
 
 ### Safety (unchanged rules, one new public function)
-- New public function `menuRefreshSalesmen` (owner-only, like Check setup). Allow-list: 13.
+- New public functions `menuRefreshSalesmen` (owner-only, like Check setup) and
+  `repSaveStatus(k, saveIds)` (which of **his** saves landed; reads only, keyed by his code).
+  Allow-list: 14.
+- The **Links window** also refreshes the kept salesmen list, so a salesman the owner has just
+  added can use his new link at once; Check setup refreshes it even if a targets tab has a
+  problem. A save is remembered for repeats only after the sheet has taken it. *(Added after
+  review.)*
 - Everything else as in specs 003–004: his own sites only, text stored as text, checks inside
   the lock, one-time save IDs.
 

@@ -94,7 +94,7 @@ function stub() {
   const browser = await chromium.launch();
   const page = await (await browser.newContext({ viewport: { width: 360, height: 740 }, deviceScaleFactor: 1 })).newPage();
   await page.exposeFunction('__server', (name, argsJson) => {
-    if (!['repLoad', 'repCheckPhone', 'repAddSite', 'repUpdateSite', 'repEditSite'].includes(name)) throw new Error(`page called ${name}`);
+    if (!['repLoad', 'repCheckPhone', 'repAddSite', 'repUpdateSite', 'repEditSite', 'repSaveStatus'].includes(name)) throw new Error(`page called ${name}`);
     return JSON.stringify(world.s[name](...JSON.parse(argsJson)));
   });
   await page.addInitScript(stub);

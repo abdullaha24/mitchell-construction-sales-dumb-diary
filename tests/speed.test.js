@@ -111,7 +111,7 @@ test('the salesmen list is read once and then kept: Meta-Data is not opened agai
   const first = w.cost(() => w.s.repLoad(RIA));
   assert.deepEqual(first.opens, ['diary', 'meta']);
   assert.equal(kept(w).salesmen.length, 7);
-  assert.deepEqual(Object.keys(kept(w).salesmen[0]).sort(), ['region', 'rep', 'row'], 'codes and regions only');
+  assert.deepEqual(Object.keys(kept(w).salesmen[0]).sort(), ['region', 'rep'], 'codes and regions only');
   const second = w.cost(() => w.s.repLoad(RIA));
   assert.deepEqual(second.opens, ['diary']);
 });
@@ -163,4 +163,36 @@ test('Check setup refreshes the kept list too', () => {
   w.s.menuCheckSetup();
   assert.equal(kept(w).salesmen.length, 7);
   assert.equal(plain(w.ui.alerts.length), 1);
+});
+
+// --------------------------------------------------------------- Fixes from the 4b review
+
+test('a salesman the owner has just added can use his new link at once (the Links window keeps the list)', () => {
+  const w = world();
+  // The kept list is from before he was added.
+  w.props._store.set('salesmen', JSON.stringify({ at: Date.now(), salesmen: [{ rep: 'SH', region: 'Center' }] }));
+  const list = plain(w.s.ownerListLinks());
+  assert.ok(list.rows.some((r) => r.who === 'RIA'), 'the Links window reads Rep_Mapping fresh');
+  assert.equal(kept(w).salesmen.length, 7, '...and keeps it');
+  assert.equal(w.s.repLoad(RIA).ok, true, 'so his link works straight away');
+});
+
+test('Check setup refreshes the salesmen list even when a targets tab has a problem', () => {
+  const tabs = metaDataTabs();
+  tabs['Rep-Targets'][0] = ['Rep', 'Month', 'Amount'];
+  const w = world({ metaTabs: tabs });
+  w.props._store.set('salesmen', JSON.stringify({ at: Date.now(), salesmen: [] }));
+  w.s.menuCheckSetup();
+  assert.equal(kept(w).salesmen.length, 7);
+});
+
+test('repSaveStatus: which of his saves landed; never anyone else\'s; nothing written', () => {
+  const w = world();
+  w.s.repAddSite(RIA, { name: 'X', buyerType: 'Dealer', followUp: 'tomorrow', saveId: 'landed0001' });
+  const writes = w.diary._writes().length;
+  assert.deepEqual(plain(w.s.repSaveStatus(RIA, ['landed0001', 'neverSent01', 'x', 42, null])),
+    { ok: true, landed: ['landed0001'] });
+  assert.deepEqual(plain(w.s.repSaveStatus(RIA, 'landed0001')), { ok: true, landed: [] }, 'not a list: nothing');
+  assert.equal(w.diary._writes().length, writes);
+  assert.throws(() => w.s.repSaveStatus('junk', ['landed0001']), /This link doesn't work/);
 });
