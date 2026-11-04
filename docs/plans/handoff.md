@@ -1,117 +1,105 @@
 # Handoff: start here
 
-> Updated 2026-11-04, session 3. **Every session: read this first, and update it before you
-> finish** (what's done, what's next, which questions are still open).
+> Updated 2026-11-04, end of session 3. **Every session: read this first, and update it before
+> you finish.** Then read `AGENTS.md` (rules, commands) if you haven't.
 
 ## Where we are
-- **Phase 0 (planning) done** in sessions 1–2. All owner answers are in
-  `docs/product/open-questions.md` → *Answered*. Team: **7 salesmen**, RIA, AUR, WAK (North),
-  SH, SJ, SM (Center), IB (South).
-- **Phase 1 (foundations, spec 001) is Done and live** (session 3, 2026-11-04):
-  - The **Sales Diary** sheet exists in the owner's Drive with `Sites`, `Activity`, `Lists`
-    (headers exactly as in the data model, starting lists filled, timezone `Asia/Karachi`, no
-    `Sheet1`).
-  - **Sales Diary → Check setup** works: it showed the 7 salesmen in the right regions and
-    November 2026 targets that matched `Rep-Targets` and `Targets` line by line, then
-    "Nothing to fix." A second tap changed nothing, and Meta-Data was not edited (checked with
-    Google's revision IDs and by the owner in version history).
-  - The placeholder web app is deployed for **"only myself"**: it opens for the owner, and asks
-    anyone else to sign in.
-  - `npm run check`: type check + 96 tests pass. An independent reviewer agent found nothing
-    high-severity; its five smaller points were fixed with tests.
-  - clasp was signed out at the end (`npx clasp logout`, then the empty `~/.clasprc.json`
-    deleted).
+**Phases 0–4b are done and live** (deployment version 5). A salesman opens his private link
+on his phone and:
+- sees **only his own sites**, newest first ("No number yet" where a phone is missing);
+- **adds a site** mostly by tapping: buyer type, product pills, area (pick or add, with
+  "Did you mean …?"), **stage** (Visited / Lead pre-picked; Rate Quoted / Won ask for total Rs.
+  value + Cash / Credit; Lost asks a reason), follow-up (Tomorrow pre-picked), note;
+- **updates a site** (any stage, backwards too) and **edits details** (a number can be
+  changed, never removed; old → new kept in `Activity`);
+- **saves feel instant**: back on his list at once with "Saving…"; a failed save turns the card
+  orange ("Not saved. Tap to try again.") and nothing he typed is lost.
 
-## Next
-**Phase 4 (update a site) is Done and live** (deployment version 4). The owner tested it on his
-phone; test rows deleted with his OK (`Sites` / `Activity` empty again). His owner, RIA and SJ
-test links are still active.
+The owner has **Sales Diary → Check setup / Links / Refresh salesmen** in the sheet (on a
+computer). Everything is in the **Sales Diary** sheet; the owner's **Meta-Data** sheet is only
+ever read.
 
-**Phase 4b (spec 005: instant saves, faster server, stage when adding) is built, reviewed and
-tested locally**: 260 tests + 4 browser checks pass on a fresh clone. Per save: add site 4 sheet
-opens / 8 tab reads → 1 / 4; update 4 / 7 → 1 / 4; replies carry one card. The review found no
-security regression; its queue findings (storage blocked, several failed saves, reopening after
-a save that landed, overtaking, newer save replacing older) are fixed and reproduced by
-`tests/browser/queue.check.js`.
+Specs: 001 foundations · 002 private links · 003 my sites + add · 004 update a site · 005 instant
+saves + stage when adding: **all Done**. Build plans 001–005 in `docs/plans/` are all ticked.
 
-**Next: go live with the owner** (plan 005 step 5):
-1. **Before deploying, time the live app** (baseline: ~1 s Google overhead; ~1.7 s for a page
-   load that opens Sales Diary). After deploying, time again: the agent can only time anonymous
-   requests; the owner judges the save feel on his phone.
-2. clasp sign-in; push; pull back and compare;
-   `npx clasp update-deployment AKfycbwmWhxLQfpkQRfFIfdv9tZD4CvZfeWEB__YiXnGTSk7-6mlZVZUvLEp2aJDwey0HXaF -d "phase 4b: instant saves"`.
-3. Owner: reload the sheet (new menu item **Refresh salesmen**; tap it once). On his RIA test
-   link: add a TEST site straight to Rate Quoted with a value; one straight to Won; save with
-   flight mode on (card turns orange; tap it, turn signal on, Save again).
-4. Agent checks `Sites` / `Activity`, deletes test rows with his OK, `clasp logout`.
+### Live state (2026-11-04)
+- `Sites` and `Activity`: **empty** (every test row was deleted with the owner's OK).
+- `Lists`: the 11 product categories, 5 lost reasons, 4 buyer types; **no areas** yet.
+- `Links`: the owner's link, plus **test links for RIA and SJ** (active). **Cancel the test
+  links before launch** (owner: Sales Diary → Links). The owner's phone may still hold an unsent
+  "TEST OFFLINE" save on the RIA link; cancelling that link makes it harmless.
+- Salesmen list kept by the app (refreshed by Refresh salesmen / Check setup / daily).
 
-Carry forward (phase 4 and later):
-- **Never run `create-deployment` again.** Put new code live with
-  `npx clasp push --force` then
-  `npx clasp update-deployment AKfycbwmWhxLQfpkQRfFIfdv9tZD4CvZfeWEB__YiXnGTSk7-6mlZVZUvLEp2aJDwey0HXaF -d "<note>"`,
-  so the address salesmen get never changes.
-- Access is `ANYONE_ANONYMOUS` ("Anyone"), **not** `ANYONE` (forces a Google sign-in). A test
-  pins `src/appsscript.json`.
-- Every new public function must check the link code first (ADR-0002, `requireRep_`), wrap
-  its work in `forSalesman_`, and only return that salesman's data (ADR-0004); update the
-  allow-list in `tests/menu.test.js` on purpose.
-- **Write every typed or picked text with `asText_`** (formula injection: a "name" starting
-  with `=` would otherwise run as a formula in the owner's sheet). The fake sheet now behaves
-  like Sheets, so a test will show it.
-- Saves carry a one-time `saveId` (script cache, 6 hours) so a repeat after a lost reply is
-  saved once. Reuse this for updates.
-- `menuCheckSetup`'s safety check passes for the owner himself, signed in, even from a web
-  page (harmless today; don't rely on it as "came from the menu").
+## Next: phase 5 spec (focus tabs + his target)
+Roadmap phase 5: **Today's Chase** (follow-ups due today or overdue, oldest overdue first in
+red), **Hot Pipeline** (Sample / Trial and Rate Quoted), **All My Parties** with search, and
+**his monthly target** (target only, no achieved figure: owner Q12c). Write
+`docs/specs/006-focus-tabs.md` as a **Draft**, ask the owner only business questions (his way,
+below), get approval, then plan → build → review → live, as in phases 3–4b.
 
-## How to sign clasp in from a cloud session (worked 2026-11-04)
-`npx clasp login --no-localhost` prints a Google link and waits. The owner signs in; Google then
-sends his browser to a `http://localhost:8888/?state=…&code=…` address that doesn't load. He
-pastes that **whole address** back. The clasp process must still be running (it holds the
-matching one-time secret), so start it in the background reading from a pipe:
+Notes for phase 5:
+- **Target without slowing saves:** salesman calls deliberately don't open Meta-Data any more
+  (spec 005). Read targets the same way the salesmen list is kept (`knownSalesmen_` in
+  `src/metadata.js`): keep this month's targets in Script Properties, refreshed by Check setup /
+  Refresh salesmen / daily. A salesman must only ever receive **his own** target (ADR-0004).
+- The page already has every site's `followUp` (yyyy-MM-dd, Pakistan time), `stage` and
+  `created`; tabs and search can work on the phone with no extra server calls.
+- Won / Lost sites have no follow-up (owner P4-3), so they never appear in Today's Chase.
+
+## How every phase goes live (the routine)
+1. `npm run check` and `npm run check:browser` green; independent review agent; fixes with
+   tests; fresh-clone check; secrets sweep (no real target amounts, no link codes, no
+   `.clasprc.json`).
+2. With the owner: clasp sign-in (below) → `npx clasp push --force` → pull back into a scratch
+   folder and compare → `npx clasp update-deployment AKfycbwmWhxLQfpkQRfFIfdv9tZD4CvZfeWEB__YiXnGTSk7-6mlZVZUvLEp2aJDwey0HXaF -d "<note>"`.
+   **Never `create-deployment`** (a new address would break every link sent).
+3. Owner tests on his phone (TEST-named rows); agent reads the tabs through the Google Sheets
+   connector (never the `token` column); deletes test rows **only with the owner's OK**, pinned
+   to the revision just read.
+4. `npx clasp logout`; delete `~/.clasprc.json` if left; close the spec / plan / roadmap.
+
+### Signing clasp in from a cloud session
+`npx clasp login --no-localhost` prints a Google link and waits for the address Google sends the
+browser to (`http://localhost:8888/?state=…&code=…`, a page that doesn't load). The process must
+stay alive, so run it in the background reading from a pipe (`$S` = scratchpad):
 ```bash
 mkfifo "$S/clasp-in" && exec 3<>"$S/clasp-in" && npx clasp login --no-localhost <&3 > "$S/clasp-login.log" 2>&1
 ```
-(`$S` = the scratchpad; run it as a background command.) Read the link from the log, then
-`printf '%s\n' '<pasted address>' > "$S/clasp-in"`. Check that the `state=` value matches the
-link's. Delete the log afterwards. At the end of the session: `npx clasp logout` and delete
-`~/.clasprc.json` if it is left behind.
+Give the owner the link from the log; he pastes back the whole address; check its `state=`
+matches; `printf '%s\n' '<address>' > "$S/clasp-in"`; delete the log.
 
 ## Things learned (keep in mind)
-- **`tsc` does not catch a function defined in two `src/` files** (plain JS allows it; in Apps
-  Script the last-loaded file silently wins). `tests/load-src.test.js` catches it.
-- `clasp create-script` overwrote `src/appsscript.json` with Google's default (timezone
-  `America/New_York`, no web app settings); it was restored from git before pushing. Watch for
-  this on any `clasp pull`.
-- `contact_phone` in `Sites` is plain text for the first 1,000 rows only. Phase 3 code that
-  writes phones must still write them as text.
-- `npm audit` reports 8 issues inside clasp 3.4.1's own dependencies. Local tool only; not
-  pushed to Apps Script. Not fixed (would change the pinned clasp).
-- Real target amounts stay out of git (owner answer S3-1). Read them live for checks; never
-  paste them into files.
+- **Formula injection:** text written with `setValues` that starts with `=` runs as a formula
+  in the owner's sheet (could reveal link codes). Every typed or picked text goes through
+  `asText_` / `textify_`. The fake sheet behaves like Sheets, so tests catch it.
+- **Checks inside the lock:** saves re-read and re-check the row inside the script lock; replies
+  carry only the saved card. `tests/speed.test.js` pins one Sales Diary open and one read per
+  tab per save.
+- **Save once:** each form has a one-time `saveId` (script cache, 6 hours); on reopening, the page
+  asks `repSaveStatus` which saves landed. `tests/browser/queue.check.js` covers the hard cases.
+- `tsc` doesn't catch a function defined in two `src/` files; `tests/load-src.test.js` does.
+- `clasp create-script` / `pull` can overwrite `src/appsscript.json`; git is the truth.
+- `npm audit`: 8 issues inside clasp 3.4.1's own dependencies (local tool, never deployed).
+- Real target amounts never go in git (owner S3-1): read them live for checks only.
+- The owner wants **speed on cheap phones and weak signal**: measure, avoid extra trips to the
+  server, and make things feel instant on the phone.
 
 ## Questions for the owner
-None open.
-Ask questions the owner's way:
-- One question at a time.
-- Tappable options. Use the multiple-choice question tool if you have one (Claude Code:
-  `AskUserQuestion`); otherwise give numbered options.
-- Put your recommended option first and mark it **(Recommended)**. For pure facts only the owner
-  knows, say there's no recommendation.
-- Plain English, no jargon. The owner prefers brisk check-ins: don't over-explain routine steps.
+None open. Ask the owner's way: **one question at a time** (several only when he's brisk and
+they're independent), tappable options (`AskUserQuestion`), recommended option first and marked
+**(Recommended)**, plain English. He prefers brisk check-ins; don't over-explain routine steps.
 
 ## Useful facts
-IDs below aren't secret: each needs the owner's Google account to open.
-- **Meta-Data** sheet: "Mitchell Sales Meta-Data", ID `11rcjx1eZA9BqwSTIoK66hrs7M8rYisL12GirSzLyrkc`.
+IDs aren't secret (each needs the owner's Google account):
+- **Meta-Data** sheet "Mitchell Sales Meta-Data": `11rcjx1eZA9BqwSTIoK66hrs7M8rYisL12GirSzLyrkc`.
   **Never edit it without the owner's explicit OK in that session.**
-- **Sales Diary** sheet: ID `1tuyVPDB33x1Vw8JQYashM4PRQSjGjQq8MBs7l4cJn5Y`
-  (https://docs.google.com/spreadsheets/d/1tuyVPDB33x1Vw8JQYashM4PRQSjGjQq8MBs7l4cJn5Y/edit).
-  **Never share it** (from phase 2 it holds link codes).
-- **Apps Script project** (bound to Sales Diary): script ID
-  `162yqNmzGZgMbFQ31U5ozY99SVyapohvTFDFMB8AVxePihSeKIpUhdTlg`, in `.clasp.json`.
-- **Web app deployment** "phase 1", version 1: ID
-  `AKfycbwmWhxLQfpkQRfFIfdv9tZD4CvZfeWEB__YiXnGTSk7-6mlZVZUvLEp2aJDwey0HXaF`, address
+- **Sales Diary** sheet: `1tuyVPDB33x1Vw8JQYashM4PRQSjGjQq8MBs7l4cJn5Y`. **Never share it**
+  (it holds link codes).
+- **Apps Script** (bound to Sales Diary): script ID in `.clasp.json`.
+- **Web app** (same address since phase 1, now version 5): deployment
+  `AKfycbwmWhxLQfpkQRfFIfdv9tZD4CvZfeWEB__YiXnGTSk7-6mlZVZUvLEp2aJDwey0HXaF`,
   https://script.google.com/macros/s/AKfycbwmWhxLQfpkQRfFIfdv9tZD4CvZfeWEB__YiXnGTSk7-6mlZVZUvLEp2aJDwey0HXaF/exec
-- Tools: Node 22, clasp 3.4.1, TypeScript 7.0.2, `@types/google-apps-script` 2.0.14 (exact pins).
-  `clasp push` needs `--force` in a non-interactive shell or it silently skips.
-- Branches: session 1 `claude/vigilant-volta-yye9pn`, session 2 `claude/laughing-fermi-ec4tlp`
-  (merged into the default branch), session 3 `claude/clever-hopper-ain3c5` (no PR opened yet).
+- Owner's Google account: the one that owns both sheets.
+- Branches: sessions 1–2 merged into the default branch; **session 3 is on
+  `claude/clever-hopper-ain3c5`, not merged and no PR opened** (owner hasn't asked for one).
+  Next session: start from this branch unless the owner says it was merged.

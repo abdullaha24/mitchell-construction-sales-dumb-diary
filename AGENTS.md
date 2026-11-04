@@ -24,10 +24,8 @@ Read before any product or UI work:
 
 ## Status
 
-Phases 0–4 are done and live (2026-11-04): foundations (spec 001), private links (spec 002),
-my sites + add a site (spec 003), update a site (spec 004). **Phase 4b (instant saves, faster
-server, stage when adding; spec 005) is built and tested locally**; going live needs the owner.
-See `docs/plans/handoff.md`.
+Phases 0–4b are **done and live** (specs 001–005, deployment version 5). Next: the phase 5 spec
+(focus tabs + his target). Current state, next step and IDs: `docs/plans/handoff.md`.
 
 ## Commands
 
@@ -45,26 +43,20 @@ Node 22 or newer. All checks run locally with no Google account.
 | `npx clasp create-deployment -d "<note>"` | Creates the web app. **Once only**: each run makes a new address. |
 | `npx clasp update-deployment <deploymentId> -d "<note>"` | Puts the latest pushed code live **at the same address**. Use this for every update after the first. The deployment ID is in `docs/plans/handoff.md`. |
 
-Code rules that tests enforce:
-- Helper functions end in `_`. A web page can call any public function, with any arguments.
-  The only public ones are `doGet`, `onOpen`, `menuCheckSetup`, `menuLinks`, `menuRefreshSalesmen`, `ownerListLinks`,
-  `ownerNewLink`, `ownerCancelLink`, `repLoad`, `repCheckPhone`, `repAddSite`, `repUpdateSite`,
-  `repEditSite`, `repSaveStatus`. Every `menu…`/
-  `owner…` one starts with the signed-in-owner check; every `rep…` one with `requireRep_(k)`
-  (working salesman link only) and returns only that salesman's data (ADR-0004). Adding one means updating `tests/menu.test.js` and saying why in the spec.
-- No function name may be defined in two `src/` files (tsc does **not** catch this for JS; the
-  last-loaded file would silently win in Apps Script).
-- Only `src/metadata.js` opens the Meta-Data sheet, read-only. Only `src/diary.js` opens the
-  Sales Diary sheet by ID.
-- Link codes never go into git, logs or error messages, and onto no page except the owner's
-  Links window and the code holder's own page.
+Code rules that tests enforce (the tests are the source of truth; keep this list short):
+- **Public functions** (any page can call them, with any arguments) are an allow-list in
+  `tests/menu.test.js`. Helpers end in `_`. Every `menu…` / `owner…` function starts with the
+  signed-in-owner check; every `rep…` function with `requireRep_(k)` inside `forSalesman_`, and
+  returns only that salesman's data (ADR-0004). Adding one: update the allow-list and the spec.
+- **No function name in two `src/` files** (tsc doesn't catch it for JS).
+- Only `src/metadata.js` opens Meta-Data (read-only); only `src/diary.js` opens Sales Diary by ID.
+- **Every typed or picked text written to a sheet goes through `asText_` / `textify_`** (no
+  formulas); an existing row gets only its changed cells written.
+- A salesman call opens Sales Diary once and a save reads each tab once, inside the lock
+  (`tests/speed.test.js`); replies carry only the changed card.
+- Link codes never go into git, logs or errors, and onto no page except the owner's Links
+  window and the code holder's own page.
 - `src/appsscript.json` is pinned by a test: access `ANYONE_ANONYMOUS`, never `ANYONE`.
-- Every typed or picked text written to the sheet goes through `asText_` / `textify_` (no
-  formulas); only changed cells are written to an existing row (never the whole row).
-- A salesman call opens Sales Diary once (`requireRep_` returns it) and a save reads each tab
-  once, inside the lock; `tests/speed.test.js` counts this. Replies carry only the changed card.
-- The salesmen list is kept 24 h in Script Properties (`knownSalesmen_`); `Links` is read on
-  every call.
 
 ## Where things live
 
@@ -75,8 +67,8 @@ Code rules that tests enforce:
 | `docs/architecture/` | How the system fits together, and the Google Sheet data model. |
 | `docs/decisions/` | ADRs: one file per significant decision. Copy `_template.md`. |
 | `docs/plans/` | `handoff.md` (start here), roadmap, step-by-step build plans. |
-| `src/` | Apps Script source (server code + HTML). Planned clasp `rootDir`. |
-| `tests/` | Automated tests that run locally, with no Google account needed. |
+| `src/` | Apps Script source (server code + HTML); clasp's `rootDir`. What each file holds: `src/README.md`. |
+| `tests/` | Automated tests (no Google account needed) and browser checks; see `tests/README.md`. |
 | `scripts/` | Helper scripts for setup and deploy. |
 
 ## How to work

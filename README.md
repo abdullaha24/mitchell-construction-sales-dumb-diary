@@ -10,7 +10,7 @@ He logs visits, quotes, wins and losses in a couple of taps. Everything lands in
 and the owner gets his own screen: pipeline by salesman and region, who worked today, what's
 overdue or going cold, and why deals were lost.
 
-**Status:** phases 1–3 are live: the Sales Diary sheet and its Check setup menu, private links (the owner makes them in Sales Diary → Links), and the salesman's page, where he sees his own sites and adds new ones. Next: phase 4, updating a site (stage, quote, follow-up, note).
+**Status:** phases 1–4b are live. Each salesman opens his private link, sees his own sites, adds a site (with its stage, quote or loss) and updates it in a few taps; saves feel instant. The owner manages links and checks setup from the sheet's Sales Diary menu. Next: phase 5, the focus tabs (Today's Chase, Hot Pipeline, All My Parties) and his monthly target.
 
 ## Read more
 

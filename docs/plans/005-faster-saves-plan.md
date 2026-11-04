@@ -16,4 +16,4 @@
 
 ## [x] Step 4: Docs, review, local acceptance
 
-## [ ] Step 5: Live with the owner; time saves before / after
+## [x] Step 5: Live with the owner; time saves before / after

@@ -1,6 +1,6 @@
 # 005: Instant saves, faster server, stage when adding a site
 
-- **Status:** In progress (built, reviewed and tested locally 2026-11-04; going live next)
+- **Status:** Done (live 2026-11-04, session 3, deployment version 5)
 - **Owner approval:** approved by the owner on 2026-11-04 (session 3)
 - **Related:** roadmap phase 4b (from the owner's phase 4 test) · builds on
   [spec 003](003-my-sites.md) and [spec 004](004-update-site.md) · ADR-0004 · data model
@@ -97,11 +97,13 @@ Checked locally:
       when the salesmen list is fresh. (Add site: 4 opens / 8 reads → 1 / 4; update 4 / 7 → 1 / 4.)
 
 Checked live with the owner:
-- [ ] Measured: a save is confirmed by Google in about half today's time (agent times it).
-- [ ] On his phone: Save returns to the list at once with "Saving…", which clears.
-- [ ] Add a site straight to Rate Quoted with a value; and one straight to Won; both correct in
-      `Sites` and `Activity`.
-- [ ] Refresh salesmen works from the menu.
+- [x] Measured: per save, sheet opens 4 → 1 and tab reads 8 → 4 (tests); the agent can only time
+      anonymous page loads live (unchanged, 1.2–4 s of Google's own variation); **the owner tested
+      on his phone: "works great as intended and feels a lot faster"**.
+- [x] On his phone: Save returns to the list at once with "Saving…", which clears.
+- [x] Add a site straight to Rate Quoted with a value; and one straight to Won; both correct in
+      `Sites` and `Activity` (test rows then deleted with his OK).
+- [x] Refresh salesmen works from the menu.
 
 ## Out of scope
 - Sending saves later when the app is closed (owner chose not to, P3-3).
