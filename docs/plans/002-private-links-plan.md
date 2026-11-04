@@ -23,7 +23,7 @@
   `LockService`, `Range.setValues` reused for single cells.
 - Commit: "Add Links tab, Sales Diary ID and web address settings".
 
-## [ ] Step 2: Link rules
+## [x] Step 2: Link rules
 - `src/links.js`: `makeCode_`, `isWellFormedCode_`, `readLinks_`, `isActiveCell_`,
   `whoIsVisiting_(code)` (rep / owner / none), `newLink_`, `cancelLinks_` (inside a script lock),
   `linkFor_` (address from `WEB_APP_URL`).
