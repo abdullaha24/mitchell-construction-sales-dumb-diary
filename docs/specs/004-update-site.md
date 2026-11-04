@@ -1,6 +1,6 @@
 # 004: Update a site
 
-- **Status:** In progress (built, reviewed and tested locally 2026-11-04; going live next)
+- **Status:** Done (live 2026-11-04, session 3, deployment version 4)
 - **Owner approval:** approved by the owner on 2026-11-04 (session 3)
 - **Related:** roadmap phase 4 · ADR-0004 (private lists) · [glossary](../product/glossary.md) →
   Sales stages · [data model](../architecture/data-model.md) → `Sites`, `Activity` · builds on
@@ -106,11 +106,11 @@ Checked locally:
       `npm run check` (242 tests) and `npm run check:browser` (3 checks) pass on a fresh clone.
 
 Checked live with the owner:
-- [ ] On a test site: move it to Rate Quoted with a value and Cash / Credit, then Won, then back
+- [x] On a test site: move it to Rate Quoted with a value and Cash / Credit, then Won, then back
       to Sample / Trial, then Lost with a reason; each step shows in `Sites` and `Activity`.
-- [ ] A site with no number can't move to Sample / Trial until a number is added on the spot.
-- [ ] Edit details changes a name and a number; the old and new number are in `Activity`.
-- [ ] Test rows removed afterwards (with the owner's OK).
+- [x] A site with no number can't move to Sample / Trial until a number is added on the spot.
+- [x] Edit details changes a name and a number; the old and new number are in `Activity`.
+- [x] Test rows removed afterwards (with the owner's OK: 2 sites, 6 activity rows).
 
 ## Out of scope
 - Today's Chase / Hot Pipeline tabs, search, his target (phase 5). Call / WhatsApp buttons,

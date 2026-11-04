@@ -74,3 +74,6 @@ Owner, session 3 (2026-11-04):
 | P4-2 | Spec 004: is the Rs. value required? | **Yes, at both Rate Quoted and Won (Order)**, with a Cash / Credit tap. |
 | P4-3 | Spec 004: follow-up date after Won or Lost? | **Neither:** Won and Lost sites have no follow-up and leave Today's Chase. |
 | P4-4 | Spec 004: can a salesman move a site backwards or reopen Won / Lost? | **Yes, any stage.** Every change is kept in the history. |
+| P4b-1 | Phase 4 test: adding a site then reopening it to set the stage is two jobs. | **Capture the lead and its stage together** in + New Site. |
+| P4b-2 | Saves take 4–5 seconds. Show as done at once and finish in the background? | **Yes, instant.** Failures shown on the card ("Not saved. Tap to try again."); nothing sent later when the app is closed. |
+| P4b-3 | Keep the salesmen list (Rep_Mapping) in memory instead of opening Meta-Data every save? | **Yes, longer:** the list seldom changes; add a **refresh button in the sheet menu**. (Agent: 24 hours + Sales Diary → Refresh salesmen + Check setup.) |

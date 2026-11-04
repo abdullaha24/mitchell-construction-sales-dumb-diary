@@ -23,28 +23,15 @@
     deleted).
 
 ## Next
-**Phase 3 (my sites + add a site) is Done and live** (deployment version 3, same address). The
-owner tested it on his phone (RIA and SJ test links): sites saved, no-number second tap, new
-area, SJ can't see RIA's sites, duplicate warning shows only "someone in the team", Check
-setup shows no-number counts. Test rows (3 sites, 3 activity rows, test area DHA) were deleted
-with his OK, so `Sites` / `Activity` are empty and IDs start again at `S000001` (no real IDs
-were ever issued). His owner, RIA and SJ test links are still active.
+**Phase 4 (update a site) is Done and live** (deployment version 4). The owner tested it on his
+phone; test rows deleted with his OK (`Sites` / `Activity` empty again). His owner, RIA and SJ
+test links are still active.
 
-**Phase 4 (update a site, spec 004) is built, reviewed and tested locally**: 242 tests and 3
-browser checks pass on a fresh clone. The independent review found no way to reach another
-salesman's site; its 7 points (checks inside the lock, repeat/corrected saves, unchanged cells
-never rewritten, junk phone = no number, turned-off areas/products, "Keep" follow-up, late
-replies) are fixed and tested.
-
-**Next: go live with the owner** (plan 004 step 5), same routine as phase 3:
-1. clasp sign-in (recipe below); `npx clasp push --force`; pull back and compare;
-   `npx clasp update-deployment AKfycbwmWhxLQfpkQRfFIfdv9tZD4CvZfeWEB__YiXnGTSk7-6mlZVZUvLEp2aJDwey0HXaF -d "phase 4: update a site"`.
-2. Owner, on his RIA test link: add a TEST site with a number and one without; take the first
-   through Rate Quoted (value + Cash/Credit) → Won → back to Sample / Trial → Lost (Other +
-   note); move the second to Sample / Trial (number box appears); Edit details: change a name
-   and a number.
-3. Agent checks `Sites` / `Activity` via the connector (no link codes), then deletes the test
-   rows with the owner's OK. `npx clasp logout`, delete `~/.clasprc.json`.
+**Phase 4b (spec 005, Draft): instant saves, faster server, stage when adding a site**, from
+the owner's observations on his phone (adding then reopening to set the stage is two jobs; a
+save takes 4–5 s). Measured live: ~1 s Google overhead per request, ~0.6 s per Sales Diary
+open + Links read; one add-site call opens Sales Diary 3 times and Meta-Data once. **Waiting for
+the owner to approve spec 005.**
 
 Carry forward (phase 4 and later):
 - **Never run `create-deployment` again.** Put new code live with
@@ -91,7 +78,7 @@ link's. Delete the log afterwards. At the end of the session: `npx clasp logout`
   paste them into files.
 
 ## Questions for the owner
-None open.
+- **Approve spec 005 (phase 4b)?**
 Ask questions the owner's way:
 - One question at a time.
 - Tappable options. Use the multiple-choice question tool if you have one (Claude Code:

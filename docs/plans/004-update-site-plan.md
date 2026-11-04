@@ -27,4 +27,4 @@ Tap a card → site screen with Update and Edit details; drafts kept per site; b
 
 ## [x] Step 4: Docs, review, local acceptance
 
-## [ ] Step 5: Live (with the owner), then close out
+## [x] Step 5: Live (with the owner), then close out
