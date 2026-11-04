@@ -21,17 +21,23 @@
 - **No app code yet.**
 
 ## Next
-Write the **phase 1 spec**, `docs/specs/001-foundations.md` (status `Draft`), then stop for owner
-approval. It covers clasp and local tests (ADR-0003), creating the Sales Diary sheet and its tabs,
-seeding `Lists`, and reading salesmen and targets from Meta-Data. Things the spec must handle:
-- `Rep-Targets` and `Targets` months are **date cells**, not text.
-- Owner's own workings sit in `Rep-Targets` E2 and E74:I90, beside real data rows (SM's rows are
-  A74:C84). Read only A–C and skip blank rows.
-- The owner must run `clasp login` once; credentials never go in git.
+- **Spec 001 (foundations) is written as `Draft`:** `docs/specs/001-foundations.md`. Waiting for
+  owner approval. **No code until it's `Approved`.**
+- After approval: answer its two open questions with the owner, write a build plan
+  (`docs/plans/001-foundations-plan.md`, small testable steps), then build.
+- Facts checked while writing it (2026-11-04): clasp 3.4.1, TypeScript 7.0.2 (type-checks JSDoc
+  JS fine), Node 22 in the cloud container. `clasp push` needs `--force` in a non-interactive
+  shell or it silently skips. Meta-Data months are dates and must be read in the sheet's own
+  timezone. Details are in the spec's *Gotchas*.
 
 ## Questions for the owner
-None open. When new ones come up, add them here and in `open-questions.md`, and ask them the
-owner's way:
+Spec 001's two open questions, to ask **after** he approves (or comments on) the spec:
+1. Which Google account owns the app and the Sales Diary sheet? *(Recommended: the account that
+   owns Meta-Data.)*
+2. Where is clasp logged in? *(Recommended: in the agent's cloud session when needed, with
+   `clasp logout` at the end.)* · on the owner's own computer.
+
+Ask the owner's way:
 - One question at a time.
 - Tappable options. Use the multiple-choice question tool if you have one (Claude Code:
   `AskUserQuestion`); otherwise give numbered options.

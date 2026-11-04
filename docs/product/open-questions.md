@@ -7,7 +7,11 @@ the data model, update those too. The ready-to-ask versions (options and recomme
 
 ## Open
 
-_None right now._ Add new questions here as they come up.
+From [spec 001](../specs/001-foundations.md#open-questions) (ask after the spec is reviewed):
+1. **Which Google account owns the app and the Sales Diary sheet?** It must be able to open
+   Meta-Data; the app runs as this account. (Recommended: the account that owns Meta-Data.)
+2. **Where is clasp logged in** to send code: in the agent's cloud session when needed
+   (recommended), or on the owner's own computer?
 
 ## Answered
 

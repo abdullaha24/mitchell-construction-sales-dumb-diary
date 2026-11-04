@@ -15,4 +15,4 @@ Status values: `Draft` → `Approved` → `In progress` → `Done` (or `Dropped`
 
 | # | Spec | Status |
 | --- | --- | --- |
-| _none yet_ | | |
+| [001](001-foundations.md) | Foundations: tooling, Sales Diary sheet, reading Meta-Data | Draft |
