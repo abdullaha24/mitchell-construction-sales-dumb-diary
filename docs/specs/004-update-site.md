@@ -1,7 +1,7 @@
 # 004: Update a site
 
-- **Status:** Draft
-- **Owner approval:** _pending_
+- **Status:** Approved
+- **Owner approval:** approved by the owner on 2026-11-04 (session 3)
 - **Related:** roadmap phase 4 · ADR-0004 (private lists) · [glossary](../product/glossary.md) →
   Sales stages · [data model](../architecture/data-model.md) → `Sites`, `Activity` · builds on
   [spec 003](003-my-sites.md)

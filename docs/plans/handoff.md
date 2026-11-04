@@ -30,9 +30,8 @@ setup shows no-number counts. Test rows (3 sites, 3 activity rows, test area DHA
 with his OK, so `Sites` / `Activity` are empty and IDs start again at `S000001` (no real IDs
 were ever issued). His owner, RIA and SJ test links are still active.
 
-**Spec 004 (update a site) is a Draft** (`docs/specs/004-update-site.md`) with the owner's
-answers P4-1 to P4-4. **Waiting for the owner to approve it.** Then write
-`docs/plans/004-update-site-plan.md` and build like phase 3.
+**Spec 004 (update a site) is Approved** (2026-11-04). Build it with
+`docs/plans/004-update-site-plan.md`.
 
 Carry forward (phase 4 and later):
 - **Never run `create-deployment` again.** Put new code live with
@@ -79,7 +78,7 @@ link's. Delete the log afterwards. At the end of the session: `npx clasp logout`
   paste them into files.
 
 ## Questions for the owner
-- **Approve spec 004?** (If he wants changes, update the spec first.)
+None open.
 Ask questions the owner's way:
 - One question at a time.
 - Tappable options. Use the multiple-choice question tool if you have one (Claude Code:
