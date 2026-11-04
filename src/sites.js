@@ -145,6 +145,27 @@ function phoneOwners_(sites, phone, rep) {
 }
 
 /**
+ * The Check setup lines on sites with no phone number (spec 003, owner P3-4): each current
+ * salesman with at least one site, North, Center, South, as "RIA  2 of 5".
+ * @param {Tab} sites
+ * @param {Salesman[]} salesmen
+ * @returns {string[]}
+ */
+function noNumberLines_(sites, salesmen) {
+  const ordered = REGIONS.flatMap((region) => salesmen.filter((s) => s.region === region));
+  const counts = ordered
+    .map((s) => {
+      const his = sites.rows.filter((r) => tidyCode_(r.rep) === s.rep);
+      return { rep: s.rep, total: his.length, none: his.filter((r) => !phoneText_(r.contact_phone)).length };
+    })
+    .filter((c) => c.total > 0);
+  if (counts.length === 0) return ['Sites with no phone number: no sites yet.'];
+  const width = Math.max(...counts.map((c) => c.rep.length)) + 2;
+  return ['Sites with no phone number'].concat(
+    counts.map((c) => `  ${padRight_(c.rep, width)}${c.none} of ${c.total}`));
+}
+
+/**
  * Saves a checked new site for a salesman, inside the script lock: the `Sites` row, the
  * `created` row in `Activity`, and a new area in `Lists` if needed. Returns the new site ID.
  * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} diary

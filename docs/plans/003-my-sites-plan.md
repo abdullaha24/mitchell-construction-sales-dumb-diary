@@ -28,7 +28,7 @@ on a weak connection). New Site form, two-tap save without a number, duplicate w
 "Did you mean", draft kept on the phone, "no signal" message. Browser check
 (`tests/browser/app.check.js`).
 
-## [ ] Step 4: No-number counts in Check setup
+## [x] Step 4: No-number counts in Check setup
 
 ## [ ] Step 5: Docs, review, local acceptance
 

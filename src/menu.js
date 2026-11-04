@@ -44,8 +44,18 @@ function menuCheckSetup() {
   // Setup first, so the tabs exist even when Meta-Data can't be read.
   const setup = setUpSalesDiary_(diary);
   const metaData = readMetaData_();
+  const problems = setup.problems.slice();
+  /** @type {string[]} */
+  let siteLines = [];
+  if (metaData.ok) {
+    try {
+      siteLines = noNumberLines_(readTab_(diary, DIARY_TABS.sites), metaData.salesmen);
+    } catch (error) {
+      problems.push(error instanceof Error ? error.message : String(error));
+    }
+  }
   const message = metaData.ok
-    ? buildSummary_(metaData, new Date(), setup.problems)
+    ? buildSummary_(metaData, new Date(), problems, siteLines)
     : [metaData.message]
       .concat(setup.problems.length ? [''].concat(problemLines_(setup.problems)) : [])
       .join('\n');

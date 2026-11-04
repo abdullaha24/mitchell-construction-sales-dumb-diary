@@ -400,8 +400,10 @@ function problemLines_(problems) {
  * @param {MetaData} data
  * @param {Date} now
  * @param {string[]} [moreProblems] problems found outside Meta-Data (e.g. in Sales Diary)
+ * @param {string[]} [moreLines] another section, shown before the problems (spec 003: sites
+ *   with no phone number)
  */
-function buildSummary_(data, now, moreProblems = []) {
+function buildSummary_(data, now, moreProblems = [], moreLines = []) {
   const month = currentMonthKey_(now);
   const label = monthLabel_(month);
   /** @param {number | null} amount */
@@ -431,6 +433,7 @@ function buildSummary_(data, now, moreProblems = []) {
     lines.push(`  ${padRight_(r.name, regionWidth)}${amountText(targetFor_(data.regionTargets, r.key, month))}`);
   }
 
+  if (moreLines.length) lines.push('', ...moreLines);
   lines.push('', ...problemLines_(data.problems.concat(moreProblems)));
   return lines.join('\n');
 }

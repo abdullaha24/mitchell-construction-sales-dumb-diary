@@ -211,3 +211,40 @@ test('a Meta-Data problem row is listed under Check these', () => {
   assert.ok(lines.includes("- Rep-Targets row 40: target 'abc' is not a number."));
   assert.ok(!lines.includes('Nothing to fix.'));
 });
+
+// ------------------------------------------------------------- Sites with no number (spec 003)
+
+const SITES_HEADER = ['site_id', 'rep', 'region', 'site_name', 'buyer_type', 'area', 'contact_name',
+  'contact_phone', 'products', 'stage', 'value_rs', 'payment_terms', 'lost_reason',
+  'next_followup', 'last_note', 'created_at', 'updated_at'];
+const siteWith = (rep, phone) => SITES_HEADER.map((h) => ({ site_id: 'S1', rep, site_name: 'x', contact_phone: phone })[h] ?? '');
+
+test('Check setup lists sites with no phone number per salesman, North to South', () => {
+  const { src, diary, ui } = world();
+  diary.insertSheet('Sites').getRange(1, 1, 6, SITES_HEADER.length).setValues([
+    SITES_HEADER, siteWith('IB', ''), siteWith('RIA', '923001234567'), siteWith('RIA', ''),
+    siteWith('ria', ' '), siteWith('MUB', ''),
+  ]);
+  src.sandbox.menuCheckSetup();
+  const lines = ui.alerts[0].args[1].split('\n');
+  const at = lines.indexOf('Sites with no phone number');
+  assert.ok(at > 0, lines.join('\n'));
+  assert.deepEqual(lines.slice(at + 1, at + 3), ['  RIA  2 of 3', '  IB   1 of 1']);
+  assert.equal(lines[at + 3], '', 'only salesmen with sites; MUB (left) is not listed');
+  assert.equal(lines[lines.length - 1], 'Nothing to fix.');
+});
+
+test('Check setup on a sheet with no sites yet says so', () => {
+  const { src, ui } = world();
+  src.sandbox.menuCheckSetup();
+  assert.ok(ui.alerts[0].args[1].split('\n').includes('Sites with no phone number: no sites yet.'));
+});
+
+test('a broken Sites tab is listed under Check these, and the pop-up still shows', () => {
+  const { src, diary, ui } = world();
+  diary.insertSheet('Sites').getRange(1, 1, 1, 2).setValues([['site_id', 'rep']]);
+  src.sandbox.menuCheckSetup();
+  const lines = ui.alerts[0].args[1].split('\n');
+  assert.ok(lines.includes('Check these:'));
+  assert.ok(lines.some((l) => l.includes("Sites has no 'region' column in row 1.")), lines.join('\n'));
+});
