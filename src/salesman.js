@@ -48,6 +48,11 @@ function loadFor_(salesman) {
     today: dayKey_(new Date()),
     sites: sitesOf_(readTab_(diary, DIARY_TABS.sites), salesman.rep),
     ...choicesFor_(lists, salesman.region),
+    // The stage rules, so the page asks for the same things the server checks (spec 004).
+    rules: {
+      stages: STAGES, valueStages: VALUE_STAGES, numberStages: NUMBER_STAGES,
+      closedStages: CLOSED_STAGES, lostStage: LOST_STAGE, paymentTerms: PAYMENT_TERMS,
+    },
   };
 }
 

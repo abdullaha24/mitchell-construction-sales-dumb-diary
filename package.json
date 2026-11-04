@@ -10,7 +10,7 @@
     "test": "node --test \"tests/**/*.test.js\"",
     "typecheck": "tsc -p .",
     "check": "npm run typecheck && npm test",
-    "check:browser": "node tests/browser/links-window.check.js && node tests/browser/app.check.js"
+    "check:browser": "node tests/browser/links-window.check.js && node tests/browser/app.check.js && node tests/browser/update.check.js"
   },
   "devDependencies": {
     "@google/clasp": "3.4.1",

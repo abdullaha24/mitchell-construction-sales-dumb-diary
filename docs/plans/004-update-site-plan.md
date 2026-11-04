@@ -22,7 +22,7 @@ stages, notes up to 200, the number gate, "a number can't be removed", "Nothing 
 `update`, `details` with old → new number). Cards carry value, terms, reason, note, products.
 `src/salesman.js`: the two public functions. Allow-list → 12.
 
-## [ ] Step 3: The site screen
+## [x] Step 3: The site screen
 Tap a card → site screen with Update and Edit details; drafts kept per site; browser check.
 
 ## [ ] Step 4: Docs, review, local acceptance

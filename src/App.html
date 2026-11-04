@@ -49,6 +49,16 @@
                max-width: calc(100% - 32px); text-align: center; }
       #toast.error { background: var(--red); }
       [hidden] { display: none !important; }
+      .card { cursor: pointer; }
+      .card .value { color: var(--ink); font-size: 14px; margin-top: 2px; font-weight: 600; }
+      .tag.lost { background: #fde8e8; color: var(--red); }
+      .tag.won { background: #e3f5ec; color: var(--green); }
+      .site-head { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+      .site-head h2 { font-size: 20px; margin: 0 0 4px; }
+      .site-head .line { color: var(--soft); font-size: 15px; margin-top: 2px; }
+      .site-head .lastnote { margin-top: 8px; font-size: 15px; }
+      .section { font-size: 18px; font-weight: 700; margin: 20px 0 0; }
+      #formTitle { font-size: 20px; margin: 4px 0 0; }
     </style>
   </head>
   <body>
@@ -65,7 +75,46 @@
       <div id="sites"></div>
     </main>
 
+    <main id="siteView" hidden>
+      <div class="site-head" id="siteHead"></div>
+      <button class="plain" id="editDetails" type="button" style="margin-top:10px">Edit details</button>
+
+      <div class="section">Update</div>
+      <div class="label">Stage</div>
+      <div class="pills" id="u-stage"></div>
+
+      <div id="u-valueBox" hidden>
+        <label for="u-value">Total Rs. value</label>
+        <input id="u-value" type="text" inputmode="numeric" maxlength="16" autocomplete="off" placeholder="e.g. 450,000">
+        <div class="label">Cash or Credit</div>
+        <div class="pills" id="u-terms"></div>
+      </div>
+
+      <div id="u-lostBox" hidden>
+        <div class="label">Why was it lost?</div>
+        <div class="pills" id="u-lost"></div>
+      </div>
+
+      <div id="u-phoneBox" hidden>
+        <label for="u-phone" id="u-phoneLabel">Contact phone</label>
+        <input id="u-phone" type="tel" inputmode="tel" maxlength="24" autocomplete="off" placeholder="e.g. 0300 1234567">
+        <div id="u-phoneNote" class="note" hidden></div>
+      </div>
+
+      <div id="u-followBox">
+        <div class="label">Next follow-up</div>
+        <div class="pills" id="u-follow"></div>
+        <input id="u-date" type="date" hidden style="margin-top:8px">
+      </div>
+
+      <label for="u-note">Quick note <span class="opt" id="u-noteOpt">(optional)</span></label>
+      <input id="u-note" type="text" maxlength="200" autocomplete="off" placeholder="e.g. Quoted WP-100 @ 1,450">
+
+      <div id="u-problem" class="note error" hidden></div>
+    </main>
+
     <main id="formView" hidden>
+      <h2 id="formTitle">New site</h2>
       <label for="f-name">Site / party name</label>
       <input id="f-name" type="text" maxlength="80" autocomplete="off" placeholder="e.g. F-11 Commercial Tower">
 
@@ -89,9 +138,11 @@
         <div class="pills" id="areaSuggest" style="margin-top:8px"></div>
       </div>
 
-      <div class="label">Next follow-up</div>
-      <div class="pills" id="f-follow"></div>
-      <input id="f-date" type="date" hidden style="margin-top:8px">
+      <div id="f-followBox">
+        <div class="label">Next follow-up</div>
+        <div class="pills" id="f-follow"></div>
+        <input id="f-date" type="date" hidden style="margin-top:8px">
+      </div>
 
       <div id="formNote" class="note error" hidden></div>
     </main>
@@ -109,7 +160,12 @@
       var DRAFT_KEY = 'salesdiary.draft.' + data.rep;
       var FOLLOW = [['tomorrow', 'Tomorrow'], ['3days', '3 days'], ['1week', '1 week'], ['date', 'Pick date']];
       var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      var SAVE_WAIT_MS = 30000;
+      var screen = 'list';        // 'list' | 'form' | 'site'
+      var mode = { kind: 'new' }; // the details form: { kind: 'new' } or { kind: 'edit', siteId }
+      var openId = '';            // the site on the site screen
       var form = emptyForm();
+      var upd = null;
       var confirmNoNumber = false;
       var busy = false;
       var phoneCheck = { valid: true };
@@ -120,6 +176,12 @@
         if (text !== undefined) n.textContent = text;
         if (cls) n.className = cls;
         return n;
+      }
+      function rules() { return data.rules; }
+      function has(list, x) { return list.indexOf(x) >= 0; }
+      function siteById(id) {
+        for (var i = 0; i < data.sites.length; i++) if (data.sites[i].id === id) return data.sites[i];
+        return null;
       }
       // A one-time ID per form, so a save repeated after a lost reply is saved only once.
       function newSaveId() {
@@ -133,7 +195,6 @@
       function emptyForm() {
         return { name: '', buyerType: '', contactName: '', phone: '', products: [], area: '', newArea: '', addingArea: false, followUp: 'tomorrow', date: '', saveId: newSaveId() };
       }
-      var SAVE_WAIT_MS = 30000;
       var storageWorks = (function () {
         try { localStorage.setItem('salesdiary.test', '1'); localStorage.removeItem('salesdiary.test'); return true; } catch (e) { return false; }
       })();
@@ -142,6 +203,13 @@
         var p = key.split('-');
         return Number(p[2]) + ' ' + MONTHS[Number(p[1]) - 1];
       }
+      // How a salesman knows a number: 923001234567 → 0300 1234567 (stored form unchanged).
+      function showPhone(p) {
+        if (/^923\d{9}$/.test(p)) return '0' + p.slice(2, 5) + ' ' + p.slice(5);
+        if (/^92\d+$/.test(p)) return '0' + p.slice(2);
+        return p ? '+' + p : '';
+      }
+      function rs(n) { return 'Rs. ' + String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
       function toast(text, isError) {
         var t = $('toast');
         t.textContent = text;
@@ -150,20 +218,85 @@
         clearTimeout(toast.timer);
         toast.timer = setTimeout(function () { t.style.display = 'none'; }, isError ? 6000 : 2500);
       }
+      function addDays(key, days) {
+        var p = key.split('-').map(Number);
+        var d = new Date(Date.UTC(p[0], p[1] - 1, p[2] + days));
+        return d.toISOString().slice(0, 10);
+      }
+      function pill(text, pressed, onTap) {
+        var b = el('button', text, 'pill');
+        b.type = 'button';
+        b.setAttribute('aria-pressed', pressed ? 'true' : 'false');
+        b.addEventListener('click', onTap);
+        return b;
+      }
 
-      // ---- Draft kept on the phone until saved (spec 003, no signal) ----
-      function saveDraft() {
-        try { localStorage.setItem(DRAFT_KEY, JSON.stringify(form)); } catch (e) { /* storage blocked: no draft */ }
+      // ---- Drafts kept on the phone until saved (spec 003 / 004, no signal) ----
+      function store(key, value) {
+        try { if (value === null) localStorage.removeItem(key); else localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* storage blocked */ }
       }
-      function loadDraft() {
-        try { var d = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); return d && typeof d === 'object' ? d : null; } catch (e) { return null; }
+      function fetchStored(key) {
+        try { var d = JSON.parse(localStorage.getItem(key) || 'null'); return d && typeof d === 'object' ? d : null; } catch (e) { return null; }
       }
-      function clearDraft() {
-        try { localStorage.removeItem(DRAFT_KEY); } catch (e) { /* nothing to clear */ }
-      }
+      function formKey() { return mode.kind === 'edit' ? DRAFT_KEY + '.edit.' + mode.siteId : DRAFT_KEY; }
+      function updKey(id) { return DRAFT_KEY + '.update.' + id; }
+      function saveDraft() { store(formKey(), form); }
       function hasDraft() {
-        var d = loadDraft();
+        var d = fetchStored(DRAFT_KEY);
         return !!(d && (d.name || d.contactName || d.phone || d.newArea || (d.products && d.products.length)));
+      }
+
+      // ---- Sending a save: one way for all three forms ----
+      function readable(error) {
+        var message = (error && error.message) || String(error || '');
+        if ((typeof navigator !== 'undefined' && navigator.onLine === false) ||
+            /network|connection|HTTP 0|failed to fetch|timed? ?out/i.test(message)) {
+          return 'Not saved: no signal. Tap Save again.';
+        }
+        return message.replace(/^(Exception|Error):\s*/, '') || 'Something went wrong. Try again.';
+      }
+      function savedToast(r) {
+        var w = r.warning || {};
+        if (w.team) toast('Saved. Someone in the team already works with this contact.');
+        else if (w.mine && w.mine.length) toast('Saved. You already have this number: ' + w.mine.join(', ') + '.');
+        else toast('Saved');
+      }
+      // Calls the server; `problem` shows a message; `done` gets a good reply.
+      function send(fn, args, problem, done) {
+        busy = true; renderSave();
+        var attempt = send.attempt = (send.attempt || 0) + 1;
+        // If Google never answers, give up waiting; a later answer is still used if it comes.
+        var giveUp = setTimeout(function () {
+          if (attempt !== send.attempt || !busy) return;
+          busy = false; confirmNoNumber = false; renderSave();
+          problem('Not saved: no signal. Tap Save again.');
+        }, SAVE_WAIT_MS);
+        var run = google.script.run.withSuccessHandler(function (r) {
+          clearTimeout(giveUp);
+          busy = false; confirmNoNumber = false;
+          if (!r || !r.ok) { renderSave(); return problem((r && r.message) || 'Something went wrong. Try again.'); }
+          var keepK = k;
+          data = r; data.k = keepK;
+          done(r);
+        }).withFailureHandler(function (error) {
+          clearTimeout(giveUp);
+          if (attempt !== send.attempt) return;
+          busy = false; confirmNoNumber = false; renderSave();
+          problem(readable(error));
+        });
+        run[fn].apply(run, args);
+      }
+      function renderSave() {
+        var save = $('save');
+        var asking = screen === 'form' && mode.kind === 'new' && confirmNoNumber && !form.phone.trim();
+        save.textContent = busy ? 'Saving…' : (asking ? 'Save without a number?' : 'Save');
+        save.className = 'big' + (asking && !busy ? ' warn' : '');
+        save.disabled = busy;
+      }
+      function clearProblem() {
+        $('formNote').hidden = true;
+        $('u-problem').hidden = true;
+        $('toast').style.display = 'none';
       }
 
       // ---- List ----
@@ -179,25 +312,131 @@
         }
         data.sites.forEach(function (s) {
           var card = el('div', undefined, 'card');
+          card.setAttribute('role', 'button');
+          card.addEventListener('click', function () { showSite(s.id); });
           card.appendChild(el('div', s.name, 'name'));
           var meta = [s.area, s.buyerType].filter(Boolean).join(' · ');
           if (meta) card.appendChild(el('div', meta, 'meta'));
+          if (s.value && has(rules().valueStages, s.stage)) card.appendChild(el('div', rs(s.value) + (s.terms ? ' · ' + s.terms : ''), 'value'));
           if (s.followUp) card.appendChild(el('div', 'Follow up: ' + shortDay(s.followUp), 'meta'));
-          card.appendChild(el('span', s.stage, 'tag'));
+          card.appendChild(el('span', s.stage, 'tag' + stageClass(s.stage)));
           if (!s.phone) card.appendChild(el('span', 'No number yet', 'tag nonum'));
           box.appendChild(card);
         });
       }
-
-      // ---- Form ----
-      function pill(text, pressed, onTap) {
-        var b = el('button', text, 'pill');
-        b.type = 'button';
-        b.setAttribute('aria-pressed', pressed ? 'true' : 'false');
-        b.addEventListener('click', onTap);
-        return b;
+      function stageClass(stage) {
+        if (stage === rules().lostStage) return ' lost';
+        if (has(rules().closedStages, stage)) return ' won';
+        return '';
       }
+
+      // ---- Site screen: details and Update (spec 004) ----
+      function emptyUpdate(s) {
+        return { stage: s.stage, value: s.value ? String(s.value) : '', terms: s.terms, lostReason: s.lostReason,
+          followUp: 'tomorrow', date: '', note: '', phone: '', saveId: newSaveId() };
+      }
+      function renderSiteHead(s) {
+        var head = $('siteHead'); head.textContent = '';
+        head.appendChild(el('h2', s.name));
+        var meta = [s.area, s.buyerType].filter(Boolean).join(' · ');
+        if (meta) head.appendChild(el('div', meta, 'line'));
+        head.appendChild(el('div', [s.contactName, showPhone(s.phone)].filter(Boolean).join(' · ') || ' ', 'line'));
+        if (!s.phone) head.appendChild(el('span', 'No number yet', 'tag nonum'));
+        head.appendChild(el('span', s.stage, 'tag' + stageClass(s.stage)));
+        if (s.value) head.appendChild(el('div', 'Last value: ' + rs(s.value) + (s.terms ? ' · ' + s.terms : ''), 'line'));
+        if (s.lostReason && s.stage === rules().lostStage) head.appendChild(el('div', 'Lost: ' + s.lostReason, 'line'));
+        if (s.followUp) head.appendChild(el('div', 'Follow up: ' + shortDay(s.followUp), 'line'));
+        if (s.note) head.appendChild(el('div', '“' + s.note + '”', 'lastnote'));
+      }
+      function renderUpdate() {
+        var s = siteById(openId);
+        var r = rules();
+        var stages = $('u-stage'); stages.textContent = '';
+        r.stages.forEach(function (st) {
+          stages.appendChild(pill(st, upd.stage === st, function () { upd.stage = st; updChanged(); }));
+        });
+        $('u-valueBox').hidden = !has(r.valueStages, upd.stage);
+        $('u-value').value = upd.value;
+        var terms = $('u-terms'); terms.textContent = '';
+        r.paymentTerms.forEach(function (t) {
+          terms.appendChild(pill(t, upd.terms === t, function () { upd.terms = t; updChanged(); }));
+        });
+        $('u-lostBox').hidden = upd.stage !== r.lostStage;
+        var lost = $('u-lost'); lost.textContent = '';
+        data.lostReasons.forEach(function (reason) {
+          lost.appendChild(pill(reason, upd.lostReason === reason, function () { upd.lostReason = reason; updChanged(); }));
+        });
+        var needsNumber = has(r.numberStages, upd.stage) && !s.phone;
+        $('u-phoneBox').hidden = !needsNumber;
+        $('u-phoneLabel').textContent = "Add the contact's number to move this site to " + upd.stage;
+        $('u-phone').value = upd.phone;
+        $('u-followBox').hidden = has(r.closedStages, upd.stage);
+        var follow = $('u-follow'); follow.textContent = '';
+        FOLLOW.forEach(function (f) {
+          follow.appendChild(pill(f[1], upd.followUp === f[0], function () { upd.followUp = f[0]; updChanged(); }));
+        });
+        $('u-date').hidden = upd.followUp !== 'date';
+        $('u-date').min = data.today;
+        $('u-date').max = addDays(data.today, 365);
+        $('u-date').value = upd.date;
+        $('u-note').value = upd.note;
+        var noteNeeded = upd.stage === r.lostStage && /^other$/i.test(upd.lostReason || '');
+        $('u-noteOpt').textContent = noteNeeded ? '(needed for Other)' : '(optional)';
+        renderSave();
+      }
+      function updChanged() { clearProblem(); store(updKey(openId), upd); renderUpdate(); }
+      function saveUpdate() {
+        if (busy) return;
+        var s = siteById(openId);
+        var r = rules();
+        var box = $('u-problem');
+        function problem(text) { box.textContent = text; box.hidden = false; toast(text, true); }
+        var digits = String(upd.value).replace(/^\s*rs\.?/i, '').replace(/[,\s]/g, '');
+        if (has(r.valueStages, upd.stage)) {
+          if (!/^\d+$/.test(digits) || Number(digits) < 1) return problem('Type the total Rs. value.');
+          if (!upd.terms) return problem('Tap Cash or Credit.');
+        }
+        if (upd.stage === r.lostStage) {
+          if (!upd.lostReason) return problem('Tap a lost reason.');
+          if (/^other$/i.test(upd.lostReason) && !upd.note.trim()) return problem('Write a short note for Other.');
+        }
+        if (has(r.numberStages, upd.stage) && !s.phone && !upd.phone.trim()) {
+          return problem("Add the contact's number to move this site to " + upd.stage + '.');
+        }
+        if (!has(r.closedStages, upd.stage) && upd.followUp === 'date' && !upd.date) return problem('Pick a follow-up date.');
+        clearProblem();
+        var input = {
+          stage: upd.stage, value: upd.value, terms: upd.terms, lostReason: upd.lostReason,
+          followUp: upd.followUp === 'date' ? upd.date : upd.followUp, note: upd.note, phone: upd.phone, saveId: upd.saveId,
+        };
+        var id = openId;
+        send('repUpdateSite', [k, id, input], problem, function (reply) {
+          store(updKey(id), null);
+          showList(); savedToast(reply);
+        });
+      }
+      function checkUpdPhone() {
+        var typed = upd.phone.trim();
+        var note = $('u-phoneNote');
+        if (!typed) { note.hidden = true; return; }
+        google.script.run.withSuccessHandler(function (r) { showPhoneNote(note, r, typed === upd.phone.trim()); })
+          .withFailureHandler(function () { /* no signal: the save will check again */ }).repCheckPhone(k, typed);
+      }
+      function showPhoneNote(note, r, current) {
+        if (!current) return; // he typed more meanwhile
+        var lines = [];
+        var cls = 'note warn';
+        if (!r.valid) { lines.push('Check the number.'); cls = 'note error'; }
+        if (r.team) lines.push('Someone in the team already works with this contact.');
+        if (r.mine && r.mine.length) lines.push('You already have this number: ' + r.mine.join(', ') + '.');
+        note.textContent = lines.join(' ');
+        note.className = cls;
+        note.hidden = !lines.length;
+      }
+
+      // ---- Details form: + New Site and Edit details ----
       function renderForm() {
+        $('formTitle').textContent = mode.kind === 'edit' ? 'Edit details' : 'New site';
         $('f-name').value = form.name;
         $('f-contact').value = form.contactName;
         $('f-phone').value = form.phone;
@@ -216,7 +455,9 @@
           }));
         });
         var areas = $('f-areas'); areas.textContent = '';
-        data.areas.forEach(function (a) {
+        var areaList = data.areas.slice();
+        if (form.area && !form.addingArea && !has(areaList, form.area)) areaList.push(form.area); // his site's area
+        areaList.forEach(function (a) {
           areas.appendChild(pill(a, !form.addingArea && form.area === a, function () {
             form.area = form.area === a && !form.addingArea ? '' : a; form.addingArea = false; changed();
           }));
@@ -228,6 +469,7 @@
         $('newAreaBox').hidden = !form.addingArea;
         renderSuggestions();
 
+        $('f-followBox').hidden = mode.kind === 'edit';
         var follow = $('f-follow'); follow.textContent = '';
         FOLLOW.forEach(function (f) {
           follow.appendChild(pill(f[1], form.followUp === f[0], function () { form.followUp = f[0]; changed(); }));
@@ -238,27 +480,11 @@
         $('f-date').value = form.date;
         renderSave();
       }
-      function renderSave() {
-        var save = $('save');
-        var noNumber = !form.phone.trim();
-        save.textContent = busy ? 'Saving…' : (confirmNoNumber && noNumber ? 'Save without a number?' : 'Save');
-        save.className = 'big' + (confirmNoNumber && noNumber && !busy ? ' warn' : '');
-        save.disabled = busy;
-      }
-      function clearProblem() {
-        $('formNote').hidden = true;
-        $('toast').style.display = 'none';
-      }
       function changed() {
         confirmNoNumber = false;
         clearProblem();
         saveDraft();
         renderForm();
-      }
-      function addDays(key, days) {
-        var p = key.split('-').map(Number);
-        var d = new Date(Date.UTC(p[0], p[1] - 1, p[2] + days));
-        return d.toISOString().slice(0, 10);
       }
 
       // "Did you mean": the same rules as the server (src/siterules.js areaMatches_).
@@ -300,30 +526,14 @@
         var note = $('phoneNote');
         if (!typed) { phoneCheck = { valid: true }; note.hidden = true; return; }
         google.script.run.withSuccessHandler(function (r) {
-          if (form.phone.trim() !== typed) return; // he typed more meanwhile
+          if (form.phone.trim() !== typed) return;
           phoneCheck = r;
-          var lines = [];
-          var cls = 'note warn';
-          if (!r.valid) { lines.push('Check the number.'); cls = 'note error'; }
-          if (r.team) lines.push('Someone in the team already works with this contact.');
-          if (r.mine && r.mine.length) lines.push('You already have this number: ' + r.mine.join(', ') + '.');
-          note.textContent = lines.join(' ');
-          note.className = cls;
-          note.hidden = !lines.length;
+          showPhoneNote(note, r, true);
         }).withFailureHandler(function () { /* no signal: the save will check again */ })
           .repCheckPhone(k, typed);
       }
 
-      // ---- Saving ----
-      function readable(error) {
-        var message = (error && error.message) || String(error || '');
-        if ((typeof navigator !== 'undefined' && navigator.onLine === false) ||
-            /network|connection|HTTP 0|failed to fetch|timed? ?out/i.test(message)) {
-          return 'Not saved: no signal. Tap Save again.';
-        }
-        return message.replace(/^(Exception|Error):\s*/, '') || 'Something went wrong. Try again.';
-      }
-      function save() {
+      function saveForm() {
         if (busy) return;
         var note = $('formNote');
         // Shown under the form and as a pop-up just above Save, which he may be looking at.
@@ -331,65 +541,86 @@
         if (!form.name.trim()) return problem('Type the site name.');
         if (!form.buyerType) return problem('Tap a buyer type.');
         if (phoneCheck.valid === false && form.phone.trim()) return problem('Check the number.');
-        if (form.followUp === 'date' && !form.date) return problem('Pick a follow-up date.');
-        if (!form.phone.trim() && !confirmNoNumber) { confirmNoNumber = true; clearProblem(); renderSave(); return; }
-
+        if (mode.kind === 'edit') {
+          var site = siteById(mode.siteId);
+          if (site && site.phone && !form.phone.trim()) return problem("A site's number can be changed, not removed.");
+        } else {
+          if (form.followUp === 'date' && !form.date) return problem('Pick a follow-up date.');
+          if (!form.phone.trim() && !confirmNoNumber) { confirmNoNumber = true; clearProblem(); renderSave(); return; }
+        }
         if (!form.saveId) { form.saveId = newSaveId(); saveDraft(); }
-        busy = true; note.hidden = true; renderSave();
+        note.hidden = true;
         var input = {
           name: form.name, buyerType: form.buyerType, contactName: form.contactName, phone: form.phone,
-          products: form.products, area: form.addingArea ? form.newArea : form.area,
-          followUp: form.followUp === 'date' ? form.date : form.followUp, saveId: form.saveId,
+          products: form.products, area: form.addingArea ? form.newArea : form.area, saveId: form.saveId,
         };
-        var attempt = save.attempt = (save.attempt || 0) + 1;
-        // If Google never answers, give up waiting; a later answer is still used if it comes.
-        var giveUp = setTimeout(function () {
-          if (attempt !== save.attempt || !busy) return;
-          busy = false; confirmNoNumber = false; renderSave();
-          problem('Not saved: no signal. Tap Save again.');
-        }, SAVE_WAIT_MS);
-        google.script.run.withSuccessHandler(function (r) {
-          clearTimeout(giveUp);
-          busy = false; confirmNoNumber = false;
-          if (!r || !r.ok) { renderSave(); return problem((r && r.message) || 'Something went wrong. Try again.'); }
-          var keepK = k;
-          data = r; data.k = keepK;
-          form = emptyForm(); clearDraft(); phoneCheck = { valid: true };
-          showList();
-          var w = r.warning || {};
-          if (w.team) toast('Saved. Someone in the team already works with this contact.');
-          else if (w.mine && w.mine.length) toast('Saved. You already have this number: ' + w.mine.join(', ') + '.');
-          else toast('Saved');
-        }).withFailureHandler(function (error) {
-          clearTimeout(giveUp);
-          if (attempt !== save.attempt) return;
-          busy = false; confirmNoNumber = false; renderSave();
-          problem(readable(error));
-        }).repAddSite(k, input);
+        var key = formKey();
+        if (mode.kind === 'edit') {
+          var id = mode.siteId;
+          send('repEditSite', [k, id, input], problem, function (reply) {
+            store(key, null); phoneCheck = { valid: true };
+            showSite(id); savedToast(reply);
+          });
+        } else {
+          input.followUp = form.followUp === 'date' ? form.date : form.followUp;
+          send('repAddSite', [k, input], problem, function (reply) {
+            form = emptyForm(); store(key, null); phoneCheck = { valid: true };
+            showList(); savedToast(reply);
+          });
+        }
       }
 
       // ---- Screens ----
-      function showList() {
-        $('formView').hidden = true; $('formActions').hidden = true;
-        $('listView').hidden = false; $('newSite').hidden = false;
-        renderList(); window.scrollTo(0, 0);
+      function showOnly(name) {
+        screen = name;
+        $('listView').hidden = name !== 'list';
+        $('siteView').hidden = name !== 'site';
+        $('formView').hidden = name !== 'form';
+        $('formActions').hidden = name === 'list';
+        $('newSite').hidden = name !== 'list';
+        clearProblem();
+        window.scrollTo(0, 0);
       }
-      function showForm() {
-        var draft = loadDraft();
-        form = draft ? Object.assign(emptyForm(), draft) : emptyForm();
+      function showList() { showOnly('list'); renderList(); }
+      function showSite(id) {
+        var s = siteById(id);
+        if (!s) return showList();
+        openId = id;
+        var draft = fetchStored(updKey(id));
+        upd = draft ? Object.assign(emptyUpdate(s), draft) : emptyUpdate(s);
+        if (!upd.saveId) upd.saveId = newSaveId();
+        $('u-phoneNote').hidden = true;
+        showOnly('site');
+        renderSiteHead(s);
+        renderUpdate();
+      }
+      function showForm(editId) {
+        mode = editId ? { kind: 'edit', siteId: editId } : { kind: 'new' };
+        var draft = fetchStored(formKey());
+        if (draft) {
+          form = Object.assign(emptyForm(), draft);
+        } else if (editId) {
+          var s = siteById(editId);
+          form = Object.assign(emptyForm(), { name: s.name, buyerType: s.buyerType, contactName: s.contactName,
+            phone: showPhone(s.phone), products: s.products.slice(), area: s.area });
+        } else {
+          form = emptyForm();
+        }
         if (!form.saveId) form.saveId = newSaveId();
-        if (!data.buyerTypes.length) form.buyerType = '';
         confirmNoNumber = false; phoneCheck = { valid: true };
-        $('phoneNote').hidden = true; $('formNote').hidden = true;
-        $('listView').hidden = true; $('newSite').hidden = true;
-        $('formView').hidden = false; $('formActions').hidden = false;
-        renderForm(); window.scrollTo(0, 0);
-        if (form.phone) checkPhone();
+        $('phoneNote').hidden = true;
+        showOnly('form');
+        renderForm();
+        if (form.phone && !editId) checkPhone();
       }
 
-      $('newSite').addEventListener('click', showForm);
-      $('cancel').addEventListener('click', showList);
-      $('save').addEventListener('click', save);
+      $('newSite').addEventListener('click', function () { showForm(''); });
+      $('editDetails').addEventListener('click', function () { showForm(openId); });
+      $('cancel').addEventListener('click', function () {
+        if (screen === 'form' && mode.kind === 'edit') showSite(mode.siteId); else showList();
+      });
+      $('save').addEventListener('click', function () { if (screen === 'site') saveUpdate(); else saveForm(); });
+
       $('f-name').addEventListener('input', function (e) { form.name = e.target.value; confirmNoNumber = false; clearProblem(); saveDraft(); renderSave(); });
       $('f-contact').addEventListener('input', function (e) { form.contactName = e.target.value; clearProblem(); saveDraft(); });
       $('f-phone').addEventListener('input', function (e) {
@@ -402,6 +633,16 @@
       $('f-phone').addEventListener('change', checkPhone);
       $('f-newarea').addEventListener('input', function (e) { form.newArea = e.target.value; saveDraft(); renderSuggestions(); });
       $('f-date').addEventListener('change', function (e) { form.date = e.target.value; saveDraft(); });
+
+      $('u-value').addEventListener('input', function (e) { upd.value = e.target.value; clearProblem(); store(updKey(openId), upd); });
+      $('u-note').addEventListener('input', function (e) { upd.note = e.target.value; clearProblem(); store(updKey(openId), upd); });
+      $('u-date').addEventListener('change', function (e) { upd.date = e.target.value; store(updKey(openId), upd); });
+      $('u-phone').addEventListener('input', function (e) {
+        upd.phone = e.target.value; clearProblem(); store(updKey(openId), upd);
+        $('u-phoneNote').hidden = true;
+        clearTimeout(checkUpdPhone.timer);
+        if (upd.phone.replace(/\D/g, '').length >= 10) checkUpdPhone.timer = setTimeout(checkUpdPhone, 700);
+      });
 
       showList();
     </script>
