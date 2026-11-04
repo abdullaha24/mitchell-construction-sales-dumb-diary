@@ -58,3 +58,9 @@ Owner, session 2 (2026-11-04):
 | S1-4 | Meta-Data ID: pasted by owner, or in the code? (spec 001 review) | **In the code** (ADR-0007, supersedes that bullet of ADR-0005). |
 | S1-5 | Compare region totals with salesmen's targets? (spec 001 review) | **No.** |
 | S1-6 | Rows in Rep-Targets for people who have left? (spec 001 review) | **Ignored silently.** A typo still shows, because that salesman then has "no target". |
+
+Owner, session 3 (2026-11-04):
+
+| # | Question | Answer |
+| --- | --- | --- |
+| S3-1 | Two docs (spec 001's example pop-up, one data-model line) quoted real November 2026 targets. Swap them for made-up amounts, or leave them? | **Swap for made-up amounts.** Done the same day, including the amount used as the parsing example (now `12,345,000`). Older versions in git history still hold them; no history rewrite unless the owner asks. |

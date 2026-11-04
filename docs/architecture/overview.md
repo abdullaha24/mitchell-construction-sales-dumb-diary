@@ -1,6 +1,7 @@
 # Architecture overview
 
-> Status: **Draft**. Describes the intended design; nothing is built yet. Update this as code lands.
+> Status: **Draft**. Describes the intended design. Phase 1 (foundations) is built: see
+> [`src/README.md`](../../src/README.md) for what each file holds. Update this as code lands.
 
 ## The pieces
 

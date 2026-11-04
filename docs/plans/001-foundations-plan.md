@@ -16,7 +16,7 @@
 
 ## Steps 1–7: local, no Google account needed
 
-### [ ] Step 1: Tooling skeleton
+### [x] Step 1: Tooling skeleton
 - `package.json`: `"private": true`, `"engines": { "node": ">=22" }`, exact-pinned dev
   dependencies (`@google/clasp` 3.4.1, `typescript` 7.0.2, `@types/google-apps-script` 2.0.14),
   scripts `test` (`node --test "tests/**/*.test.js"`), `typecheck` (`tsc -p .`), `check`
@@ -34,7 +34,7 @@
 - **Done when:** `npm run check` passes on Node 22.
 - Commit: "Add tooling: package.json, tsconfig, test loader, config".
 
-### [ ] Step 2: Fakes
+### [x] Step 2: Fakes
 - `tests/helpers/fakes.js`, kept minimal:
   - Fake spreadsheet built from `{ tabName: [[row], …] }` plus a timezone. Lets a test read back
     every tab's values and formats. Has a **read-only** mode where every write method throws.
@@ -47,7 +47,7 @@
 - **Done when:** `npm run check` passes.
 - Commit: "Add minimal fakes for Google services".
 
-### [ ] Step 3: Rules and fixture
+### [x] Step 3: Rules and fixture
 - `tests/fixtures/meta-data.js`: the real sheet's **shape** with made-up amounts. `Rep_Mapping`
   has the 7 salesmen. `Rep-Targets` has rows grouped as on the live sheet (RIA, SH, AUR, WAK, MUB's
   single July row, SJ from Aug, IB), a value in E2, the E74:I90 block (with `rep` text in E74),
@@ -55,7 +55,7 @@
   comma text. `Targets` has North, Center, South and UNASSIGNED rows. Edge cases go in small
   tables inside each test, not in the fixture.
 - `src/rules.js`: `findColumns_`, `tidyCode_`, `monthKey_`, `monthLabel_` (`2026-11` →
-  `November 2026`, from a fixed month-name list), `parseRs_`, `formatRs_` (`Rs. 13,800,000`,
+  `November 2026`, from a fixed month-name list), `parseRs_`, `formatRs_` (`Rs. 12,345,000`,
   built by hand, not with locale functions), `readSalesmen_`, `readTargets_` (one function used
   for both `Rep-Targets` and `Targets`), `buildSummary_`. Every problem includes its tab and row
   number. "Now" is a parameter.
@@ -64,8 +64,9 @@
 - **Done when:** `npm run check` passes.
 - Commit: "Add Meta-Data reading rules with tests".
 
-### [ ] Step 4: Read Meta-Data
-- `src/metadata.js`: `readMetaData_(now)` opens the Meta-Data sheet by its ID (and only ever
+### [x] Step 4: Read Meta-Data
+- `src/metadata.js`: `readMetaData_()` *(built without `now`: reading doesn't depend on the date;
+  `buildSummary_(data, now)` does)* opens the Meta-Data sheet by its ID (and only ever
   reads it), finds the three tabs,
   reads each with `getDataRange().getValues()`, gets the timezone from `getSpreadsheetTimeZone()`,
   and hands everything to the rules. It returns either the results or one clear message (can't
@@ -75,7 +76,7 @@
 - **Done when:** `npm run check` passes.
 - Commit: "Read salesmen and targets from Meta-Data (read-only)".
 
-### [ ] Step 5: Set up the Sales Diary tabs
+### [x] Step 5: Set up the Sales Diary tabs
 - `src/setup.js`: `setUpSalesDiary_(ss)` per the spec's *Setting up* rules: create missing tabs
   (bold, frozen header), make `contact_phone` plain text on a new `Sites`, set the timezone,
   fill each empty list in `Lists`, delete an empty `Sheet1` last.
@@ -84,13 +85,13 @@
 - **Done when:** `npm run check` passes.
 - Commit: "Create Sales Diary tabs and starting Lists".
 
-### [ ] Step 6: Menu and placeholder web app
+### [x] Step 6: Menu and placeholder web app
 - `src/menu.js`:
   - `onOpen()` adds **Sales Diary → Check setup**. No signed-in check.
   - `isSignedInSelf_()`: active user's email is non-empty and equals the effective user's.
   - `menuCheckSetup()`: if `isSignedInSelf_()` fails, throw a short error and do nothing else.
     Otherwise run `setUpSalesDiary_(SpreadsheetApp.getActiveSpreadsheet())`, then
-    `readMetaData_(new Date())`, then show the summary or the message with `ui.alert`. Setup runs
+    `readMetaData_()`, then show the summary or the message with `ui.alert`. Setup runs
     first, so the tabs exist even when Meta-Data can't be read.
 - `src/webapp.js` + `src/Index.html`: `doGet()` returns `Index.html` titled "Sales Diary", with a
   phone viewport tag. The page says only "Sales Diary is set up." No data, no server calls.
@@ -102,7 +103,7 @@
 - **Done when:** `npm run check` passes.
 - Commit: "Add Check setup menu and placeholder web app".
 
-### [ ] Step 7: Docs and local acceptance
+### [x] Step 7: Docs and local acceptance
 - `AGENTS.md`: add `## Commands` (exact commands from the spec) and update *Status*.
 - Spec status → `In progress`. Update `handoff.md`.
 - Fresh-clone check: clone the branch into the scratchpad, `npm ci`, `npm run check`.

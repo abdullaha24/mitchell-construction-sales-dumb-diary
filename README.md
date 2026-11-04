@@ -10,7 +10,7 @@ He logs visits, quotes, wins and losses in a couple of taps. Everything lands in
 and the owner gets his own screen: pipeline by salesman and region, who worked today, what's
 overdue or going cold, and why deals were lost.
 
-**Status:** planning. No app yet.
+**Status:** phase 1 (foundations) is built and tested locally; it is not live yet.
 
 ## Read more
 

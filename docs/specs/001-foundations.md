@@ -1,6 +1,8 @@
 # 001: Foundations
 
-- **Status:** Approved (v2, after adversarial review and owner answers)
+- **Status:** In progress. Build steps 1–7 (local) done 2026-11-04; step 8 (live, with the owner) next.
+  Approved v2 after adversarial review and owner answers; v2.1 adds the build clarifications
+  marked *(v2.1)* below, none of which changes what the owner sees in a normal run.
 - **Owner approval:** approved by the owner on 2026-11-04 (session 2)
 - **Related:** roadmap phase 1 · ADR-0001 (Sheets + Apps Script) · ADR-0003 (tooling) ·
   ADR-0005 (two sheets) · ADR-0007 (Meta-Data ID in code) ·
@@ -37,16 +39,16 @@ Salesmen: 7
   South: IB
 
 Targets for November 2026
-  RIA   Rs. 13,800,000
-  AUR   Rs. 7,200,000
+  RIA   Rs. 12,345,000
+  AUR   Rs. 6,789,000
   ...
-  IB    Rs. 1,500,000
+  IB    Rs. 1,111,000
 
 Region targets for November 2026
-  North                 Rs. 21,800,000
-  Center                Rs. 6,400,000
-  South                 Rs. 1,500,000
-  House / office sales  Rs. 8,300,000
+  North                 Rs. 20,000,000
+  Center                Rs. 6,000,000
+  South                 Rs. 1,111,000
+  House / office sales  Rs. 9,000,000
 
 Nothing to fix.
 ```
@@ -56,6 +58,10 @@ each naming the tab and row, e.g. *"Rep-Targets row 40: target 'abc' is not a nu
 If the Meta-Data sheet can't be opened, or a needed tab or column is missing, the pop-up says only
 that, e.g. *"Can't open the Meta-Data sheet. Check it still exists and your Google account can
 open it."* or *"Rep-Targets has no 'Target' column in row 1."*
+
+*(v2.1)* Problems found in the **Sales Diary** sheet itself are listed under *Check these* too.
+Today there is one: a `Lists` tab missing one of its columns, e.g. *"Lists has no 'sort' column in
+row 1. The starting lists were not added."* It is listed even when Meta-Data can't be opened.
 
 ### One-time setup (about 15 minutes)
 **The owner does three things.** The agent does the rest and guides him through each one.
@@ -94,7 +100,8 @@ under third-party connections.
 - `Region` must be North, Center or South (any capitals). Otherwise: *Check these*, and that
   salesman is left out.
 - A row with only one of the two filled in: *Check these*.
-- The same `Rep` listed twice: *Check these*, and the first row is used.
+- The same `Rep` listed twice: *Check these*, and the first row is used. *(v2.1)* The first row
+  counts even if it has its own problem (then that salesman is left out until it's fixed).
 
 ### Reading `Rep-Targets` (salesman targets)
 - Columns `Rep`, `Month`, `Target`. **Everything else on the tab is ignored**, including the
@@ -104,10 +111,13 @@ under third-party connections.
   turned into a month **using the Meta-Data sheet's own timezone**. *Why:* the cell "1 Aug 2026"
   is 31 Jul, 7 pm in UTC, so reading it in UTC would make every target one month early.
   Anything else: *Check these*.
-- **Target** may be a number or text such as `13,800,000` or `Rs. 13,800,000` (commas, `Rs.` and
+- **Target** may be a number or text such as `12,345,000` or `Rs. 12,345,000` (commas, `Rs.` and
   spaces are removed). It must then be a whole number, zero or more. Anything else: *Check these*,
-  and the row is ignored.
-- **A target of 0 means no target**, the same as a missing row.
+  and the row is ignored. *(v2.1)* A number within 0.000001 of a whole number counts as that
+  whole number, because a formula such as `=7000000*1.1` shows 7,700,000 but is stored as
+  7700000.000000001.
+- **A target of 0 means no target**, the same as a missing row. *(v2.1)* So a 0 row never makes a
+  duplicate: the owner can zero an old row and add a new one.
 - **The same salesman and month twice:** *Check these*, and that salesman has **no target** for
   that month until it's fixed. The app doesn't pick one or add them up.
 - Rows for people **not in `Rep_Mapping`** (e.g. MUB's July 2026 row) are **ignored silently**.
@@ -127,15 +137,18 @@ under third-party connections.
   exists is never touched**, even if its headers differ.
 - On creating `Sites`, its `contact_phone` column is set to plain text, so `923001234567` keeps its
   digits instead of showing as `9.23E+11`.
-- Sets the Sales Diary sheet's timezone to `Asia/Karachi`.
+- Sets the Sales Diary sheet's timezone to `Asia/Karachi`. *(v2.1)* Only when it's different, so
+  running Check setup again makes no edit at all.
 - Fills `Lists` **per list** (`product_category`, `lost_reason`, `buyer_type`) **only when that
   list has no rows**, with the values and order in the data model (`Lists` → starting contents),
   `added_by` = `owner`, `active` = TRUE, `region` blank, `sort` = 10, 20, 30, …
   `area` starts empty. The owner's edits are never overwritten. (If he deletes every row of a list,
-  the next Check setup refills it.)
+  the next Check setup refills it.) *(v2.1)* `Lists` columns are found by header name like
+  everywhere else. If one of the six is missing, nothing is added to `Lists` and it is listed
+  under *Check these*.
 - Deletes the blank `Sheet1` tab that Google adds to a new spreadsheet, **only** if it's
   completely empty, and only after the other tabs exist (Google won't delete a spreadsheet's last
-  tab).
+  tab). *(v2.1)* "Completely empty" means no cell values, no charts and no images.
 
 ### Safety rules for all code (from now on)
 - **A web page can call any public function in the script.** Apps Script lets a page call any
@@ -145,7 +158,10 @@ under third-party connections.
     A test fails if any other public function appears.
   - `menuCheckSetup` **refuses to run** unless a signed-in person is running it as themselves
     (in code: the active user's email is non-empty and equals the effective user's email). That's
-    true when the owner taps the menu, and never true for a web app visitor.
+    true when the owner taps the menu, and false for every web app visitor except the owner
+    himself while signed in to Google. *(v2.1, corrected: it was "never true for a web app
+    visitor".)* If the owner ever triggered it from a page, setup would only add what's missing
+    and the pop-up would fail, so no harm; phase 2's public functions use the link code instead.
   - `onOpen` has **no** such check. It only adds the menu, and it runs in a limited mode where
     Google may not give the user's email, so a check would hide the menu.
 - The web app is deployed for **"only myself"** in this phase (`access: "MYSELF"`). In phase 2
@@ -205,9 +221,11 @@ under third-party connections.
 | `tests/*.test.js` | The tests below. |
 
 ### Gotchas found while checking (2026-11-04)
-- All `src/*.js` files share one global scope. Same-named functions in two files clash (`tsc`
-  reports "Duplicate function implementation"). Top-level `const` values must not depend on
-  other files.
+- All `src/*.js` files share one global scope. Top-level `const` values must not depend on
+  other files. *(v2.1, corrected)* A `const` defined in two files is caught by `tsc` and by the
+  test loader, but a **function** defined in two files is **not** caught by `tsc` in plain JS
+  (checked with TypeScript 7.0.2): in Apps Script the file loaded last silently wins. A test
+  (`tests/load-src.test.js`) fails on any duplicate top-level function name.
 - In the test sandbox, top-level `const` values aren't properties of the sandbox object. Read
   them with `vm.runInContext('NAME', ctx)`.
 - Objects made inside the sandbox fail `assert.deepStrictEqual` against plain test objects
@@ -227,8 +245,8 @@ under third-party connections.
   and listed; half-filled row listed; duplicate listed, first row used.
 - **Months:** 1 Aug 2026 00:00 Karachi reads as `2026-08`, not `2026-07`; text `2026-11` works;
   bad text listed with its row.
-- **Amounts:** `13800000`, `"13,800,000"`, `"Rs. 13,800,000"` all give 13800000; `"abc"`, `-5`,
-  `1.5` listed; 0 means no target. Formatting gives `Rs. 13,800,000`.
+- **Amounts:** `12345000`, `"12,345,000"`, `"Rs. 12,345,000"` all give 12345000; `"abc"`, `-5`,
+  `1.5` listed; 0 means no target. Formatting gives `Rs. 12,345,000`.
 - **Targets:** stray cells and the E74:I90 block ignored; SM's rows beside it read; duplicate
   salesman + month → no target and listed; MUB ignored without a message; missing → no target.
 - **Region targets:** `UNASSIGNED` is House / office sales; an unknown region is listed.
@@ -247,10 +265,10 @@ under third-party connections.
 
 ## Acceptance criteria
 Checked locally by the agent:
-- [ ] `npm install` then `npm run check` pass on a clean clone (Node 22).
-- [ ] Every test under *Tests* exists and passes.
-- [ ] No secrets in git (no `.clasprc.json`, no tokens). The fixture uses made-up amounts.
-- [ ] `AGENTS.md` has a `## Commands` section with these commands, and its *Status* is updated.
+- [x] `npm install` then `npm run check` pass on a clean clone (Node 22). *(2026-11-04, `npm ci`, Node 22.23)*
+- [x] Every test under *Tests* exists and passes.
+- [x] No secrets in git (no `.clasprc.json`, no tokens). The fixture uses made-up amounts.
+- [x] `AGENTS.md` has a `## Commands` section with these commands, and its *Status* is updated.
 
 Checked live with the owner:
 - [ ] The Sales Diary sheet is in the owner's Drive with **Sites**, **Activity**, **Lists**,

@@ -24,8 +24,32 @@ Read before any product or UI work:
 
 ## Status
 
-Planning done (phase 0). **No app code, build, lint or test commands exist yet.** Don't invent
-them. When tooling is added, list the exact commands in a `## Commands` section here.
+Phase 0 (planning) done. **Phase 1 (foundations, spec 001) is built and tested locally** but
+**not live yet**: build step 8 (clasp sign-in, create the sheet, deploy) needs the owner present.
+See `docs/plans/handoff.md`.
+
+## Commands
+
+Node 22 or newer. All checks run locally with no Google account.
+
+| Command | Does |
+| --- | --- |
+| `npm install` | Installs the pinned tools (clasp, TypeScript, Apps Script types). `npm ci` on a clean clone. |
+| `npm test` | All tests: `node --test "tests/**/*.test.js"`. |
+| `npm run typecheck` | `tsc -p .`: type-checks `src/` (plain JS with JSDoc). |
+| `npm run check` | Type check, then tests. **Must pass before every commit.** |
+| `npx clasp push --force` | Sends `src/` to Apps Script. Always `--force`: without it, in a non-interactive shell clasp **silently skips** the push. Git is the source of truth. |
+| `npx clasp show-file-status` | Lists the files a push would send (should be `appsscript.json`, the `.js` files and `Index.html`). |
+| `npx clasp create-deployment -d "<note>"` | Creates the web app. **Once only**: each run makes a new address. |
+| `npx clasp update-deployment <deploymentId> -d "<note>"` | Puts the latest pushed code live **at the same address**. Use this for every update after the first. |
+
+Code rules that tests enforce:
+- Helper functions end in `_`. The only public functions are `doGet`, `onOpen`, `menuCheckSetup`
+  (a web page can call any public function). Adding one means updating `tests/menu.test.js`
+  and saying why in the spec.
+- No function name may be defined in two `src/` files (tsc does **not** catch this for JS; the
+  last-loaded file would silently win in Apps Script).
+- Only `src/metadata.js` opens the Meta-Data sheet, read-only.
 
 ## Where things live
 

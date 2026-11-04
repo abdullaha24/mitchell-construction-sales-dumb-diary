@@ -1,7 +1,7 @@
 # Data model (Google Sheets)
 
-> Status: **Draft v0.3** (2026-11-04), updated after the owner interview and session 2 answers. Still a draft until the
-> phase 1 spec is approved. The tabs and headers act as the app's database schema. **Any change
+> Status: **v0.4** (2026-11-04). v0.3 came from the owner interview and session 2 answers; v0.4
+> aligns the Meta-Data reading notes with [spec 001](../specs/001-foundations.md) as built. The tabs and headers act as the app's database schema. **Any change
 > here must be made in the same change as the code.**
 
 Two spreadsheets (ADR-0005):
@@ -39,10 +39,12 @@ Diary `Links` can't open the app, whatever this tab says.
 | --- | --- | --- |
 | `Rep` | RIA | |
 | `Month` | 2026-11 | Stored as a **date cell** (1st of the month) shown as `yyyy-mm`, so Apps Script reads a `Date`, not text. Accept both a `Date` and `YYYY-MM` text. Data runs Jul 2026 – Jun 2027. |
-| `Target` | 13,800,000 | Rs. Stored as a number shown as `#,##0`, but parse text with commas too in case the owner types one. |
+| `Target` | 12,345,000 | Rs. Stored as a number shown as `#,##0`, but parse text with commas too in case the owner types one. |
 
-**Read only columns A–C, and skip rows where any of them is blank.** Other cells are the owner's
-own workings and not part of the data: a formula in E2, and a hand-made October progress table
+**Read only the `Rep`, `Month` and `Target` columns** (found by header name in row 1; today they
+are A–C). Rows with all three blank are skipped; a row with only some filled in is listed under
+*Check these* (exact rules in [spec 001](../specs/001-foundations.md) → Rules). Other cells are
+the owner's own workings and not part of the data: a formula in E2, and a hand-made October progress table
 in **E74:I90**. Rows are **not** grouped neatly by salesman: SM's rows (A74:C84) sit beside that
 table. Missing target for a salesman/month → show no target.
 
@@ -50,15 +52,16 @@ Edits made on 2026-11-04 with the owner's explicit OK (session 2):
 - MUB keeps **Jul 2026** only. From **Aug 2026** his targets are split 50/50: his old rows became
   SJ's (half value), and SM got matching new rows.
 - All UAK rows (Jul 2026 – Jun 2027) now belong to **IB**.
-- Region totals in `Targets` were unchanged and still match (e.g. Center Nov 2026:
-  SH 5.4M + SJ 0.5M + SM 0.5M = 6.4M).
+- Region totals in `Targets` were unchanged and still match (checked for Center, Nov 2026:
+  SH + SJ + SM = the Center target). *(Amounts removed from the docs on 2026-11-04 at the
+  owner's request: real targets stay out of git.)*
 
 ### Tab `Targets`
 | Column | Example | Notes |
 | --- | --- | --- |
 | `Region` | North | Also contains `UNASSIGNED` = **house / office sales**, not tied to a salesman. Shown on the owner screen only. |
 | `Month` | 2026-11 | Date cell, same as in `Rep-Targets`. |
-| `Target` | 21,800,000 | Rs. Equals the sum of that region's salesmen in `Rep-Targets` (checked for Nov 2026). |
+| `Target` | 20,000,000 | Rs. Equals the sum of that region's salesmen in `Rep-Targets` (checked for Nov 2026). |
 
 ---
 
@@ -88,7 +91,7 @@ the phase 2 spec.
 | `buyer_type` | Contractor / Applicator | Contractor / Applicator, Project Owner, Consultant, Dealer. |
 | `area` | DHA | Picked from areas in `Lists` for his region, or a new one he added. |
 | `contact_name` | Asif (site engineer) | |
-| `contact_phone` | 923001234567 | Stored in **one normalised format**: used for Call/WhatsApp and the duplicate warning. |
+| `contact_phone` | 923001234567 | Stored in **one normalised format**: used for Call/WhatsApp and the duplicate warning. Phase 1 setup formats this column as plain text for the tab's first 1,000 rows (Google's default size); code that writes phones must still write them as text. |
 | `products` | Waterproofing, Tile Bond | Product **categories**, from `Lists`. Storage format set in spec. |
 | `stage` | Rate Quoted | One of the five glossary stages. |
 | `value_rs` | 450000 | Latest quoted or won value. Set at Rate Quoted / Won. |
