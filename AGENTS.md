@@ -24,8 +24,9 @@ Read before any product or UI work:
 
 ## Status
 
-Phases 0–6 are **done and live** (specs 001–007, deployment version 9). Next: the phase 7 spec
-(the owner screen). Current state, next step and IDs: `docs/plans/handoff.md`.
+Phases 0–6 are **done and live** (specs 001–007, deployment version 9). Phase 7 (spec 008, the
+owner's screen, shown to people as **Admin**) is **built and checked locally**, not yet live.
+Current state, next step and IDs: `docs/plans/handoff.md`.
 
 ## Commands
 
@@ -45,9 +46,11 @@ Node 22 or newer. All checks run locally with no Google account.
 
 Code rules that tests enforce (the tests are the source of truth; keep this list short):
 - **Public functions** (any page can call them, with any arguments) are an allow-list in
-  `tests/menu.test.js`. Helpers end in `_`. Every `menu…` / `owner…` function starts with the
-  signed-in-owner check; every `rep…` function with `requireRep_(k)` inside `forSalesman_`, and
-  returns only that salesman's data (ADR-0004). Adding one: update the allow-list and the spec.
+  `tests/menu.test.js` (18). Helpers end in `_`. Every `menu…` / `owner…` function (run from the
+  sheet) starts with the signed-in-owner check; every `rep…` function with `requireRep_(k)` inside
+  `forSalesman_`, and returns only that salesman's data (ADR-0004); every `adminPage…` function
+  (the owner's screen, opened by link) with `requireAdminLink_(k)` inside `forAdminPage_`
+  (ADR-0010). A test checks each kind. Adding one: update the allow-list and the spec.
 - **No function name in two `src/` files** (tsc doesn't catch it for JS).
 - Only `src/metadata.js` opens Meta-Data (read-only); only `src/diary.js` opens Sales Diary by ID.
 - **Every typed or picked text written to a sheet goes through `asText_` / `textify_`** (no
@@ -56,6 +59,8 @@ Code rules that tests enforce (the tests are the source of truth; keep this list
   (`tests/speed.test.js`); replies carry only the changed card.
 - Link codes never go into git, logs or errors, and onto no page except the owner's Links
   window and the code holder's own page.
+- **Words on screen say "Admin", never "owner"** (owner P7-7). In code and docs "owner" is fine;
+  the `Links.role` value stays `owner`.
 - `src/appsscript.json` is pinned by a test: access `ANYONE_ANONYMOUS`, never `ANYONE`.
 
 ## Where things live

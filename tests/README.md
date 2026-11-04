@@ -10,7 +10,8 @@ Run them with `npm test` (or `npm run check` for type check + tests). Node's bui
 | `helpers/fakes.js` | Minimal fakes for `SpreadsheetApp`, `Session`, `HtmlService`, `Utilities`. Fake spreadsheets are plain tables; a **read-only** one (used for Meta-Data) throws on any write. Where the code depends on Google's behaviour, the fakes copy it. |
 | `fixtures/meta-data.js` | The live Meta-Data sheet's **shape** with **made-up amounts**. The owner's real targets never go in git. |
 | `*.test.js` | One file per `src` area, plus `fakes.test.js` and `load-src.test.js`. |
-| `browser/*.check.js` | `npm run check:browser`: the owner's Links window, and the salesman's page end to end (real `doGet` and server code on fake sheets, Chromium at 360px): adding (`app`), updating (`update`), the save queue (`queue`), the tabs, search and target (`tabs`, spec 006), and the card helpers, Snooze and the area filter (`cards`, spec 007). Not part of `npm test` (needs Playwright). |
+| `browser/*.check.js` | `npm run check:browser`: the owner's Links window, and the salesman's page end to end (real `doGet` and server code on fake sheets, Chromium at 360px): adding (`app`), updating (`update`), the save queue (`queue`), the tabs, search and target (`tabs`, spec 006), the card helpers, Snooze and the area filter (`cards`, spec 007), and the admin's screen and his Updates (`admin`, spec 008). Not part of `npm test` (needs Playwright). |
 
 Rule: new logic gets tests; new server functions get a test that a salesman only sees his own
-data (ADR-0004).
+data (ADR-0004). `admin.test.js` (spec 008): every `adminPage…` function gives nothing to a junk
+code, a salesman's code or a cancelled admin code; it reads `Activity` only from the bottom.

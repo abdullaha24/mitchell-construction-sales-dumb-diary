@@ -27,7 +27,10 @@
    (ADR-0004). The only cross-salesman lookup is the yes/no duplicate-phone check.
 4. Every change writes the current state to **Sites** and appends a row to **Activity**.
 5. Salesmen and targets come from the owner's Meta-Data sheet, read only (ADR-0005).
-6. The owner uses his own screen, or opens the Sales Diary sheet directly.
+6. The owner uses his own screen (spec 008: the **admin screen**, opened by his own private link,
+   the only page with everyone's data; he can Update sites there, recorded as `admin`,
+   ADR-0010), or opens the Sales Diary sheet directly. It reads this month's `Activity` from the
+   bottom only, never the whole tab.
 
 ## Layers (planned, see ADR-0003)
 

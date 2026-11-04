@@ -41,10 +41,11 @@
   `seen` may be a list of up to 5 states. 4 page behaviours mutation-checked in `admin.check.js`
   (`seen` sent, failed card on every tab, late order, Won day kept after a save), each caught.
 
-## [ ] Step 4: Docs, local acceptance
+## [x] Step 4: Docs, local acceptance
 - Data model, src/README.md, tests/README.md, AGENTS.md, roadmap ("built and checked locally"),
   spec criteria ticked.
-- Mutation checks on key assertions; fresh-clone check; secrets sweep.
+- Mutation checks on key assertions; fresh-clone check; secrets sweep. Done: 315 tests and 7
+  browser checks pass on a fresh clone; secrets sweep clean (made-up amounts only, no codes).
 - [ ] Independent review (coordinator).
 
 ## [ ] Step 5: Live (coordinator)

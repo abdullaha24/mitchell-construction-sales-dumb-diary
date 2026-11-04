@@ -1,6 +1,6 @@
 # 008: The owner screen (team, who worked today, late and going cold, this month; owner updates)
 
-- **Status:** Approved
+- **Status:** In progress (built and checked locally 2026-11-04, session 4; not live yet)
 - **Owner approval:** approved by the owner on 2026-11-04 (session 4), with answers P7-4 to P7-7
 - **Related:** roadmap phase 7 · [vision](../product/vision.md) → "What the owner gets" ·
   ADR-0004 (salesmen see only their own data) · ADR-0006 (owner private link) ·
@@ -207,12 +207,16 @@ P7-3), and the history shows it was him.
     (owner, P7-5: only the salesman's own Update resets going cold);
   - once per save ID (spec 005), remembered under `save:admin:<saveId>` (never a salesman's key);
   - reply: only that site's card (with its salesman), or `{ ok: false, message }`.
-- **Two people, one site** (salesman's Update **and** owner's Update): the form sends what it was
-  opened on (`seen`: stage, value, Cash / Credit, lost reason, follow-up). Inside the lock, if the
-  row's current values differ from `seen`, nothing is written and the reply is
+- **Two people, one site** (salesman's Update **and** owner's Update): the form sends the states
+  the site may be in on Google's side as far as that page knows (`seen`, up to 5 of: stage,
+  value, Cash / Credit, lost reason, follow-up): what Google last confirmed, and what each of the
+  page's own failed saves would have made it (a save whose reply was lost may have landed).
+  Inside the lock, if the row matches none of them, nothing is written and the reply is
   `{ ok: false, changed: true, message, site }` with the site as it is now. (His own saves sent
-  one after another still go through: each is opened on the result of the one before.) A form
-  from before this version, without `seen`, is saved as today.
+  one after another, a retried save, a correction after a lost reply, and an Update replacing a
+  failed snooze still go through.) A form from before this version, without `seen`, is saved as
+  today. *(Built: the list of states replaced a single state, found by the existing queue and
+  update browser checks.)*
 - **The owner-link check** (new helper `requireAdminLink_(k)`): a code not shaped like ours →
   *"This link doesn't work."* without opening any sheet; otherwise Sales Diary is opened once and
   `Links` read: only an **active** row with `role` = `owner` and exactly this code passes. A
@@ -294,7 +298,7 @@ P7-3), and the history shows it was him.
 (Amounts in this spec are made up; real targets never go in git, owner S3-1.)
 
 Checked locally:
-- [ ] Tests for every rule: worked today (each of the five actions counts; owner rows don't;
+- [x] Tests for every rule: worked today (each of the five actions counts; owner rows don't;
       yesterday's don't; 23:59 / 00:01 Pakistan time); "nothing logged" and "(no link)"; won this
       month (added straight at Won; `stage_change` to Won; won last month: not counted; quoted
       last month and won this month: counted; won then reopened: not counted; won twice: counted
@@ -303,34 +307,37 @@ Checked locally:
       counts; region and team sums; targets for salesman, region and house (none, 0, listed
       twice); late and going cold lists and their order; no-number and snooze counts; former
       salesmen's block.
-- [ ] Safety tests: every `adminPage…` function with a junk code (no sheet opened), a salesman's
+- [x] Safety tests: every `adminPage…` function with a junk code (no sheet opened), a salesman's
       code, a cancelled owner code, and no code: *"This link doesn't work."* and nothing else;
       every `rep…` function with the owner's code: refused; the owner's page holds no code but
       his own; a salesman's page data is unchanged (his sites and his target only; no region or
       house target, nobody else's site).
-- [ ] Owner Update tests: same checks and messages as the salesman's; `Activity.rep` = `admin`;
+- [x] Owner Update tests: same checks and messages as the salesman's; `Activity.rep` = `admin`;
       only changed cells written; texts as text (a note starting `=` stays text); `rep` and
       `region` never written; once per save ID under `save:admin:`; `adminPageSaveStatus`
       reports only his saves; unknown site ID refused; `worked_at` never written; note stored as "Admin: …";
       "two people, one site" refused both ways, nothing written, fresh card in the reply; a
       salesman's two saves in a row still both land.
-- [ ] Speed tests: opening the owner page opens Sales Diary once, Meta-Data not at all (fresh
+- [x] Speed tests: opening the owner page opens Sales Diary once, Meta-Data not at all (fresh
       copy), reads `Links`, `Sites`, `Lists` once and **never `Activity` whole**: with 5,000
       rows from earlier months and 40 from this month, at most 501 `Activity` rows are read
       (one block and the header); with 1,200 from this month, at most 1,501. An
       owner save: one open, each tab read once. Page data for 1,000 open sites stays under the
       pinned size.
-- [ ] Allow-list test: 18 public functions; a source test checks each `adminPage…` function
+- [x] Allow-list test: 18 public functions; a source test checks each `adminPage…` function
       starts with `requireAdminLink_` inside `forAdminPage_`, and each other `owner…` / `menu…`
       with the signed-in check.
-- [ ] Browser check at 360 px (new `admin.check.js`, against the real server code and fake
+- [x] Browser check at 360 px (new `admin.check.js`, against the real server code and fake
       sheets): the four tabs; Today (nothing logged, per-salesman filter, "You"); Team cards,
       targets, % and tap-through to sites and Back; Late / Going cold toggle, order, salesman
       badges; This month and lost-reason buttons; an Update from the owner screen: "Saving…" then
       cleared, a failed one orange on every tab; a "changed a moment ago" refusal; works with no
       signal after loading; no sideways scrolling. All existing salesman checks pass unchanged.
-- [ ] `npm run check` and `npm run check:browser` pass on a fresh clone; independent review;
-      secrets sweep (no link codes, no real target amounts).
+- [x] `npm run check` (315 tests) and `npm run check:browser` (7 checks, new: `admin.check.js`)
+      pass on a fresh clone; secrets sweep clean. Key assertions mutation-checked: 12 server
+      (`tests/admin.test.js` and others) and 4 page (`admin.check.js`), each broken on purpose, the
+      check failed, then restored.
+- [ ] Independent review (coordinator).
 
 Checked live (TEST rows on RIA's test link, deleted afterwards with the owner's OK):
 - [ ] **On the owner's phone**, his link shows the four tabs. The agent checks the numbers against

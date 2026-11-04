@@ -1,6 +1,7 @@
 # Data model (Google Sheets)
 
-> Status: **v0.6** (2026-11-04). v0.6: `worked_at`, `note_at` and the `snooze` action (spec 007, ADR-0009). v0.5: targets kept with the salesmen list (spec 006). v0.3 came from the owner interview and session 2 answers; v0.4
+> Status: **v0.7** (2026-11-04). v0.7: `Activity.rep` can be `admin`, region and house targets kept
+> (spec 008, ADR-0010). v0.6: `worked_at`, `note_at` and the `snooze` action (spec 007, ADR-0009). v0.5: targets kept with the salesmen list (spec 006). v0.3 came from the owner interview and session 2 answers; v0.4
 > aligns the Meta-Data reading notes with [spec 001](../specs/001-foundations.md) as built. The tabs and headers act as the app's database schema. **Any change
 > here must be made in the same change as the code.**
 
@@ -59,7 +60,7 @@ Edits made on 2026-11-04 with the owner's explicit OK (session 2):
 ### Tab `Targets`
 | Column | Example | Notes |
 | --- | --- | --- |
-| `Region` | North | Also contains `UNASSIGNED` = **house / office sales**, not tied to a salesman. Shown on the owner screen only. |
+| `Region` | North | Also contains `UNASSIGNED` = **house / office sales**, not tied to a salesman. Shown on the owner (admin) screen only (spec 008), kept like the salesmen's targets. |
 | `Month` | 2026-11 | Date cell, same as in `Rep-Targets`. |
 | `Target` | 20,000,000 | Rs. Equals the sum of that region's salesmen in `Rep-Targets` (checked for Nov 2026). |
 
@@ -73,7 +74,7 @@ Edits made on 2026-11-04 with the owner's explicit OK (session 2):
 added or set inactive by the app, never deleted, so the tab is a history of every link.
 | Column | Example | Notes |
 | --- | --- | --- |
-| `role` | rep | `rep` (a salesman) or `owner` (ADR-0006). |
+| `role` | rep | `rep` (a salesman) or `owner` (ADR-0006). The owner is shown to people as **Admin** (owner P7-7), but this value stays `owner`: it is his working link's row. |
 | `rep` | RIA | For `rep` rows: must exist in `Rep_Mapping`. Blank for the `owner` row. |
 | `token` | *(64 letters/digits)* | **Secret.** Stays **visible** in the tab (owner's choice P2-1, risk accepted): anyone who sees the tab can copy a working link. Column formatted as plain text. |
 | `active` | TRUE | FALSE = link cancelled. At most one TRUE row per person; **New link** cancels older ones. |
@@ -99,10 +100,10 @@ salesman's link works only while his `rep` is still in Meta-Data `Rep_Mapping`.
 | `payment_terms` | Credit | `Cash` or `Credit`. Required with a value. |
 | `lost_reason` | Other | An active `lost_reason` from `Lists`. Required at Lost / Dead; cleared when the site moves to any other stage. |
 | `next_followup` | 2026-11-06 | A date: midnight Pakistan time. Set when the site is added (Tomorrow by default). Drives *Today's Chase*. Blank at Won (Order) and Lost / Dead (owner P4-3). |
-| `last_note` | Waiting for consultant | The latest quick note (up to 200 letters); kept until a new one is written. Required if the lost reason is Other. |
+| `last_note` | Waiting for consultant | The latest quick note (up to 200 letters); kept until a new one is written. Required if the lost reason is Other. A note the admin wrote starts **"Admin: "** (owner P7-4; also in the `Activity` note). |
 | `created_at` | | Server timestamp. |
 | `updated_at` | | Server timestamp: the last change of any kind (Update, Edit details, Snooze). |
-| `worked_at` | | Server timestamp: when the site was added or last saved from the **Update** screen (spec 007, ADR-0009). **Drives "going cold"** (Sample / Trial or Rate Quoted, 7 days). Not written by Edit details or Snooze (owner P6-2). Blank (a row typed by hand) → `created_at` is used. |
+| `worked_at` | | Server timestamp: when the site was added or last saved from the salesman's **Update** screen (spec 007, ADR-0009). **Drives "going cold"** (Sample / Trial or Rate Quoted, 7 days). Not written by Edit details, Snooze (owner P6-2) or the admin's Update (P7-5). Blank (a row typed by hand) → `created_at` is used. |
 | `note_at` | | Server timestamp: when `last_note` was written (adding a site or an Update with a note). The day on the card's last-spoken line. Blank → the note shows without a day. |
 
 ### Tab `Activity`: history, append-only
@@ -112,7 +113,7 @@ One row per change. **Never edited or deleted by the app.**
 | --- | --- | --- |
 | `activity_id` | `A0004567` | `A` + 7 digits, one more than the highest in `Activity`. |
 | `timestamp` | | Server time. |
-| `rep` | RIA | Who made the change. |
+| `rep` | RIA | Who made the change: a salesman's code, or **`admin`** for an Update the owner made from his admin screen (spec 008, ADR-0010; the site's salesman is in `Sites.rep`). Admin rows never count as a salesman's work. |
 | `site_id` | `S000123` | |
 | `action` | stage_change | `created` (new site; since spec 005 with the stage it started at and its value, terms, reason and note), `stage_change` (with `from_stage` / `to_stage`), `update` (same stage: value, note or follow-up), `details` (Edit details: `note` lists what changed, with the old → new number), `snooze` (spec 007: the follow-up pushed from the card; `next_followup` = the new date, other detail columns blank; not counted as work). |
 | `from_stage` | Sample / Trial | Blank if not a stage change. |
@@ -149,8 +150,8 @@ Starting contents (filled in by phase 1 setup, only when a list has no rows yet)
 
 | Store | Key | Holds |
 | --- | --- | --- |
-| Script Properties | `salesmen` | The salesmen list from `Rep_Mapping` (codes and regions only), **each current salesman's `Rep-Targets` amount for this month and next month** (as `RIA\|yyyy-MM`: whole Rs., spec 006, so the 1st of a month rolls over without a refresh), and when it was read. Used for 24 hours, then read again (a copy without targets, from before spec 006, is read again at once); **Sales Diary → Refresh salesmen & targets**, Check setup and the Links window refresh it at once (specs 005, 006). Script Properties can only be seen by the script's owner. A salesman's page receives only his own target for this month. |
-| Script cache | `save:<rep>:<saveId>` | What a save did, for 6 hours, so a repeat after a lost reply isn't saved twice (specs 003–005). |
+| Script Properties | `salesmen` | The salesmen list from `Rep_Mapping` (codes and regions only), **each current salesman's `Rep-Targets` amount for this month and next month** (as `RIA\|yyyy-MM`: whole Rs., spec 006, so the 1st of a month rolls over without a refresh), **the `Targets` amounts for North, Center, South and `UNASSIGNED`** for the same two months, in their own `regionTargets` part (spec 008, admin screen only), and when it was read. Used for 24 hours, then read again (a copy without targets or `regionTargets`, from before spec 006 / 008, is read again at once); **Sales Diary → Refresh salesmen & targets**, Check setup and the Links window refresh it at once (specs 005, 006). Script Properties can only be seen by the script's owner. A salesman's page receives only his own target for this month; region and house targets reach only the admin screen. |
+| Script cache | `save:<rep>:<saveId>` | What a save did, for 6 hours, so a repeat after a lost reply isn't saved twice (specs 003–005). The admin's saves use `save:admin:<saveId>` (spec 008). |
 
 ## Not modelled yet
 - Multiple contacts per site (v1: one).
