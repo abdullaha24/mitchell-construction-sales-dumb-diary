@@ -1,6 +1,6 @@
 # 005: Instant saves, faster server, stage when adding a site
 
-- **Status:** Approved
+- **Status:** In progress (built, reviewed and tested locally 2026-11-04; going live next)
 - **Owner approval:** approved by the owner on 2026-11-04 (session 3)
 - **Related:** roadmap phase 4b (from the owner's phase 4 test) · builds on
   [spec 003](003-my-sites.md) and [spec 004](004-update-site.md) · ADR-0004 · data model
@@ -92,9 +92,9 @@ same extra fields as Update when he picks another stage:
 
 ## Acceptance criteria
 Checked locally:
-- [ ] Tests for every rule; `npm run check` and `npm run check:browser` pass.
-- [ ] A test counts sheet opens and tab reads per call: Sales Diary once; Meta-Data not at all
-      when the salesmen list is fresh.
+- [x] Tests for every rule; `npm run check` (260 tests) and `npm run check:browser` (4 checks) pass on a fresh clone.
+- [x] A test counts sheet opens and tab reads per call: Sales Diary once; Meta-Data not at all
+      when the salesmen list is fresh. (Add site: 4 opens / 8 reads → 1 / 4; update 4 / 7 → 1 / 4.)
 
 Checked live with the owner:
 - [ ] Measured: a save is confirmed by Google in about half today's time (agent times it).

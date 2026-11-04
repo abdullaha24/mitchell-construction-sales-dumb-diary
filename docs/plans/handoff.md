@@ -27,10 +27,23 @@
 phone; test rows deleted with his OK (`Sites` / `Activity` empty again). His owner, RIA and SJ
 test links are still active.
 
-**Phase 4b (spec 005, Draft): instant saves, faster server, stage when adding a site**, from
-the owner's observations on his phone (adding then reopening to set the stage is two jobs; a
-save takes 4–5 s). Measured live: ~1 s Google overhead per request, ~0.6 s per Sales Diary
-open + Links read; one add-site call opens Sales Diary 3 times and Meta-Data once. **Approved**; build with `docs/plans/005-faster-saves-plan.md`.
+**Phase 4b (spec 005: instant saves, faster server, stage when adding) is built, reviewed and
+tested locally**: 260 tests + 4 browser checks pass on a fresh clone. Per save: add site 4 sheet
+opens / 8 tab reads → 1 / 4; update 4 / 7 → 1 / 4; replies carry one card. The review found no
+security regression; its queue findings (storage blocked, several failed saves, reopening after
+a save that landed, overtaking, newer save replacing older) are fixed and reproduced by
+`tests/browser/queue.check.js`.
+
+**Next: go live with the owner** (plan 005 step 5):
+1. **Before deploying, time the live app** (baseline: ~1 s Google overhead; ~1.7 s for a page
+   load that opens Sales Diary). After deploying, time again: the agent can only time anonymous
+   requests; the owner judges the save feel on his phone.
+2. clasp sign-in; push; pull back and compare;
+   `npx clasp update-deployment AKfycbwmWhxLQfpkQRfFIfdv9tZD4CvZfeWEB__YiXnGTSk7-6mlZVZUvLEp2aJDwey0HXaF -d "phase 4b: instant saves"`.
+3. Owner: reload the sheet (new menu item **Refresh salesmen**; tap it once). On his RIA test
+   link: add a TEST site straight to Rate Quoted with a value; one straight to Won; save with
+   flight mode on (card turns orange; tap it, turn signal on, Save again).
+4. Agent checks `Sites` / `Activity`, deletes test rows with his OK, `clasp logout`.
 
 Carry forward (phase 4 and later):
 - **Never run `create-deployment` again.** Put new code live with

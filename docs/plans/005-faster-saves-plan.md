@@ -14,6 +14,6 @@
 
 ## [x] Step 3: The page: instant saves (one at a time, in order) and Stage in + New Site
 
-## [ ] Step 4: Docs, review, local acceptance
+## [x] Step 4: Docs, review, local acceptance
 
 ## [ ] Step 5: Live with the owner; time saves before / after
