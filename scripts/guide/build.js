@@ -71,7 +71,7 @@ function pages(info, dir) {
         <div><b>All My Parties</b> = <b>all</b> your sites.</div>
       </div>
       <div class="row">${pic('06-search', 'narrow')}
-        ${steps([[1, '**Search**: type a name, phone or area.'], [2, 'Tap an **area** to see only that area.']])}</div>
+        ${steps([[1, 'In **All My Parties**: type a name, phone or area.'], [2, 'Tap an **area** to see only that area.']])}</div>
     </section>`,
 
     `<section class="page">
@@ -85,7 +85,7 @@ function pages(info, dir) {
       <h2><span class="badge">5</span>Snooze: not today</h2>
       <div class="row">${pic('03-snooze')}
         <div>${lines(['Can\'t do it today?', 'Tap **Snooze**. Pick a day:'])}
-        ${steps([[1, 'Tomorrow'], [2, 'In 3 days'], [3, 'In 1 week']])}
+        ${steps([[1, '**Tomorrow**'], [2, '**3 days**'], [3, '**1 week**']])}
         ${lines(['The site comes back in **Today\'s Chase** on that day.'])}</div></div>
     </section>`,
 
@@ -94,7 +94,7 @@ function pages(info, dir) {
       <p class="lead">Tap <b>+ New Site</b>. Then:</p>
       <div class="row">${pic('11-new-top')}
         ${steps([[1, 'Type the **site or party name**.'], [2, 'Tap **who the buyer is**.'],
-          [3, 'Contact name (if you want).'], [4, '**Phone number.** No number yet? Add it later.']])}</div>
+          [3, 'Contact name (if you want).'], [4, '**Phone number.** No number yet? Leave it, then tap **Save** 2 times.']])}</div>
     </section>`,
 
     `<section class="page">
@@ -128,9 +128,9 @@ function pages(info, dir) {
       <h2><span class="badge">9</span>Saving… and orange</h2>
       <div class="pair">
         <div>${pic('13-saving')}<p class="cap"><span class="n">1</span> <b>Saving…</b><br>It is sending.
-          <b>Keep working.</b> It is fine.</p></div>
-        <div>${pic('14-failed')}<p class="cap"><span class="n">1</span> <b>Orange = not saved</b> (no signal).<br>
-          <b>Tap the card</b>, then tap <b>Save</b> again.</p></div>
+          <b>Keep working.</b><br>Don't close the diary until it goes.</p></div>
+        <div>${pic('14-failed')}<p class="cap"><span class="n">1</span> <b>Orange = not saved.</b><br>
+          The reason is under it.<br><b>Tap the card</b> and save again.</p></div>
       </div>
     </section>`,
 
