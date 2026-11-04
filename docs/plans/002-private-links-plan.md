@@ -31,10 +31,10 @@
 - Tests: every rule in spec 002 → Links.
 - Commit: "Add link rules: make, look up, cancel".
 
-## [ ] Step 3: Web pages
-- `doGet(e)`: rep → `Hello.html` "Hello, RIA"; owner → "Hello, owner"; otherwise
-  `NoLink.html`; Google failure → "Something went wrong". Pages via escaping templates.
-  `Index.html` removed.
+## [x] Step 3: Web pages
+- `doGet(e)`: rep → "Hello, RIA"; owner → "Hello, owner"; otherwise "This link doesn't
+  work"; Google failure → "Something went wrong". *(Built as one escaping template,
+  `Page.html`, instead of separate `Hello.html` / `NoLink.html`.)* `Index.html` removed.
 - Tests: each case; junk codes open no sheet; no code in any page or error.
 - Commit: "Serve Hello / no-link pages from the link code".
 

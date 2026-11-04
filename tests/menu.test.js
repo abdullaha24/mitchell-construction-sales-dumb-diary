@@ -203,21 +203,3 @@ test('a Meta-Data problem row is listed under Check these', () => {
   assert.ok(lines.includes("- Rep-Targets row 40: target 'abc' is not a number."));
   assert.ok(!lines.includes('Nothing to fix.'));
 });
-
-// ---------------------------------------------------------------------------------- Web app
-
-test('doGet returns the placeholder page: titled, phone-sized, no data, no server calls', () => {
-  const { src, diary, calls } = world({ activeEmail: '', effectiveEmail: OWNER });
-  const page = src.sandbox.doGet();
-  assert.equal(page.getTitle(), 'Sales Diary');
-  assert.deepEqual(JSON.parse(JSON.stringify(page._metaTags)), [
-    { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-  ]);
-  const html = page.getContent();
-  assert.ok(html.includes('Sales Diary is set up.'));
-  assert.ok(!/<script/i.test(html), 'no scripts');
-  assert.ok(!html.includes('google.script'), 'no server calls');
-  for (const word of ['RIA', 'Rs.', 'Target', 'North']) assert.ok(!html.includes(word), word);
-  assert.deepEqual(calls, { openById: 0, getActiveSpreadsheet: 0 });
-  assert.deepEqual(diary._writes(), []);
-});

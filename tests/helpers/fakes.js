@@ -332,22 +332,50 @@ function makeSession(options = {}) {
   };
 }
 
-/** Fake `HtmlService`. Reads `src/<name>.html`, as Apps Script does for a project file. */
+function makeHtmlOutput(content) {
+  let title = '';
+  const metaTags = [];
+  const output = {
+    getContent: () => content,
+    getTitle: () => title,
+    setTitle(t) { title = t; return output; },
+    addMetaTag(n, c) { metaTags.push({ name: n, content: c }); return output; },
+    /** Test helper. */
+    _metaTags: metaTags,
+  };
+  return output;
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (ch) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  })[ch]);
+}
+
+/**
+ * Fake `HtmlService`. Reads `src/<name>.html`, as Apps Script does for a project file.
+ * Templates support only `<?= name ?>` (printed escaped, like Google's), the one form the
+ * code uses; any other scriptlet, or a name that was never set, throws.
+ */
 function makeHtmlService() {
+  const read = (name) => fs.readFileSync(path.join(SRC_DIR, `${name}.html`), 'utf8');
   return {
-    createHtmlOutputFromFile(name) {
-      const content = fs.readFileSync(path.join(SRC_DIR, `${name}.html`), 'utf8');
-      let title = '';
-      const metaTags = [];
-      const output = {
-        getContent: () => content,
-        getTitle: () => title,
-        setTitle(t) { title = t; return output; },
-        addMetaTag(n, c) { metaTags.push({ name: n, content: c }); return output; },
-        /** Test helper. */
-        _metaTags: metaTags,
+    createHtmlOutputFromFile: (name) => makeHtmlOutput(read(name)),
+    createTemplateFromFile(name) {
+      const source = read(name);
+      const template = {
+        evaluate() {
+          const leftover = source.replace(/<\?=\s*([A-Za-z_$][\w$]*)\s*\?>/g, '');
+          if (/<\?/.test(leftover)) throw new Error(`fake template: unsupported scriptlet in ${name}`);
+          return makeHtmlOutput(source.replace(/<\?=\s*([A-Za-z_$][\w$]*)\s*\?>/g, (_, key) => {
+            if (!Object.prototype.hasOwnProperty.call(template, key)) {
+              throw new Error(`ReferenceError: "${key}" is not defined.`);
+            }
+            return escapeHtml(template[key]);
+          }));
+        },
       };
-      return output;
+      return template;
     },
   };
 }

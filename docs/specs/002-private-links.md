@@ -118,7 +118,7 @@ then their links would only say "Hello". The owner can still make them early if 
 - `src/links.js`: making codes, looking codes up, new and cancel (with `LockService`).
 - `src/linksdialog.js` + `src/Links.html`: the Links window and its three `owner…` functions.
 - `src/webapp.js`: `doGet(e)` reads `e.parameter.k`, decides **rep / owner / doesn't work**,
-  and serves `Hello.html` (template) or `NoLink.html`. No `google.script.run` on those pages
+  and serves one escaping template, `Page.html`, with the right words. No `google.script.run` on those pages
   yet.
 - `src/setup.js`: also creates `Links`.
 - Tests (local, fakes): every rule above, including *a salesman's code doesn't open the

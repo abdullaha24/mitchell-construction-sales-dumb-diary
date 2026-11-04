@@ -144,6 +144,20 @@ test('Session: active and effective emails, blank by default', () => {
   assert.equal(owner.getEffectiveUser().getEmail(), 'b@x');
 });
 
+test('HtmlService templates: <?= ?> prints escaped; unset names throw', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const html = makeHtmlService();
+  const template = html.createTemplateFromFile('Page');
+  assert.throws(() => template.evaluate(), /not defined/);
+  template.heading = '<b>"Tom" & Jerry\'s</b>';
+  template.note = 'ok';
+  const content = template.evaluate().getContent();
+  assert.ok(content.includes('&lt;b&gt;&quot;Tom&quot; &amp; Jerry&#39;s&lt;/b&gt;'), content);
+  assert.ok(!content.includes('<b>'));
+  assert.ok(fs.existsSync(path.join(__dirname, '..', 'src', 'Page.html')));
+});
+
 test('HtmlService: a missing file throws', () => {
   assert.throws(() => makeHtmlService().createHtmlOutputFromFile('NoSuchFile'), /ENOENT/);
 });
