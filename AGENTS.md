@@ -3,6 +3,13 @@
 Instructions for AI coding agents working in this repo. Keep this file short and true.
 If something here is out of date, fix it in the same change.
 
+## Start of every session
+
+1. Read **`docs/plans/handoff.md`**: current state, next step, and questions for the owner.
+2. If it lists open questions, **ask the owner those first**, in the way it describes
+   (one at a time, tappable options, recommended option marked).
+3. Before you finish, update `handoff.md` so the next session can pick up cold.
+
 ## What this is
 
 **Sales Diary** (working name): a phone-first pocket diary for the 8 field salesmen of a small
@@ -17,8 +24,8 @@ Read before any product or UI work:
 
 ## Status
 
-Repo shell only. **No app code, build, lint or test commands exist yet.** Don't invent them.
-When tooling is added, list the exact commands in a `## Commands` section here.
+Planning done (phase 0). **No app code, build, lint or test commands exist yet.** Don't invent
+them. When tooling is added, list the exact commands in a `## Commands` section here.
 
 ## Where things live
 
@@ -28,7 +35,7 @@ When tooling is added, list the exact commands in a `## Commands` section here.
 | `docs/specs/` | One spec per feature, written **before** the code. Copy `_template.md`. |
 | `docs/architecture/` | How the system fits together, and the Google Sheet data model. |
 | `docs/decisions/` | ADRs: one file per significant decision. Copy `_template.md`. |
-| `docs/plans/` | Roadmap and step-by-step build plans for agents. |
+| `docs/plans/` | `handoff.md` (start here), roadmap, step-by-step build plans. |
 | `src/` | Apps Script source (server code + HTML). Planned clasp `rootDir`. |
 | `tests/` | Automated tests that run locally, with no Google account needed. |
 | `scripts/` | Helper scripts for setup and deploy. |

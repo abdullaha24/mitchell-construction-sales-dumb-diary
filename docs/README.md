@@ -5,6 +5,7 @@ relevant to your task.
 
 | I need to… | Read |
 | --- | --- |
+| Pick up where the last session stopped | [plans/handoff.md](plans/handoff.md) |
 | Understand what we're building and for whom | [product/vision.md](product/vision.md) |
 | Know what a domain word means (thekedar, ugrahi, stages) | [product/glossary.md](product/glossary.md) |
 | Check what's still undecided, or add a question | [product/open-questions.md](product/open-questions.md) |

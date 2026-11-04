@@ -6,7 +6,7 @@
 
 | Phase | Goal | Done when |
 | --- | --- | --- |
-| **0. Repo shell** | Structure, agent instructions, vision captured, owner interview | ✅ Done |
+| **0. Repo shell** | Structure, agent instructions, vision captured, owner interview | ✅ Done (2026-11-04) |
 | **1. Foundations** | clasp + local tests (ADR-0003). Create the Sales Diary sheet and tabs. Read salesmen and targets from Meta-Data (ADR-0005) | An empty app deploys; tests read a sample of Meta-Data correctly, including stray cells and comma amounts |
 | **2. Private links** | Owner creates, sends and cancels links (ADR-0002). Decide owner access (open question 7) | A link shows "Hello, RIA"; a cancelled or fake link shows nothing |
 | **3. My sites + add site** | Salesman sees his own list and adds a site: buyer type, contact, product categories, area (pick or add), duplicate warning (ADR-0004) | New site appears in his list and in `Sites`; salesman B can't see it; duplicate phone shows the warning |
