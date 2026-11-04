@@ -60,7 +60,7 @@ function loadFor_(salesman, diary) {
     // The stage rules, so the page asks for the same things the server checks (spec 004).
     rules: {
       stages: STAGES, valueStages: VALUE_STAGES, numberStages: NUMBER_STAGES,
-      closedStages: CLOSED_STAGES, lostStage: LOST_STAGE, paymentTerms: PAYMENT_TERMS,
+      closedStages: CLOSED_STAGES, lostStage: LOST_STAGE, paymentTerms: PAYMENT_TERMS, hotStages: HOT_STAGES,
     },
   };
 }

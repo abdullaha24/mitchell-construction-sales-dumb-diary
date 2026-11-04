@@ -102,6 +102,7 @@ async function open(world, { blocked = false, timing } = {}) {
   if (blocked) await page.addInitScript(blockStorage);
   await page.goto(`file://${file}`);
   await page.waitForSelector('#who');
+  await page.click('#tab-all'); // these cases are about his whole list (spec 005)
   return { page, context, dir };
 }
 
@@ -188,6 +189,7 @@ const want = (name) => !process.env.ONLY || name.split('/').includes(process.env
     await again.page.evaluate((q) => { localStorage.setItem('salesdiary.queue.RIA', q); }, queued);
     await again.page.reload();
     await again.page.waitForSelector('.card');
+    await again.page.click('#tab-all');
     await again.page.waitForFunction(() => ![...document.querySelectorAll('.tag')].some((t) => t.textContent === 'Checking…'));
     assert.deepEqual((await names(again.page)).filter((n) => n === 'Landed Anyway').length, 1, 'shown once');
     assert.deepEqual(await failedNames(again.page), [], 'not shown as unsaved');

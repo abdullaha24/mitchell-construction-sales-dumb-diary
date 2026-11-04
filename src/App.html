@@ -9,10 +9,23 @@
       * { box-sizing: border-box; }
       body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
              font-size: 16px; line-height: 1.35; color: var(--ink); background: #f5f7fa; }
-      header { position: sticky; top: 0; z-index: 2; display: flex; align-items: center;
-               justify-content: space-between; gap: 8px; padding: 10px 16px; background: #fff;
-               border-bottom: 1px solid var(--line); }
+      .top { position: sticky; top: 0; z-index: 2; background: #fff; border-bottom: 1px solid var(--line); }
+      header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 16px; }
       header h1 { font-size: 20px; margin: 0; }
+      .target { font-size: 13px; color: var(--soft); margin-top: 1px; }
+      .tabs { display: flex; max-width: 640px; margin: 0 auto; }
+      .tab { flex: 1; min-height: 48px; padding: 4px 2px 6px; border: 0; border-bottom: 3px solid transparent;
+             background: #fff; color: var(--soft); font-size: 14px; font-weight: 600; line-height: 1.2; }
+      .tab[aria-selected=true] { color: var(--blue); border-bottom-color: var(--blue); }
+      .tab .count { display: block; font-size: 13px; font-weight: 700; margin-top: 2px; }
+      .tab .count.late { color: var(--red); }
+      .search { display: flex; gap: 8px; margin-bottom: 12px; }
+      .search input { flex: 1; min-width: 0; width: auto; }
+      .search .plain { min-width: 48px; min-height: 48px; font-size: 18px; }
+      .card.late { border-left: 4px solid var(--red); }
+      .card .meta.late { color: var(--red); font-weight: 600; }
+      .card .meta.nodate { color: var(--orange); font-weight: 600; }
+      .more { display: block; width: 100%; margin-top: 4px; }
       main { padding: 12px 16px 96px; max-width: 640px; margin: 0 auto; }
       button { font: inherit; cursor: pointer; }
       .big { min-height: 48px; padding: 10px 16px; border-radius: 10px; border: 0; background: var(--blue);
@@ -32,7 +45,9 @@
       .banner { background: #fff4e5; color: var(--orange); border-radius: 10px; padding: 10px; margin-bottom: 12px; }
       label, .label { display: block; font-weight: 600; margin: 16px 0 6px; }
       .opt { font-weight: 400; color: var(--soft); }
-      input[type=text], input[type=tel], input[type=date] { width: 100%; min-height: 48px; padding: 10px 12px;
+      input[type=search] { -webkit-appearance: none; appearance: none; }
+      input[type=search]::-webkit-search-cancel-button { display: none; }
+      input[type=text], input[type=tel], input[type=date], input[type=search] { width: 100%; min-height: 48px; padding: 10px 12px;
              font: inherit; font-size: 17px; border: 1px solid #9aa5b1; border-radius: 10px; background: #fff; }
       .pills { display: flex; flex-wrap: wrap; gap: 8px; }
       .pill { min-height: 44px; padding: 8px 14px; border-radius: 999px; border: 1px solid #9aa5b1;
@@ -67,14 +82,29 @@
   <body>
     <div id="data" hidden><?= data ?></div>
 
-    <header>
-      <h1 id="who"></h1>
-      <button class="big" id="newSite" type="button">+ New Site</button>
-    </header>
+    <div class="top">
+      <header>
+        <div>
+          <h1 id="who"></h1>
+          <div id="target" class="target" hidden></div>
+        </div>
+        <button class="big" id="newSite" type="button">+ New Site</button>
+      </header>
+      <nav class="tabs" id="tabs" role="tablist">
+        <button class="tab" id="tab-chase" type="button" role="tab">Today's Chase<span class="count"></span></button>
+        <button class="tab" id="tab-hot" type="button" role="tab">Hot Pipeline<span class="count"></span></button>
+        <button class="tab" id="tab-all" type="button" role="tab">All My Parties<span class="count"></span></button>
+      </nav>
+    </div>
 
     <main id="listView">
       <div id="draftBanner" class="banner" hidden>You have a site that isn't saved yet. Tap + New Site to finish it.</div>
       <div id="noStorage" class="banner" hidden>This phone can't keep unsaved sites. Save each site before closing the app.</div>
+      <div id="searchBox" class="search" hidden>
+        <input id="search" type="search" maxlength="60" autocomplete="off" enterkeyhint="search"
+               placeholder="Search name, phone, area…" aria-label="Search your parties">
+        <button class="plain" id="clearSearch" type="button" aria-label="Clear search" hidden>✕</button>
+      </div>
       <div id="sites"></div>
     </main>
 
@@ -197,6 +227,25 @@
       //   status: 'saving' | 'failed', message }
       var queue = [];
       var sending = false;
+      // The three tabs (spec 006). All work on the phone from data.sites: no trip to Google.
+      var MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August',
+        'September', 'October', 'November', 'December'];
+      var PK_OFFSET_MS = 5 * 60 * 60 * 1000; // Pakistan time: UTC+5, no daylight saving
+      var PAGE_SIZE = 50;    // cards per tab before "Show more", so a long list stays fast
+      var tab = 'chase';     // 'chase' | 'hot' | 'all'; the app always opens on Today's Chase
+      var shownCount = PAGE_SIZE;
+      var query = '';        // the All My Parties search
+      var listScroll = 0;    // where he was in the list, for coming back to it
+      var renderedDay = '';  // the day the list was last drawn for
+      var clockGap = 0;      // Google's clock minus the phone's, so a wrong phone clock doesn't matter
+      function setClock() { clockGap = typeof data.now === 'number' ? data.now - Date.now() : 0; }
+      setClock();
+      // Today in Pakistan time, worked out from Google's clock, so it rolls over by itself.
+      function todayKey() {
+        if (typeof data.now !== 'number') return data.today;
+        var key = new Date(Date.now() + clockGap + PK_OFFSET_MS).toISOString().slice(0, 10);
+        return key < data.today ? data.today : key;
+      }
 
       function $(id) { return document.getElementById(id); }
       function el(tag, text, cls) {
@@ -258,7 +307,7 @@
       function followKey(choice, date, keepKey) {
         if (choice === 'keep') return keepKey;
         if (choice === 'date') return date;
-        return addDays(data.today, { tomorrow: 1, '3days': 3, '1week': 7 }[choice] || 1);
+        return addDays(todayKey(), { tomorrow: 1, '3days': 3, '1week': 7 }[choice] || 1);
       }
       function pill(text, pressed, onTap) {
         var b = el('button', text, 'pill');
@@ -362,7 +411,7 @@
       function refreshAll() {
         google.script.run.withSuccessHandler(function (r) {
           if (!r || !r.ok) return;
-          var keepK = k; data = r; data.k = keepK;
+          var keepK = k; data = r; data.k = keepK; setClock();
           queue.forEach(function (e) { showCard(e.card); });
           if (screen === 'list') renderList();
         }).withFailureHandler(function () { /* no signal: the list stays as it is */ }).repLoad(k);
@@ -478,42 +527,163 @@
         $('toast').style.display = 'none';
       }
 
-      // ---- List ----
+      // ---- List: three tabs (spec 006) ----
+      function isOpenSite(s) { return !has(rules().closedStages, s.stage); }
+      function inChase(s, today) { return isOpenSite(s) && (!s.followUp || s.followUp <= today); }
+      function isHot(s) { return has(rules().hotStages || [], s.stage); }
+      // The Rs. value his card shows (Rate Quoted / Won), or 0.
+      function shownValue(s) { return s.value && has(rules().valueStages, s.stage) ? Number(s.value) : 0; }
+      function dayNumber(key) { var p = key.split('-').map(Number); return Date.UTC(p[0], p[1] - 1, p[2]) / 86400000; }
+      // Follow-up date oldest first (none first), then newest site first (data.sites is newest first).
+      function byFollowUp(a, b) {
+        if (a.s.followUp !== b.s.followUp) return a.s.followUp < b.s.followUp ? -1 : 1;
+        return a.i - b.i;
+      }
+      function isFailed(s) { var e = entryFor(s.id); return !!(e && e.status === 'failed'); }
+
+      // Search: capitals, spaces and dashes don't matter; every word must match; a number matches
+      // however he types it (0300 123, 92300123). Each site's text is worked out once.
+      var searchCache = typeof WeakMap === 'function' ? new WeakMap() : null;
+      function squash(text) { return String(text || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, ''); }
+      function searchText(s) {
+        var t = searchCache ? searchCache.get(s) : undefined;
+        if (t === undefined) {
+          t = [s.name, s.contactName, s.phone, showPhone(s.phone), s.area, s.buyerType,
+            (s.products || []).join(' '), s.stage, s.note].map(squash).join('|');
+          if (searchCache) searchCache.set(s, t);
+        }
+        return t;
+      }
+      function searchWords(q) {
+        var raw = String(q || '').trim();
+        if (/^[\d\s+().-]+$/.test(raw)) { var digits = raw.replace(/\D/g, ''); return digits ? [digits] : []; }
+        return raw.split(/\s+/).map(squash).filter(Boolean);
+      }
+
+      // The sites of a tab, in its order, as { s, i } (i = place in data.sites).
+      function tabRows(which, today) {
+        var rows = data.sites.map(function (s, i) { return { s: s, i: i }; });
+        if (which === 'chase') return rows.filter(function (r) { return inChase(r.s, today); }).sort(byFollowUp);
+        if (which === 'hot') {
+          // Biggest Rs. first (owner, P5-1); then the rest, soonest follow-up first.
+          return rows.filter(function (r) { return isHot(r.s); })
+            .sort(function (a, b) { return shownValue(b.s) - shownValue(a.s) || byFollowUp(a, b); });
+        }
+        var words = searchWords(query);
+        if (!words.length) return rows;
+        return rows.filter(function (r) {
+          var text = searchText(r.s);
+          for (var w = 0; w < words.length; w++) if (text.indexOf(words[w]) < 0) return false;
+          return true;
+        });
+      }
+      function setTab(name, count, late) {
+        var b = $('tab-' + name);
+        b.setAttribute('aria-selected', tab === name ? 'true' : 'false');
+        var c = b.querySelector('.count');
+        c.textContent = String(count);
+        c.className = 'count' + (late ? ' late' : '');
+      }
+      function followLine(s, today) {
+        if (!isOpenSite(s)) return null;
+        if (!s.followUp) return el('div', 'No follow-up date', 'meta nodate');
+        if (s.followUp < today) {
+          var late = dayNumber(today) - dayNumber(s.followUp);
+          return el('div', 'Follow up: ' + shortDay(s.followUp) + ' · ' + late + (late === 1 ? ' day' : ' days') + ' late', 'meta late');
+        }
+        return el('div', 'Follow up: ' + (s.followUp === today ? 'Today' : shortDay(s.followUp)), 'meta');
+      }
+      function cardFor(s, today) {
+        var entry = entryFor(s.id);
+        var late = isOpenSite(s) && !!s.followUp && s.followUp < today;
+        var card = el('div', undefined, 'card' + (entry && entry.status === 'failed' ? ' failed' : '') + (late ? ' late' : ''));
+        card.setAttribute('role', 'button');
+        card.addEventListener('click', function () {
+          var e = entryFor(s.id);
+          if (e && e.status === 'failed') return retry(e);
+          if (e && e.fn === 'repAddSite') return toast('Still saving. One moment.');
+          showSite(s.id);
+        });
+        card.appendChild(el('div', s.name, 'name'));
+        var meta = [s.area, s.buyerType].filter(Boolean).join(' · ');
+        if (meta) card.appendChild(el('div', meta, 'meta'));
+        if (shownValue(s)) card.appendChild(el('div', rs(s.value) + (s.terms ? ' · ' + s.terms : ''), 'value'));
+        var follow = followLine(s, today);
+        if (follow) card.appendChild(follow);
+        card.appendChild(el('span', s.stage, 'tag' + stageClass(s.stage)));
+        if (!s.phone) card.appendChild(el('span', 'No number yet', 'tag nonum'));
+        if (entry && entry.status === 'saving') card.appendChild(el('span', entry.slow ? 'Still sending…' : 'Saving…', 'tag saving'));
+        if (entry && entry.status === 'checking') card.appendChild(el('span', 'Checking…', 'tag saving'));
+        if (entry && entry.status === 'failed') {
+          card.appendChild(el('span', 'Not saved. Tap to try again.', 'tag failed'));
+          card.appendChild(el('div', entry.message, 'meta'));
+        }
+        return card;
+      }
+      function emptyFor(which, today) {
+        var box = el('div', undefined, 'empty');
+        if (which === 'chase') {
+          box.appendChild(el('div', 'Nothing to chase today.'));
+          var next = '';
+          data.sites.forEach(function (s) {
+            if (isOpenSite(s) && s.followUp > today && (!next || s.followUp < next)) next = s.followUp;
+          });
+          if (next) box.appendChild(el('div', 'Next follow-up: ' + shortDay(next) + '.'));
+        } else if (which === 'hot') {
+          box.textContent = 'No sites at ' + rules().hotStages.join(' or ') + '.';
+        } else {
+          box.textContent = 'No site matches "' + query.trim() + '".';
+        }
+        return box;
+      }
       function renderList() {
+        var today = todayKey();
+        renderedDay = today;
         $('who').textContent = data.rep;
+        // His own target for this month only (owner, Q12c: the target, no achieved figure).
+        var t = data.target;
+        var showTarget = !!(t && t.amount && t.month === today.slice(0, 7));
+        $('target').hidden = !showTarget;
+        $('target').textContent = showTarget ? MONTH_NAMES[Number(t.month.slice(5)) - 1] + ' target: ' + rs(t.amount) : '';
         $('draftBanner').hidden = !hasDraft();
         $('noStorage').hidden = storageWorks;
+
+        var chase = 0, late = 0, hot = 0;
+        data.sites.forEach(function (s) {
+          if (inChase(s, today)) { chase++; if (!s.followUp || s.followUp < today) late++; }
+          if (isHot(s)) hot++;
+        });
+        setTab('chase', chase, late > 0);
+        setTab('hot', hot, false);
+        setTab('all', data.sites.length, false);
+        $('searchBox').hidden = tab !== 'all';
+        $('clearSearch').hidden = !query;
+
         var box = $('sites');
         box.textContent = '';
         if (!data.sites.length) {
           box.appendChild(el('div', 'No sites yet. Tap + New Site to add your first one.', 'empty'));
           return;
         }
-        data.sites.forEach(function (s) {
-          var entry = entryFor(s.id);
-          var card = el('div', undefined, 'card' + (entry && entry.status === 'failed' ? ' failed' : ''));
-          card.setAttribute('role', 'button');
-          card.addEventListener('click', function () {
-            var e = entryFor(s.id);
-            if (e && e.status === 'failed') return retry(e);
-            if (e && e.fn === 'repAddSite') return toast('Still saving. One moment.');
-            showSite(s.id);
-          });
-          card.appendChild(el('div', s.name, 'name'));
-          var meta = [s.area, s.buyerType].filter(Boolean).join(' · ');
-          if (meta) card.appendChild(el('div', meta, 'meta'));
-          if (s.value && has(rules().valueStages, s.stage)) card.appendChild(el('div', rs(s.value) + (s.terms ? ' · ' + s.terms : ''), 'value'));
-          if (s.followUp) card.appendChild(el('div', 'Follow up: ' + shortDay(s.followUp), 'meta'));
-          card.appendChild(el('span', s.stage, 'tag' + stageClass(s.stage)));
-          if (!s.phone) card.appendChild(el('span', 'No number yet', 'tag nonum'));
-          if (entry && entry.status === 'saving') card.appendChild(el('span', entry.slow ? 'Still sending…' : 'Saving…', 'tag saving'));
-          if (entry && entry.status === 'checking') card.appendChild(el('span', 'Checking…', 'tag saving'));
-          if (entry && entry.status === 'failed') {
-            card.appendChild(el('span', 'Not saved. Tap to try again.', 'tag failed'));
-            card.appendChild(el('div', entry.message, 'meta'));
-          }
-          box.appendChild(card);
-        });
+        // A save that didn't go through is never hidden: at the top of every tab.
+        var failed = [];
+        data.sites.forEach(function (s, i) { if (isFailed(s)) failed.push({ s: s, i: i }); });
+        var rows = failed.concat(tabRows(tab, today).filter(function (r) { return !isFailed(r.s); }));
+        var frag = document.createDocumentFragment();
+        rows.slice(0, shownCount).forEach(function (r) { frag.appendChild(cardFor(r.s, today)); });
+        if (!rows.length) frag.appendChild(emptyFor(tab, today));
+        if (rows.length > shownCount) {
+          var more = el('button', 'Show more', 'plain more');
+          more.type = 'button';
+          more.id = 'showMore';
+          more.addEventListener('click', function () { shownCount += PAGE_SIZE; renderList(); });
+          frag.appendChild(more);
+        }
+        box.appendChild(frag);
+      }
+      function pickTab(name) {
+        if (tab !== name) { tab = name; shownCount = PAGE_SIZE; renderList(); }
+        window.scrollTo(0, 0);
       }
       function stageClass(stage) {
         if (stage === rules().lostStage) return ' lost';
@@ -522,7 +692,7 @@
       }
 
       // ---- Site screen: details and Update (spec 004) ----
-      function keepsDate(s) { return !!s.followUp && s.followUp >= data.today; }
+      function keepsDate(s) { return !!s.followUp && s.followUp >= todayKey(); }
       function emptyUpdate(s) {
         return { stage: s.stage, value: s.value ? String(s.value) : '', terms: s.terms,
           lostReason: has(data.lostReasons, s.lostReason) ? s.lostReason : '',
@@ -570,8 +740,8 @@
           follow.appendChild(pill(f[1], upd.followUp === f[0], function () { upd.followUp = f[0]; updChanged(); }));
         });
         $('u-date').hidden = upd.followUp !== 'date';
-        $('u-date').min = data.today;
-        $('u-date').max = addDays(data.today, 365);
+        $('u-date').min = todayKey();
+        $('u-date').max = addDays(todayKey(), 365);
         $('u-date').value = upd.date;
         $('u-note').value = upd.note;
         var noteNeeded = upd.stage === r.lostStage && /^other$/i.test(upd.lostReason || '');
@@ -626,7 +796,7 @@
         enqueue({ id: upd.saveId, fn: 'repUpdateSite', siteId: openId, input: input, card: card, state: clone(upd) }, replaces);
         store(updKey(openId), null); // the queue carries it now
         retrying = null;
-        showList();
+        showList(true);
       }
       function checkUpdPhone() {
         var typed = upd.phone.trim();
@@ -708,8 +878,8 @@
           follow.appendChild(pill(f[1], form.followUp === f[0], function () { form.followUp = f[0]; changed(); }));
         });
         $('f-date').hidden = form.followUp !== 'date';
-        $('f-date').min = data.today;
-        $('f-date').max = addDays(data.today, 365);
+        $('f-date').min = todayKey();
+        $('f-date').max = addDays(todayKey(), 365);
         $('f-date').value = form.date;
         $('f-noteBox').hidden = !isNew;
         $('f-note').value = form.note;
@@ -811,12 +981,14 @@
             stage: form.stage, value: has(r.valueStages, form.stage) ? Number(digitsOf(form.value)) : null,
             terms: has(r.valueStages, form.stage) ? form.terms : '', lostReason: form.stage === r.lostStage ? form.lostReason : '',
             followUp: closed ? '' : followKey(form.followUp, form.date, ''), phone: form.phone.trim(),
-            contactName: form.contactName.trim(), products: form.products.slice(), note: form.note.trim(), created: data.today };
+            contactName: form.contactName.trim(), products: form.products.slice(), note: form.note.trim(), created: todayKey() };
           var saved = clone(form);
           var replaces = retrying;
           if (!replaces) store(DRAFT_KEY, null); // a retried site leaves his other new-site draft alone
           form = emptyForm(); phoneCheck = { valid: true }; retrying = null;
           enqueue({ id: saved.saveId, fn: 'repAddSite', input: input, card: card, state: saved }, replaces);
+          // He sees his new site at the top of All My Parties, "Saving…" (spec 006).
+          tab = 'all'; shownCount = PAGE_SIZE; query = ''; $('search').value = '';
           showList();
         } else {
           var id = mode.siteId;
@@ -833,7 +1005,9 @@
 
       // ---- Screens ----
       function showOnly(name) {
+        if (screen === 'list' && name !== 'list') listScroll = window.scrollY || 0;
         screen = name;
+        $('tabs').hidden = name !== 'list';
         $('listView').hidden = name !== 'list';
         $('siteView').hidden = name !== 'site';
         $('formView').hidden = name !== 'form';
@@ -842,7 +1016,12 @@
         clearProblem();
         window.scrollTo(0, 0);
       }
-      function showList() { showOnly('list'); renderList(); }
+      // back: return to where he was in the list (after Back or an Update), not the top.
+      function showList(back) {
+        showOnly('list');
+        renderList();
+        if (back) window.scrollTo(0, listScroll);
+      }
       function showSite(id, retryEntry) {
         var s = siteById(id);
         if (!s) return showList();
@@ -886,7 +1065,7 @@
         retrying = null;
         if (screen === 'form' && mode.kind === 'edit') { if (!wasRetrying) store(formKey(), null); showSite(mode.siteId); return; }
         if (screen === 'site' && !wasRetrying) store(updKey(openId), null);
-        showList();
+        showList(true);
       });
       $('save').addEventListener('click', function () { if (screen === 'site') saveUpdate(); else saveForm(); });
 
@@ -914,6 +1093,25 @@
         clearTimeout(checkUpdPhone.timer);
         if (upd.phone.replace(/\D/g, '').length >= 10) checkUpdPhone.timer = setTimeout(checkUpdPhone, 700);
       });
+
+      ['chase', 'hot', 'all'].forEach(function (name) {
+        $('tab-' + name).addEventListener('click', function () { pickTab(name); });
+      });
+      $('search').addEventListener('input', function (e) {
+        query = e.target.value; shownCount = PAGE_SIZE;
+        clearTimeout(renderList.timer);
+        renderList.timer = setTimeout(renderList, 120); // one redraw once he pauses, not per letter
+      });
+      $('clearSearch').addEventListener('click', function () {
+        query = ''; $('search').value = ''; shownCount = PAGE_SIZE;
+        renderList();
+        $('search').focus();
+      });
+      // A new day while the app was left open: redraw for today when he comes back to it.
+      function newDayCheck() { if (screen === 'list' && renderedDay && todayKey() !== renderedDay) renderList(); }
+      document.addEventListener('visibilitychange', function () { if (!document.hidden) newDayCheck(); });
+      window.addEventListener('pageshow', newDayCheck);
+      setInterval(newDayCheck, 60000);
 
       loadQueue();
       showList();

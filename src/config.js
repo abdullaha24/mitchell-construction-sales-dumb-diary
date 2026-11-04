@@ -136,6 +136,9 @@ const VALUE_STAGES = ['Rate Quoted', 'Won (Order)'];
 /** Stages a site can't reach without a contact number (owner P3-4). */
 const NUMBER_STAGES = ['Sample / Trial', 'Rate Quoted', 'Won (Order)'];
 
+/** Hot Pipeline: his near-term orders (vision, spec 006). */
+const HOT_STAGES = ['Sample / Trial', 'Rate Quoted'];
+
 /** Closed stages: no follow-up date (owner P4-3). */
 const CLOSED_STAGES = ['Won (Order)', 'Lost / Dead'];
 

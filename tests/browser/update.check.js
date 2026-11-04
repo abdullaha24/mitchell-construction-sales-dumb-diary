@@ -107,6 +107,7 @@ function stub() {
 
   // ---- Site screen: details, stage pre-picked, Update form. ----
   await page.waitForSelector('.card');
+  await page.click('#tab-all'); // his whole list (spec 006 opens on Today's Chase)
   await openSite('F-11 Tower');
   assert.equal(await page.textContent('#siteHead h2'), 'F-11 Tower');
   assert.ok((await page.textContent('#siteHead')).includes('“first visit”'));
@@ -196,6 +197,7 @@ function stub() {
   // A draft survives a reload.
   await page.fill('#u-note', 'trial bags dropped');
   await page.reload();
+  await page.click('#tab-all');
   await openSite('Blue Area');
   assert.equal(await page.inputValue('#u-note'), 'trial bags dropped');
   assert.equal(await page.inputValue('#u-phone'), '0300 7654321');

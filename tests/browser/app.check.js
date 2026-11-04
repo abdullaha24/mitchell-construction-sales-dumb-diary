@@ -121,8 +121,13 @@ function stub() {
   const calls = () => page.evaluate(() => window.__calls);
   const sitesRows = () => world.diary.getSheetByName('Sites').getDataRange().getValues();
 
-  // ---- His list: his sites only, newest first; names as text; "No number yet". ----
+  // ---- His list: his sites only; names as text; "No number yet". ----
+  // It opens on Today's Chase (spec 006): both his sites are overdue, oldest follow-up first.
   await page.waitForSelector('.card');
+  assert.equal(await page.getAttribute('#tab-chase', 'aria-selected'), 'true');
+  assert.deepEqual(await page.$$eval('.card .name', (els) => els.map((e) => e.textContent)), ['F-11 Tower', EVIL]);
+  // The rest of this check is about his whole list (specs 003-005): All My Parties, newest first.
+  await page.click('#tab-all');
   assert.equal(await page.textContent('#who'), 'RIA');
   assert.deepEqual(await page.$$eval('.card .name', (els) => els.map((e) => e.textContent)), [EVIL, 'F-11 Tower']);
   assert.equal(await page.locator('text=Gulberg Mall').count(), 0);
@@ -170,6 +175,7 @@ function stub() {
   await page.fill('#f-phone', '');
   await page.reload();
   await page.waitForSelector('#draftBanner:not([hidden])');
+  await page.click('#tab-all');
   await page.click('#newSite');
   assert.equal(await page.inputValue('#f-name'), 'Askari Heights', 'draft kept on the phone');
   assert.equal(await page.getAttribute('#f-products .pill:has-text("Tile Grouts")', 'aria-pressed'), 'true');
@@ -187,6 +193,7 @@ function stub() {
   // Nothing is lost even if he closes the app: on reopening, the card is still there, not sent.
   await page.reload();
   await page.waitForSelector('.card.failed');
+  await page.click('#tab-all');
   assert.ok((await page.textContent('.card.failed')).includes('Not saved. Tap to try again.'));
   assert.equal(sitesRows().length, 4, 'not sent on its own');
   await page.click('.card.failed');

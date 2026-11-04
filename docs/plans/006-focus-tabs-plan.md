@@ -13,7 +13,7 @@
 - Tests: his target only, none, 0 / duplicate month, roll-over to next month, broken tab, old
   kept copy; speed test unchanged (no Meta-Data open when fresh).
 
-## [ ] Step 2: The page: tabs, Today's Chase, Hot Pipeline, All My Parties with search
+## [x] Step 2: The page: tabs, Today's Chase, Hot Pipeline, All My Parties with search
 - Tabs with counts, the target line, red late cards, "No follow-up date", empty messages.
 - Search on the phone (words, dashes, capitals, phone forms), 50 cards then Show more.
 - Failed saves at the top of every tab; new site → All My Parties; back to the same tab after
