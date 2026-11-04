@@ -112,7 +112,7 @@ One row per change. **Never edited or deleted by the app.**
 | `timestamp` | | Server time. |
 | `rep` | RIA | Who made the change. |
 | `site_id` | `S000123` | |
-| `action` | stage_change | `created` (new site), `stage_change` (with `from_stage` / `to_stage`), `update` (same stage: value, note or follow-up), `details` (Edit details: `note` lists what changed, with the old → new number). |
+| `action` | stage_change | `created` (new site; since spec 005 with the stage it started at and its value, terms, reason and note), `stage_change` (with `from_stage` / `to_stage`), `update` (same stage: value, note or follow-up), `details` (Edit details: `note` lists what changed, with the old → new number). |
 | `from_stage` | Sample / Trial | Blank if not a stage change. |
 | `to_stage` | Rate Quoted | |
 | `value_rs` | 450000 | If given. |
@@ -142,6 +142,13 @@ Starting contents (filled in by phase 1 setup, only when a list has no rows yet)
   area **names** (needed so they can pick instead of retype, and for the "Did you mean …?"
   suggestion), but never who added them. That is only an area name, no site or contact data, so
   ADR-0004 still holds.
+
+## Kept by the script (not in a sheet)
+
+| Store | Key | Holds |
+| --- | --- | --- |
+| Script Properties | `salesmen` | The salesmen list from `Rep_Mapping` (codes, regions, row numbers only) and when it was read. Used for 24 hours, then read again; **Sales Diary → Refresh salesmen** and Check setup refresh it at once (spec 005). |
+| Script cache | `save:<rep>:<saveId>` | What a save did, for 6 hours, so a repeat after a lost reply isn't saved twice (specs 003–005). |
 
 ## Not modelled yet
 - Multiple contacts per site (v1: one).
