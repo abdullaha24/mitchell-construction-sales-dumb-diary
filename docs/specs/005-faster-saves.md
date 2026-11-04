@@ -1,7 +1,7 @@
 # 005: Instant saves, faster server, stage when adding a site
 
-- **Status:** Draft
-- **Owner approval:** _pending_
+- **Status:** Approved
+- **Owner approval:** approved by the owner on 2026-11-04 (session 3)
 - **Related:** roadmap phase 4b (from the owner's phase 4 test) · builds on
   [spec 003](003-my-sites.md) and [spec 004](004-update-site.md) · ADR-0004 · data model
 

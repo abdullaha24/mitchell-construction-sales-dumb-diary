@@ -30,8 +30,7 @@ test links are still active.
 **Phase 4b (spec 005, Draft): instant saves, faster server, stage when adding a site**, from
 the owner's observations on his phone (adding then reopening to set the stage is two jobs; a
 save takes 4–5 s). Measured live: ~1 s Google overhead per request, ~0.6 s per Sales Diary
-open + Links read; one add-site call opens Sales Diary 3 times and Meta-Data once. **Waiting for
-the owner to approve spec 005.**
+open + Links read; one add-site call opens Sales Diary 3 times and Meta-Data once. **Approved**; build with `docs/plans/005-faster-saves-plan.md`.
 
 Carry forward (phase 4 and later):
 - **Never run `create-deployment` again.** Put new code live with
@@ -78,7 +77,7 @@ link's. Delete the log afterwards. At the end of the session: `npx clasp logout`
   paste them into files.
 
 ## Questions for the owner
-- **Approve spec 005 (phase 4b)?**
+None open.
 Ask questions the owner's way:
 - One question at a time.
 - Tappable options. Use the multiple-choice question tool if you have one (Claude Code:
