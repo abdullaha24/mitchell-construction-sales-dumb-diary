@@ -400,8 +400,14 @@
         } else if (!laterPending(entry)) {
           // The server's card replaces what he saw (a new site gets its real ID), unless a later
           // change of the same site is still on its way.
-          for (var j = 0; j < data.sites.length; j++) if (data.sites[j].id === entry.card.id) { data.sites.splice(j, 1); break; }
-          showCard(r.site);
+          // It keeps its place in the list (newest first stays true); only a site not shown yet goes on top.
+          var at = -1, real = -1;
+          for (var j = 0; j < data.sites.length; j++) {
+            if (data.sites[j].id === entry.card.id) at = j;
+            else if (data.sites[j].id === r.site.id) real = j;
+          }
+          if (at >= 0 && real >= 0) data.sites.splice(at, 1); // already reloaded under its real ID
+          if (at >= 0 && real < 0) data.sites[at] = clone(r.site); else showCard(r.site);
         }
         if (r.areas) data.areas = r.areas;
         saveQueue();
@@ -554,9 +560,12 @@
         }
         return t;
       }
+      // The words that must all be found. A search of only digits with 7 or more of them is one
+      // phone number however it's spaced (0300 123 4567); fewer are separate numbers ("66 71").
       function searchWords(q) {
         var raw = String(q || '').trim();
-        if (/^[\d\s+().-]+$/.test(raw)) { var digits = raw.replace(/\D/g, ''); return digits ? [digits] : []; }
+        var digits = raw.replace(/\D/g, '');
+        if (/^[\d\s+().-]+$/.test(raw) && digits.length >= 7) return [digits];
         return raw.split(/\s+/).map(squash).filter(Boolean);
       }
 
@@ -668,10 +677,11 @@
         // A save that didn't go through is never hidden: at the top of every tab.
         var failed = [];
         data.sites.forEach(function (s, i) { if (isFailed(s)) failed.push({ s: s, i: i }); });
-        var rows = failed.concat(tabRows(tab, today).filter(function (r) { return !isFailed(r.s); }));
+        var own = tabRows(tab, today);
+        var rows = failed.concat(own.filter(function (r) { return !isFailed(r.s); }));
         var frag = document.createDocumentFragment();
         rows.slice(0, shownCount).forEach(function (r) { frag.appendChild(cardFor(r.s, today)); });
-        if (!rows.length) frag.appendChild(emptyFor(tab, today));
+        if (!own.length) frag.appendChild(emptyFor(tab, today));
         if (rows.length > shownCount) {
           var more = el('button', 'Show more', 'plain more');
           more.type = 'button';

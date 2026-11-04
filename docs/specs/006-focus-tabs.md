@@ -50,7 +50,8 @@ him find any party in two seconds, and shows **his monthly target**.
     stage and the last note.
   - Capitals, spaces and dashes don't matter (**"f11"** finds **"F-11 Commercial Tower"**); several
     words find sites that have all of them, in any order (**"asif dha"**).
-  - A phone number matches however he types it: **0300 123**, **0300123** or **92300123**.
+  - A phone number matches however he types it: **0300 123**, **0300123** or **92300123** (a search
+    of only digits, 7 or more, is one number; fewer, like **"66 71"**, are separate numbers).
   - Nothing found: *"No site matches "xyz"."* An **✕** clears the search.
 
 ### All tabs
@@ -108,15 +109,17 @@ him find any party in two seconds, and shows **his monthly target**.
 
 ## Acceptance criteria
 Checked locally:
-- [ ] Tests for every rule above: Today's Chase (overdue / today / future / no date / Won / Lost),
+- [x] Tests for every rule above: Today's Chase (overdue / today / future / no date / Won / Lost),
       its order, days late, Hot Pipeline, search (words, dashes, capitals, phone forms), the
       target (his only, this month, none, month roll-over, broken `Rep-Targets` still lets him in).
-- [ ] The speed test still passes: opening the app opens Sales Diary once and Meta-Data not at all
+- [x] The speed test still passes: opening the app opens Sales Diary once and Meta-Data not at all
       when the kept list is fresh.
-- [ ] Browser check at 360 px: tabs and counts, Today's Chase order and red late cards, Hot
+- [x] Browser check at 360 px: tabs and counts, Today's Chase order and red late cards, Hot
       Pipeline, search, failed save on every tab, Show more, new site lands on All My Parties, day
       rollover with the page left open.
-- [ ] `npm run check` and `npm run check:browser` pass on a fresh clone.
+- [x] `npm run check` (269 tests) and `npm run check:browser` (5 checks) pass on a fresh clone;
+      independent review: nothing serious; three small findings fixed with checks (a saved site keeps
+      its place in the list; short number searches; the empty-tab message under a failed save).
 
 Checked live with the owner:
 - [ ] On his phone: Today's Chase is correct for overdue and today (TEST sites with past, today's

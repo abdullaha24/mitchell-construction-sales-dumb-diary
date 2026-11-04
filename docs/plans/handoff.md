@@ -1,26 +1,32 @@
 # Handoff: start here
 
-> Updated 2026-11-04, end of session 3. **Every session: read this first, and update it before
+> Updated 2026-11-04, session 4. **Every session: read this first, and update it before
 > you finish.** Then read `AGENTS.md` (rules, commands) if you haven't.
 
 ## Where we are
 **Phases 0–4b are done and live** (deployment version 5). A salesman opens his private link
 on his phone and:
-- sees **only his own sites**, newest first ("No number yet" where a phone is missing);
-- **adds a site** mostly by tapping: buyer type, product pills, area (pick or add, with
-  "Did you mean …?"), **stage** (Visited / Lead pre-picked; Rate Quoted / Won ask for total Rs.
-  value + Cash / Credit; Lost asks a reason), follow-up (Tomorrow pre-picked), note;
-- **updates a site** (any stage, backwards too) and **edits details** (a number can be
-  changed, never removed; old → new kept in `Activity`);
-- **saves feel instant**: back on his list at once with "Saving…"; a failed save turns the card
-  orange ("Not saved. Tap to try again.") and nothing he typed is lost.
+- sees **only his own sites** ("No number yet" where a phone is missing);
+- **adds a site** mostly by tapping (buyer type, products, area with "Did you mean …?", stage,
+  follow-up, note); **updates** a site (any stage) and **edits details**;
+- **saves feel instant** ("Saving…"; a failed save turns orange, nothing typed is lost).
 
-The owner has **Sales Diary → Check setup / Links / Refresh salesmen** in the sheet (on a
-computer). Everything is in the **Sales Diary** sheet; the owner's **Meta-Data** sheet is only
-ever read.
+**Phase 5 (spec 006, Approved) is built and checked locally, not live yet.** On the branch:
+- **Three tabs** with counts: **Today's Chase** (opens first; no date, then oldest late first in
+  red with "3 days late", then today), **Hot Pipeline** (Sample / Trial + Rate Quoted, biggest Rs.
+  first, owner P5-1; no total, P5-2), **All My Parties** (newest first, search by name / contact /
+  phone either form / area / buyer type / products / stage / note). 50 cards then Show more.
+- **His target** under his code ("November target: Rs. …"), his own only, hidden if none.
+  Kept with the salesmen list in Script Properties (this month + next), refreshed daily, by
+  **Sales Diary → Refresh salesmen & targets** (renamed), Check setup or the Links window.
+- Failed saves at the top of every tab; new site → All My Parties; Back / Update keep his place;
+  "today" from Google's clock, rolls over with the page left open.
 
-Specs: 001 foundations · 002 private links · 003 my sites + add · 004 update a site · 005 instant
-saves + stage when adding: **all Done**. Build plans 001–005 in `docs/plans/` are all ticked.
+The owner has **Sales Diary → Check setup / Links / Refresh salesmen** (becomes "Refresh salesmen
+& targets" once phase 5 is pushed) in the sheet. Everything is in the **Sales Diary** sheet; the
+owner's **Meta-Data** sheet is only ever read.
+
+Specs 001–005 **Done**; 006 **In progress** (local acceptance ticked; live acceptance left).
 
 ### Live state (2026-11-04)
 - `Sites` and `Activity`: **empty** (every test row was deleted with the owner's OK).
@@ -28,23 +34,26 @@ saves + stage when adding: **all Done**. Build plans 001–005 in `docs/plans/` 
 - `Links`: the owner's link, plus **test links for RIA and SJ** (active). **Cancel the test
   links before launch** (owner: Sales Diary → Links). The owner's phone may still hold an unsent
   "TEST OFFLINE" save on the RIA link; cancelling that link makes it harmless.
-- Salesmen list kept by the app (refreshed by Refresh salesmen / Check setup / daily).
+- Salesmen list kept by the app (refreshed by Refresh salesmen / Check setup / daily). After the
+  phase 5 push, the old kept copy (no targets) is re-read on the first salesman call.
 
-## Next: phase 5 spec (focus tabs + his target)
-Roadmap phase 5: **Today's Chase** (follow-ups due today or overdue, oldest overdue first in
-red), **Hot Pipeline** (Sample / Trial and Rate Quoted), **All My Parties** with search, and
-**his monthly target** (target only, no achieved figure: owner Q12c). Write
-`docs/specs/006-focus-tabs.md` as a **Draft**, ask the owner only business questions (his way,
-below), get approval, then plan → build → review → live, as in phases 3–4b.
+## Next: take phase 5 live (plan 006, step 4)
+Follow the routine below: clasp sign-in with the owner → push → compare → update-deployment →
+owner tests on his phone with **TEST** sites (one due Tomorrow, one Rate Quoted with a value,
+one Sample / Trial). The app can't set a past date, so to see "late" cards: with the owner's OK,
+the agent sets those TEST rows' `next_followup` to earlier dates in `Sites` through the Google
+Sheets connector (TEST rows only), then he reopens his link. Check Today's Chase order and red
+"days late", Hot Pipeline order, search (name, area, phone), and that the target line matches
+`Rep-Targets` for this month (read live; real amounts never go in git). Then delete TEST rows
+with his OK, clasp logout, close spec 006 / plan 006 / roadmap phase 5.
 
-Notes for phase 5:
-- **Target without slowing saves:** salesman calls deliberately don't open Meta-Data any more
-  (spec 005). Read targets the same way the salesmen list is kept (`knownSalesmen_` in
-  `src/metadata.js`): keep this month's targets in Script Properties, refreshed by Check setup /
-  Refresh salesmen / daily. A salesman must only ever receive **his own** target (ADR-0004).
-- The page already has every site's `followUp` (yyyy-MM-dd, Pakistan time), `stage` and
-  `created`; tabs and search can work on the phone with no extra server calls.
-- Won / Lost sites have no follow-up (owner P4-3), so they never appear in Today's Chase.
+Then **phase 6** spec (site card helpers + areas): Call / WhatsApp buttons, last-spoken line,
+going cold at 7 days (needs `updated` on the card: `Sites.updated_at`), snooze, area filter.
+
+Known limit (from the phase 5 review, left on purpose): if the phone's clock is **changed while
+the app is open**, "today" on the page can be off by that change until the page reloads (the
+saved data is unaffected: the server works out Tomorrow etc.). Measuring with a timer instead
+would break the common case (phone asleep overnight), so it was kept as is.
 
 ## How every phase goes live (the routine)
 1. `npm run check` and `npm run check:browser` green; independent review agent; fixes with
@@ -100,6 +109,6 @@ IDs aren't secret (each needs the owner's Google account):
   `AKfycbwmWhxLQfpkQRfFIfdv9tZD4CvZfeWEB__YiXnGTSk7-6mlZVZUvLEp2aJDwey0HXaF`,
   https://script.google.com/macros/s/AKfycbwmWhxLQfpkQRfFIfdv9tZD4CvZfeWEB__YiXnGTSk7-6mlZVZUvLEp2aJDwey0HXaF/exec
 - Owner's Google account: the one that owns both sheets.
-- Branches: sessions 1–2 merged into the default branch; **session 3 is on
+- Branches: sessions 1–2 merged into the default branch; **sessions 3–4 are on
   `claude/clever-hopper-ain3c5`, not merged and no PR opened** (owner hasn't asked for one).
   Next session: start from this branch unless the owner says it was merged.

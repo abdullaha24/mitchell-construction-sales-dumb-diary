@@ -21,7 +21,7 @@
 - "Today" from Google's clock; re-worked out when he comes back to the app.
 - Browser check `tests/browser/tabs.check.js`; existing checks still pass.
 
-## [ ] Step 3: Docs, review, local acceptance
+## [x] Step 3: Docs, review, local acceptance
 - Data model (kept targets), AGENTS.md, src/README.md, roadmap, handoff.
 - Independent review agent; fixes with tests; fresh-clone check; secrets sweep.
 
