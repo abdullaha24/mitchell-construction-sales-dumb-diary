@@ -1,7 +1,6 @@
 # 0002: Identify salesmen by private, unguessable links (no logins)
 
-- **Status:** Accepted in principle (owner wants unique links, no logins). Owner to confirm the
-  token and revocation details below.
+- **Status:** Accepted (owner approved the random-token and revoke design on 2026-11-04)
 - **Date:** 2026-11-04
 - **Deciders:** owner (idea), agent (safety details)
 
@@ -16,7 +15,9 @@ A simple ID in the link, like `?rep=lhr1`, is **easy to guess**. Anyone could ch
 ## Decision
 - Each salesman's link carries a **long random token**, e.g. `…/exec?k=8fQ2…` (at least 128 bits
   of randomness), never a readable or sequential ID.
-- A **Reps** table (see data model) maps token → salesman, city and active/inactive.
+- A **`Links`** table in the Sales Diary sheet maps token → salesman and active/inactive. The
+  salesman's region comes from the Meta-Data sheet (ADR-0005). *(Clarified 2026-11-04: table
+  renamed from "Reps" after the owner interview; the decision is unchanged.)*
 - **Every** server call re-checks the token and works out the salesman on the server. The browser
   never sends "I am rep X" and the server never trusts it if it does.
 - The server only ever returns that salesman's own data.

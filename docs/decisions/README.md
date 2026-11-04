@@ -14,5 +14,7 @@ and don't re-argue it every session.
 | # | Title | Status |
 | --- | --- | --- |
 | [0001](0001-google-sheets-and-apps-script.md) | Google Sheets backend + Apps Script web app | Accepted |
-| [0002](0002-per-salesman-private-links.md) | Identify salesmen by private unguessable links, no logins | Accepted (owner to confirm details) |
-| [0003](0003-code-tooling-and-local-testing.md) | Code tooling: clasp, plain JS, local tests | Proposed |
+| [0002](0002-per-salesman-private-links.md) | Identify salesmen by private unguessable links, no logins | Accepted |
+| [0003](0003-code-tooling-and-local-testing.md) | Code tooling: clasp, plain JS, local tests | Accepted |
+| [0004](0004-private-lists-no-territories.md) | Private lists per salesman, no territories, duplicate warning | Accepted |
+| [0005](0005-app-data-sheet-and-meta-data-sheet.md) | App data in "Sales Diary"; salesmen and targets read from "Mitchell Sales Meta-Data" | Accepted |

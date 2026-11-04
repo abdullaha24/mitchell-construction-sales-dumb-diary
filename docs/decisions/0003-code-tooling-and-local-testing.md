@@ -1,8 +1,8 @@
 # 0003: Code tooling: clasp, plain JavaScript, local tests
 
-- **Status:** Proposed (owner to confirm)
+- **Status:** Accepted (owner approved 2026-11-04)
 - **Date:** 2026-11-04
-- **Deciders:** agent (recommendation)
+- **Deciders:** agent (recommendation), owner (approved)
 
 ## Context
 AI agents will write most of the code. Agents work best with a **fast local feedback loop**:
@@ -16,7 +16,7 @@ Facts checked on 2026-11-04 against the official clasp README (github.com/google
 - `.clasp.json` supports `rootDir`, `scriptExtensions`, `htmlExtensions`, `filePushOrder`, and
   `skipSubdirectories`. `.claspignore` uses multimatch patterns relative to `rootDir`.
 
-## Decision (proposed)
+## Decision
 - Keep source in git under `src/` and use **clasp** to push it to Apps Script.
 - Write **plain JavaScript** (no build step), with **JSDoc types + `// @ts-check`** so `tsc --noEmit`
   can type-check it locally.

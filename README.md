@@ -7,7 +7,8 @@ A stupidly simple phone app for our field sales team. Each salesman opens his ow
 - **All My Parties**: every contractor, site and dealer he deals with, searchable
 
 He logs visits, quotes, wins and losses in a couple of taps. Everything lands in a Google Sheet,
-so the owner finally has a written record of what the team is working on.
+and the owner gets his own screen: pipeline by salesman and region, who worked today, what's
+overdue or going cold, and why deals were lost.
 
 **Status:** planning. No app yet.
 

@@ -5,14 +5,15 @@ If something here is out of date, fix it in the same change.
 
 ## What this is
 
-**Sales Diary** (working name): a phone-first pocket diary for the 7 field salesmen of a small
-Pakistani construction-chemicals company (3 Islamabad, 3 Lahore, 1 Karachi).
+**Sales Diary** (working name): a phone-first pocket diary for the 8 field salesmen of a small
+Pakistani construction-chemicals company, in three regions (North, Center, South).
 Each salesman opens a personal link, sees who to chase today, and logs visits, quotes, wins and
-losses in a few taps. The owner gets a written pipeline in Google Sheets for free.
+losses in a few taps. The owner gets his own screen plus a written record in Google Sheets.
 
 Read before any product or UI work:
 - `docs/product/vision.md`: what we're building and why
 - `docs/product/glossary.md`: domain words (thekedar, ugrahi, the sales stages, buyer types)
+- `docs/product/open-questions.md`: owner decisions (Answered) and what's still open
 
 ## Status
 
@@ -56,6 +57,10 @@ When tooling is added, list the exact commands in a `## Commands` section here.
 - Backend is Google Sheets + Google Apps Script web app (ADR-0001). Don't add servers or paid services.
 - Never commit secrets or credentials: `.clasprc.json`, OAuth tokens, rep link tokens, phone lists.
 - Rep links are secrets. See ADR-0002 before touching identification or links.
+- A salesman only ever gets his own sites and activity (ADR-0004). The yes/no duplicate-phone
+  check is the only exception. Test this on every new server function.
+- Salesmen and targets are **read** from the owner's "Mitchell Sales Meta-Data" sheet. **Never
+  write to it.** App data goes in the "Sales Diary" sheet (ADR-0005).
 - Times are Pakistan time (`Asia/Karachi`). Money is PKR (Rs.).
 
 ## Definition of done
