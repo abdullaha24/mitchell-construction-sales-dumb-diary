@@ -1,21 +1,37 @@
 # Handoff: start here
 
-> Updated 2026-11-04 at the end of session 1. **Every session: read this first, and update it
+> Updated 2026-11-04 at the end of session 2. **Every session: read this first, and update it
 > before you finish** (what's done, what's next, which questions are still open).
 
 ## Where we are
-- **Phase 0 is done:** repo shell, agent rules, vision v0.2, glossary, data model v0.2,
-  ADRs 0001–0005 (all Accepted), roadmap v0.2. The owner was interviewed; answers are in
-  `docs/product/open-questions.md` → *Answered*.
+- **Phase 0 is done.** Repo shell, agent rules, vision v0.3, glossary, data model v0.3,
+  ADRs 0001–0006 (all Accepted), roadmap v0.3.
+- **Session 2:** the owner answered all 10 open questions. Answers are in
+  `docs/product/open-questions.md` → *Answered* (A1–A10). Headlines:
+  - **UAK has left too.** The team is now **7 salesmen**: RIA, AUR, WAK (North), SH, SJ, SM
+    (Center), IB (South).
+  - **11 product categories**, biggest sellers first (glossary → Products).
+  - **No starting area list.** Salesmen add areas; the app suggests close matches.
+  - **Owner opens his screen with a private owner link** (ADR-0006).
+  - The owner screen shows targets next to Won Rs. ("logged, not invoiced") plus the house /
+    office sales target (`UNASSIGNED`).
+- **Meta-Data sheet edited with the owner's explicit OK** (details in data-model.md):
+  MUB's targets split 50/50 to SJ and SM from Aug 2026; all UAK targets moved to IB; MUB and UAK
+  removed from `Rep_Mapping`. Checked by reading back.
 - **No app code yet.**
-- **Next:** write the **phase 1 spec** (`docs/specs/001-foundations.md`: clasp + local tests,
-  create the Sales Diary sheet, read Meta-Data). Get owner approval before any code.
 
-## First thing in the session: ask the owner these questions
+## Next
+Write the **phase 1 spec**, `docs/specs/001-foundations.md` (status `Draft`), then stop for owner
+approval. It covers clasp and local tests (ADR-0003), creating the Sales Diary sheet and its tabs,
+seeding `Lists`, and reading salesmen and targets from Meta-Data. Things the spec must handle:
+- `Rep-Targets` and `Targets` months are **date cells**, not text.
+- Owner's own workings sit in `Rep-Targets` E2 and E74:I90, beside real data rows (SM's rows are
+  A74:C84). Read only A–C and skip blank rows.
+- The owner must run `clasp login` once; credentials never go in git.
 
-Ask **before** starting other work. If the owner says skip, skip; move on and leave the question here.
-
-**How to ask (owner's preference):**
+## Questions for the owner
+None open. When new ones come up, add them here and in `open-questions.md`, and ask them the
+owner's way:
 - One question at a time.
 - Tappable options. Use the multiple-choice question tool if you have one (Claude Code:
   `AskUserQuestion`); otherwise give numbered options.
@@ -23,39 +39,9 @@ Ask **before** starting other work. If the owner says skip, skip; move on and le
   knows, say there's no recommendation.
 - Plain English, no jargon.
 
-After each answer: move it to `open-questions.md` → *Answered* (with date), update any affected
-doc (vision, glossary, data model, ADR, roadmap), and delete it from this list.
-
-### A. Owner to supply
-1. **Product categories (5–8).** Options: type your list now · use the draft (Tile Bond,
-   Admixtures, Waterproofing, Epoxy, Grout / Putty) for now · later.
-2. **Starting area list per region** (North / Center / South; regions span several cities).
-   Options: type them now · *(Recommended)* agent proposes a starter list per region, owner
-   corrects it · skip, salesmen add areas themselves.
-3. **SJ and SM targets** (MUB's targets split 50/50 between them). Ask: are they in
-   `Rep-Targets` yet, and from which month does the split start? Options: done · not yet ·
-   ask the agent to do it. **Editing Meta-Data needs the owner's explicit OK in that session**
-   (ADR-0005: the app never writes to it).
-4. **IB's target.** He's in `Rep_Mapping` with no target rows. Options: owner will add ·
-   IB has no target (app shows none) · give the numbers now.
-5. **Remove MUB from `Rep_Mapping`?** Options: done · not yet · ask the agent to do it
-   (same explicit-OK rule).
-
-### B. To decide
-6. **What is the "UNASSIGNED" region** in the `Targets` tab? Options: house / office accounts,
-   so show on the owner screen · ignore it in the app · other.
-7. **Owner screen: show each salesman's target next to the Rs. he logged as Won?**
-   *(Recommended: yes, labelled "logged, not invoiced")* · no, targets only · no targets on owner screen.
-8. **How does the owner open his screen?** Options: *(Recommended)* sign in with his Google
-   account (safer, since his screen shows everything; agent must confirm it works alongside
-   salesmen's no-login links) · a private owner link like the salesmen's (simplest, but if it
-   leaks everything is exposed).
-9. **When a salesman leaves, how are his sites moved?** *(Recommended: owner edits `rep` in the
-   Sales Diary sheet)* · a button on the owner screen.
-10. **Duplicate areas added by salesmen ("DHA" vs "D.H.A")?** *(Recommended: owner tidies them
-    in the sheet)* · a merge tool on the owner screen.
-
 ## Useful facts
 - Meta-Data spreadsheet: "Mitchell Sales Meta-Data", ID `11rcjx1eZA9BqwSTIoK66hrs7M8rYisL12GirSzLyrkc`
   (in the owner's Google Drive). Structure documented in `docs/architecture/data-model.md`.
-- Working branch so far: `claude/vigilant-volta-yye9pn` (no PR opened).
+  **Never edit it without the owner's explicit OK in that session.**
+- Branches: session 1 `claude/vigilant-volta-yye9pn`, session 2 `claude/laughing-fermi-ec4tlp`
+  (no PRs opened).

@@ -7,26 +7,7 @@ the data model, update those too. The ready-to-ask versions (options and recomme
 
 ## Open
 
-### Owner to supply
-1. **Product categories.** The 5–8 category names for the "products pitched" pills.
-2. **Area list per region.** Starting list of areas for North, Center and South. Because regions
-   cover more than one city, consider names like "Rawalpindi: Saddar" where it helps.
-3. **Targets for SJ and SM.** The owner will add them to `Rep-Targets`, with MUB's targets split
-   50/50 between them. (From which month?)
-4. **Target for IB.** IB is in `Rep_Mapping` but has no rows in `Rep-Targets`. Until he has one,
-   the app shows no target for him.
-
-### To decide
-5. **"UNASSIGNED" region** in the `Targets` tab. What is it (house accounts? office sales)? Does
-   the app need to show it anywhere, e.g. on the owner screen?
-6. **Owner screen and targets.** Should the owner screen show each salesman's target next to the
-   Rs. value he logged as Won? (Salesmen see target only; Q12c.)
-7. **Owner access.** How does the owner open his screen: his own private link (same mechanism as
-   salesmen, with an owner role), or Google sign-in? Decide in the owner-screen spec.
-8. **Salesman leaves.** When a salesman leaves (like MUB), the owner moves his sites to someone
-   else. Confirm that's done by editing the Sales Diary sheet, or does it need a button?
-9. **Owner merging areas.** When salesmen add areas that duplicate existing ones ("DHA" vs
-   "D.H.A"), does the owner fix them in the sheet, or does he need a tool?
+_None right now._ Add new questions here as they come up.
 
 ## Answered
 
@@ -47,11 +28,27 @@ Owner interview, 2026-11-04:
 | Q10 | Language? | **Simple English** labels. Notes in any language. |
 | Q11 | Owner view? | **Owner screen from day one**, with all four sections: pipeline by salesman/region, who worked today, overdue + going cold, won/lost + lost reasons. |
 | Q12 | Targets? | Monthly targets already live in the **"Mitchell Sales Meta-Data"** sheet. |
-| Q12a | Who gets the app? | **All 8:** RIA, AUR, WAK, SH, SJ, SM, UAK, IB. **MUB has left.** |
+| Q12a | Who gets the app? | **All 8:** RIA, AUR, WAK, SH, SJ, SM, UAK, IB. **MUB has left.** *(Updated in session 2: UAK left too, so 7. See A3b.)* |
 | Q12b | Regions = cities? | **No, regions cover more than one city.** The app uses region (North / Center / South). |
 | Q12c | What does a salesman see of his target? | **Target only**, no achieved figure. |
 | Q13 | Where does app data live? | **New "Sales Diary" sheet.** App reads salesmen and targets from Meta-Data (ADR-0005). |
 | Q14 | Day-one data? | **Start empty**; salesmen add sites as they go. |
-| Q15 | Rollout? | **All 8 at once.** |
+| Q15 | Rollout? | **All at once** (now 7 salesmen, see A3b). |
 | (ADR-0002) | Link security | **Approved:** long random codes, owner can cancel and reissue. |
 | (ADR-0003) | Code tooling | **Approved:** clasp, plain JS with type checks, local tests. |
+
+Owner, session 2 (2026-11-04):
+
+| # | Question | Answer |
+| --- | --- | --- |
+| A1 | Product categories? | **11 categories**, from the owner's sales list. Shown in this order (largest sales first): Tile Adhesives · Waterproofing Job · Floor Hardeners · Bonding Agents & Sealants · Waterproofing Products · Tile Grouts · Structural Grouts · Restoration & Repair Products · Admixtures · Surface Protection · Mortars, Plasters & Putties. Stored in the `Lists` tab, so the owner can rename or reorder them. |
+| A2 | Starting area list? | **None.** Salesmen add areas themselves as they go. |
+| A3 | SJ / SM targets? | **MUB's targets split 50/50 between SJ and SM from Aug 2026.** MUB keeps Jul 2026 only. The agent made the edit in `Rep-Targets` with the owner's explicit OK. |
+| A3b | UAK? | **UAK has left too.** All UAK target months (Jul 2026–Jun 2027) moved to IB; the agent made the edit with the owner's OK. The team is now **7 salesmen**: RIA, AUR, WAK (North), SH, SJ, SM (Center), IB (South). |
+| A4 | IB's target? | **IB takes UAK's targets** (see A3b). |
+| A5 | Remove MUB from `Rep_Mapping`? | **Yes, MUB and UAK both removed.** The agent deleted the two rows with the owner's OK. |
+| A6 | "UNASSIGNED" region in `Targets`? | **House / office sales** (not tied to a salesman). Shown on the **owner screen only**, never to salesmen. |
+| A7 | Owner screen: target next to Won Rs.? | **Yes**, labelled "logged, not invoiced". Salesmen still see only their target. |
+| A8 | How does the owner open his screen? | **A private owner link**, the same kind as the salesmen's (ADR-0006). Owner accepted the risk that a leaked owner link exposes everything until he cancels it. |
+| A9 | Salesman leaves? | **Owner edits `rep` in the Sales Diary `Sites` tab.** No button. |
+| A10 | Duplicate areas ("DHA" vs "D.H.A")? | **The app suggests close existing areas while a salesman types a new one** ("Did you mean DHA?"). Anything that slips through, the owner tidies in the sheet. |

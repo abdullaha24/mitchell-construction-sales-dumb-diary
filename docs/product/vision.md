@@ -1,20 +1,22 @@
 # Vision
 
-> Status: **v0.2** (2026-11-04). Started from the owner's brainstorm, then refined in an owner
-> interview the same day. Every interview answer is logged in
+> Status: **v0.3** (2026-11-04). Started from the owner's brainstorm, then refined in an owner
+> interview the same day and a second round of owner answers (session 2). Every interview answer is logged in
 > [open questions → Answered](open-questions.md#answered). Screen details are still refined in
 > each feature's spec before building.
 
 ## The problem
 
-A small Pakistani construction-chemicals company has **8 field salesmen** in three regions.
+A small Pakistani construction-chemicals company has **7 field salesmen** in three regions.
 A region can cover more than one city.
 
 | Region | Salesmen (short code) |
 | --- | --- |
 | North (Islamabad and around) | RIA, AUR, WAK |
 | Center (Lahore and around) | SH, SJ, SM |
-| South (Karachi and around) | UAK, IB |
+| South (Karachi and around) | IB |
+
+MUB and UAK have left. SJ and SM took over MUB's targets; IB took over UAK's.
 
 The owner keeps the salesmen list and monthly targets in the Google Sheet
 **"Mitchell Sales Meta-Data"** (see [data model](../architecture/data-model.md)).
@@ -95,9 +97,11 @@ His list has a big **"+ New Site"** button. He picks existing sites instead of r
 - **Buyer type:** tap one: Contractor / Applicator, Project Owner, Consultant, Dealer.
 - **Contact name and phone (WhatsApp):** site engineer, thekedar or procurement person.
   The company owns this contact, not the salesman's phone.
-- **Products pitched:** tap **category** pills (5–8 categories; the owner will supply the list).
-  Exact product and rate go in the note.
-- **Area:** tap from the owner's area list for his region. If it's missing, he can add a new area.
+- **Products pitched:** tap **category** pills (11 categories from the owner, biggest sellers
+  first; see the [glossary](glossary.md#products)). Exact product and rate go in the note.
+- **Area:** tap an area already used in his region. If it's missing, he adds it. There is no
+  starting list: salesmen build it as they go. While he types a new area, the app suggests close
+  existing ones (*"Did you mean DHA?"*) so the list doesn't fill with duplicates.
 - **Duplicate warning:** if the contact's phone number is already with another salesman, he sees
   *"Someone in the team already works with this contact."* No name, rate or details are shown.
   He can still save.
@@ -129,16 +133,21 @@ there that he could visit on the same trip.
 **His own screen, from day one**, showing:
 
 1. **Pipeline by salesman and region:** how many sites and how many Rs. at each stage, with
-   tap-through to the sites.
+   tap-through to the sites. Each salesman's **monthly target** sits next to the Rs. he logged as
+   Won, labelled *"logged, not invoiced"*. The **house / office sales** target (the `UNASSIGNED`
+   region in Meta-Data) is shown here too.
 2. **Who worked today:** a feed of today's updates, plus who logged nothing.
 3. **Overdue and going cold** across the whole team.
 4. **Won / lost:** this month's wins in Rs., and lost reasons (e.g. "6 lost on price").
 
-He can also open the Sales Diary sheet directly at any time.
+He opens it with his own **private owner link**, the same kind as the salesmen's
+([ADR-0006](../decisions/0006-owner-private-link.md)). He can also open the Sales Diary sheet
+directly at any time, and that is where he moves a departed salesman's sites to someone else and
+tidies duplicate areas.
 
 ## Rollout
 
-- **All 8 salesmen start on the same day.** No pilot group.
+- **All 7 salesmen start on the same day.** No pilot group.
 - **Start empty:** no data import. Salesmen add sites as they visit and call.
 
 ## Later (agreed, not in the first version)
