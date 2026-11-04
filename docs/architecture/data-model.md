@@ -69,7 +69,7 @@ Edits made on 2026-11-04 with the owner's explicit OK (session 2):
 
 ### Tab `Links`: private link codes (ADR-0002)
 
-**Created by Check setup from phase 2** ([spec 002](../specs/002-private-links.md), *Draft*). Rows are only
+**Created by Check setup from phase 2** ([spec 002](../specs/002-private-links.md)). Rows are only
 added or set inactive by the app, never deleted, so the tab is a history of every link.
 | Column | Example | Notes |
 | --- | --- | --- |

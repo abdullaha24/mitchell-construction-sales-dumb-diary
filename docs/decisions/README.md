@@ -20,4 +20,4 @@ and don't re-argue it every session.
 | [0005](0005-app-data-sheet-and-meta-data-sheet.md) | App data in "Sales Diary"; salesmen and targets read from "Mitchell Sales Meta-Data" | Accepted (ID bullet superseded by 0007) |
 | [0006](0006-owner-private-link.md) | Owner opens his screen with a private owner link | Accepted |
 | [0007](0007-meta-data-id-in-code.md) | The Meta-Data sheet's ID is kept in the code | Accepted |
-| [0008](0008-sales-diary-id-and-web-address-in-code.md) | The Sales Diary sheet's ID and the web app address are kept in the code | Proposed |
+| [0008](0008-sales-diary-id-and-web-address-in-code.md) | The Sales Diary sheet's ID and the web app address are kept in the code | Accepted |

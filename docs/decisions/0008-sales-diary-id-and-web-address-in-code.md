@@ -1,8 +1,8 @@
 # 0008: The Sales Diary sheet's ID and the web app address are kept in the code
 
-- **Status:** Proposed
+- **Status:** Accepted (owner approved with spec 002 on 2026-11-04)
 - **Date:** 2026-11-04
-- **Deciders:** agent (recommendation), owner (to approve with spec 002)
+- **Deciders:** agent (recommendation), owner (approved)
 
 ## Context
 From phase 2 the web app reads the Sales Diary `Links` tab on every page load, and the owner's

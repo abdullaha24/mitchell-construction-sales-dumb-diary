@@ -1,9 +1,9 @@
 # 002: Private links
 
-- **Status:** Draft
-- **Owner approval:** _pending_
+- **Status:** Approved
+- **Owner approval:** approved by the owner on 2026-11-04 (session 3)
 - **Related:** roadmap phase 2 · ADR-0002 (private links) · ADR-0006 (owner link) ·
-  ADR-0008 (Sales Diary ID and web address in code, *Proposed*) ·
+  ADR-0008 (Sales Diary ID and web address in code) ·
   [data model](../architecture/data-model.md) → `Links` · builds on
   [spec 001](001-foundations.md)
 
@@ -38,6 +38,9 @@ opening a link says who you are, and nothing more. **Salesmen see their name, no
   phase."*
 - **A cancelled, mistyped, made-up or missing link** shows only: *"This link doesn't work. Ask
   the owner for a new one."* It never says whether the link once existed or whose it was.
+- If Google itself fails (e.g. a sheet can't be opened for a moment), the page says *"Something
+  went wrong. Try again in a minute."*, so a salesman doesn't think his link was cancelled.
+  *(Added at approval.)*
 - A slow connection just takes longer: the page is one small screen, no extra downloads.
 
 ### One-time switch-over (with the owner, about 10 minutes)

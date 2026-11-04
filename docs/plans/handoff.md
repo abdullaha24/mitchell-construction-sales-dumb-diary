@@ -23,13 +23,8 @@
     deleted).
 
 ## Next
-**Spec 002 (private links) is written as a `Draft`**: `docs/specs/002-private-links.md`, with
-ADR-0008 (*Proposed*: Sales Diary ID and web address in code) and the `Links` data-model
-update. The owner answered its two questions (P2-1 links always viewable, P2-2 managed from the
-sheet menu on a computer). **Waiting for the owner to approve spec 002 and ADR-0008.** Once
-approved: write `docs/plans/002-private-links-plan.md` (small local steps, one commit each, like
-plan 001), build locally, then do the live switch-over with the owner (spec 002 → One-time
-switch-over).
+**Spec 002 (private links) is Approved** (2026-11-04), with ADR-0008 Accepted. Build it with
+`docs/plans/002-private-links-plan.md`: steps 1–5 local, step 6 live with the owner.
 
 Carry forward into phase 2:
 - **Never run `create-deployment` again.** Put new code live with
@@ -69,8 +64,8 @@ link's. Delete the log afterwards. At the end of the session: `npx clasp logout`
   paste them into files.
 
 ## Questions for the owner
-- **Approve spec 002 (private links) and ADR-0008?** If he wants changes, update the spec
-  first. Ask questions the owner's way:
+None open.
+Ask questions the owner's way:
 - One question at a time.
 - Tappable options. Use the multiple-choice question tool if you have one (Claude Code:
   `AskUserQuestion`); otherwise give numbered options.
