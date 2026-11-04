@@ -30,8 +30,21 @@ setup shows no-number counts. Test rows (3 sites, 3 activity rows, test area DHA
 with his OK, so `Sites` / `Activity` are empty and IDs start again at `S000001` (no real IDs
 were ever issued). His owner, RIA and SJ test links are still active.
 
-**Spec 004 (update a site) is Approved** (2026-11-04). Build it with
-`docs/plans/004-update-site-plan.md`.
+**Phase 4 (update a site, spec 004) is built, reviewed and tested locally**: 242 tests and 3
+browser checks pass on a fresh clone. The independent review found no way to reach another
+salesman's site; its 7 points (checks inside the lock, repeat/corrected saves, unchanged cells
+never rewritten, junk phone = no number, turned-off areas/products, "Keep" follow-up, late
+replies) are fixed and tested.
+
+**Next: go live with the owner** (plan 004 step 5), same routine as phase 3:
+1. clasp sign-in (recipe below); `npx clasp push --force`; pull back and compare;
+   `npx clasp update-deployment AKfycbwmWhxLQfpkQRfFIfdv9tZD4CvZfeWEB__YiXnGTSk7-6mlZVZUvLEp2aJDwey0HXaF -d "phase 4: update a site"`.
+2. Owner, on his RIA test link: add a TEST site with a number and one without; take the first
+   through Rate Quoted (value + Cash/Credit) → Won → back to Sample / Trial → Lost (Other +
+   note); move the second to Sample / Trial (number box appears); Edit details: change a name
+   and a number.
+3. Agent checks `Sites` / `Activity` via the connector (no link codes), then deletes the test
+   rows with the owner's OK. `npx clasp logout`, delete `~/.clasprc.json`.
 
 Carry forward (phase 4 and later):
 - **Never run `create-deployment` again.** Put new code live with

@@ -25,6 +25,6 @@ stages, notes up to 200, the number gate, "a number can't be removed", "Nothing 
 ## [x] Step 3: The site screen
 Tap a card → site screen with Update and Edit details; drafts kept per site; browser check.
 
-## [ ] Step 4: Docs, review, local acceptance
+## [x] Step 4: Docs, review, local acceptance
 
 ## [ ] Step 5: Live (with the owner), then close out

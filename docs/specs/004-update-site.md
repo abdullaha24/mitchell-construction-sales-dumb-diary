@@ -1,6 +1,6 @@
 # 004: Update a site
 
-- **Status:** Approved
+- **Status:** In progress (built, reviewed and tested locally 2026-11-04; going live next)
 - **Owner approval:** approved by the owner on 2026-11-04 (session 3)
 - **Related:** roadmap phase 4 · ADR-0004 (private lists) · [glossary](../product/glossary.md) →
   Sales stages · [data model](../architecture/data-model.md) → `Sites`, `Activity` · builds on
@@ -102,8 +102,8 @@ products, area), filled in. He fixes a typo or adds a missing number, then **Sav
 
 ## Acceptance criteria
 Checked locally:
-- [ ] Every rule above has a test, including "B can't update A's site" and the number gate;
-      `npm run check` and `npm run check:browser` pass.
+- [x] Every rule above has a test, including "B can't update A's site" and the number gate;
+      `npm run check` (242 tests) and `npm run check:browser` (3 checks) pass on a fresh clone.
 
 Checked live with the owner:
 - [ ] On a test site: move it to Rate Quoted with a value and Cash / Credit, then Won, then back
