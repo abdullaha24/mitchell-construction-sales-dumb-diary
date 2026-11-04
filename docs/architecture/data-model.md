@@ -69,17 +69,18 @@ Edits made on 2026-11-04 with the owner's explicit OK (session 2):
 
 ### Tab `Links`: private link codes (ADR-0002)
 
-**Created in phase 2**, when its design is final (not by phase 1 setup).
+**Created by Check setup from phase 2** ([spec 002](../specs/002-private-links.md), *Draft*). Rows are only
+added or set inactive by the app, never deleted, so the tab is a history of every link.
 | Column | Example | Notes |
 | --- | --- | --- |
 | `role` | rep | `rep` (a salesman) or `owner` (ADR-0006). |
 | `rep` | RIA | For `rep` rows: must exist in `Rep_Mapping`. Blank for the `owner` row. |
-| `token` | *(long random)* | **Secret.** Whether this column stays in the visible sheet or moves to hidden storage is decided in the phase 2 spec. |
-| `active` | TRUE | FALSE = link cancelled. |
+| `token` | *(64 letters/digits)* | **Secret.** Stays **visible** in the tab (owner's choice P2-1, risk accepted): anyone who sees the tab can copy a working link. Column formatted as plain text. |
+| `active` | TRUE | FALSE = link cancelled. At most one TRUE row per person; **New link** cancels older ones. |
 | `issued_at` | | Server timestamp. |
 
-The owner's link lives here too, as a `role` = `owner` row (ADR-0006). Exact details are set in
-the phase 2 spec.
+The owner's link lives here too, as a `role` = `owner` row with `rep` blank (ADR-0006). A
+salesman's link works only while his `rep` is still in Meta-Data `Rep_Mapping`.
 
 ### Tab `Sites`: current state, one row per site
 | Column | Example | Notes |

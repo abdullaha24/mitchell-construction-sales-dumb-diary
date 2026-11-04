@@ -64,3 +64,5 @@ Owner, session 3 (2026-11-04):
 | # | Question | Answer |
 | --- | --- | --- |
 | S3-1 | Two docs (spec 001's example pop-up, one data-model line) quoted real November 2026 targets. Swap them for made-up amounts, or leave them? | **Swap for made-up amounts.** Done the same day, including the amount used as the parsing example (now `12,345,000`). Older versions in git history still hold them; no history rewrite unless the owner asks. |
+| P2-1 | Spec 002: after making a salesman's link, can the owner see it again later? | **Always viewable** in the Links window and the `Links` tab, so he can resend it. He accepted that anyone who sees that tab can copy a working link. (Agent had recommended showing it once.) |
+| P2-2 | Spec 002: where does the owner make and cancel links? | **In the Sales Diary sheet on a computer for now** (Sales Diary → Links); on his phone owner screen from phase 7. |

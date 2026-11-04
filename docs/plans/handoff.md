@@ -23,16 +23,13 @@
     deleted).
 
 ## Next
-**Write the phase 2 spec: private links** (`docs/specs/002-private-links.md`, from
-`_template.md`), status `Draft`, and get the owner's approval before any code. Roadmap phase 2:
-create the `Links` tab; the owner creates, sends and cancels links (ADR-0002), including his own
-owner link (ADR-0006); the web app opens to `ANYONE_ANONYMOUS`. Done when a link shows "Hello,
-RIA" and a cancelled or fake link shows nothing. Phase 2 must also decide:
-- how the web app finds the Sales Diary sheet (a bound script's web app can't rely on "the
-  active spreadsheet");
-- whether link codes stay in the visible `Links` tab or move to hidden storage (data model);
-- how the owner creates, sends and cancels a link (a menu item in the sheet is the natural
-  fit, since he already uses **Sales Diary → Check setup**).
+**Spec 002 (private links) is written as a `Draft`**: `docs/specs/002-private-links.md`, with
+ADR-0008 (*Proposed*: Sales Diary ID and web address in code) and the `Links` data-model
+update. The owner answered its two questions (P2-1 links always viewable, P2-2 managed from the
+sheet menu on a computer). **Waiting for the owner to approve spec 002 and ADR-0008.** Once
+approved: write `docs/plans/002-private-links-plan.md` (small local steps, one commit each, like
+plan 001), build locally, then do the live switch-over with the owner (spec 002 → One-time
+switch-over).
 
 Carry forward into phase 2:
 - **Never run `create-deployment` again.** Put new code live with
@@ -72,7 +69,8 @@ link's. Delete the log afterwards. At the end of the session: `npx clasp logout`
   paste them into files.
 
 ## Questions for the owner
-None open. Ask new ones the owner's way:
+- **Approve spec 002 (private links) and ADR-0008?** If he wants changes, update the spec
+  first. Ask questions the owner's way:
 - One question at a time.
 - Tappable options. Use the multiple-choice question tool if you have one (Claude Code:
   `AskUserQuestion`); otherwise give numbered options.
