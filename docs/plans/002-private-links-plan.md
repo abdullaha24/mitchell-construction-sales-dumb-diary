@@ -39,8 +39,8 @@
 - Commit: "Serve Hello / no-link pages from the link code".
 
 ## [x] Step 4: Links window
-- `menu.js`: `Sales Diary → Links` (`menuLinks`). `src/linkswindow.js`: `ownerListLinks`,
-  `ownerNewLink`, `ownerCancelLink`. `src/Links.html`: rows, New / Copy / Send on WhatsApp /
+- `menu.js`: the `Sales Diary → Links` menu item. `src/linkswindow.js`: `menuLinks`,
+  `ownerListLinks`, `ownerNewLink`, `ownerCancelLink`. `src/Links.html`: rows, New / Copy / Send on WhatsApp /
   Cancel with a confirming second tap; built with `textContent`, never `innerHTML` from data.
 - Tests: owner-only refusals touch nothing; only `owner` or a current salesman accepted; list
   contents; new cancels old; allow-list of 7 public functions.

@@ -72,7 +72,11 @@
             }, CONFIRM_MS);
             return;
           }
+          // Disarm first, so if the action fails the next tap asks again.
           clearTimeout(timer);
+          armed = false;
+          button.textContent = label;
+          button.className = '';
           onConfirm();
         });
         return button;
@@ -106,12 +110,19 @@
         var name = el('div', person.label, 'name');
         if (person.region) name.appendChild(el('span', person.region, 'region'));
         box.appendChild(name);
-        box.appendChild(el('div', person.link ? 'Link made ' + person.made : 'No link', 'made'));
-
         var buttons = el('div', undefined, 'buttons');
         var who = person.who;
         var whose = who === 'owner' ? 'your' : who + "'s";
         var Whose = who === 'owner' ? 'Your' : who + "'s";
+        if (person.former) {
+          box.appendChild(el('div', 'Not in the salesmen list any more, but still has a link. ' +
+            'Cancel it, so it can never work again if this code is given to someone new.', 'made'));
+          buttons.appendChild(confirmButton('Cancel link', 'Tap again to cancel ' + whose + ' link',
+            function () { call('ownerCancelLink', who, 'Link cancelled.'); }));
+          box.appendChild(buttons);
+          return box;
+        }
+        box.appendChild(el('div', person.link ? 'Link made ' + person.made : 'No link', 'made'));
         if (person.link) {
           var input = el('input', undefined, 'link');
           input.readOnly = true;

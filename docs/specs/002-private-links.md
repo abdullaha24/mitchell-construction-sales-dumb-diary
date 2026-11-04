@@ -18,8 +18,8 @@ opening a link says who you are, and nothing more. **Salesmen see their name, no
 1. In the Sales Diary sheet: **Sales Diary → Links**. A window opens with one row per salesman
    from `Rep_Mapping` (grouped North, Center, South), plus a row for **You (owner)**.
 2. Each row shows either **No link** or the person's link, the date it was made, and buttons:
-   - **New link**: makes a link. If he already had one, a second tap confirms
-     *"RIA's old link will stop working. Make a new one?"*
+   - **New link**: makes a link. If he already had one, the first tap only changes the button
+     to *"Tap again: RIA's old link will stop working"*; the second tap makes the new one.
    - **Copy**: copies the link. If the browser blocks copying, the link is selected so the owner
      presses Ctrl+C.
    - **Send on WhatsApp**: opens WhatsApp (app or WhatsApp Web) with a ready message, e.g.
@@ -72,6 +72,10 @@ then their links would only say "Hello". The owner can still make them early if 
 - Codes are **never** written to logs, error messages or the `Activity` tab, and never sent to
   anyone's page except the owner's Links window (ADR-0002).
 - The owner can also cancel a link by hand: set `active` to FALSE in the `Links` tab.
+- *(Added after review.)* Someone removed from `Rep_Mapping` whose link was never cancelled is
+  listed last in the Links window, with only **Cancel link** and a short note why. Otherwise, if
+  his code were later given to a new salesman, his old link would work again, for the new
+  person's diary.
 - **Accepted risk (owner's choice, P2-1):** codes are visible in the `Links` tab. Anyone who
   sees that tab (screen share, screenshot, someone at his computer) can copy a working link.
   The owner should never share the Sales Diary sheet, and should cancel any link he thinks has
@@ -94,10 +98,15 @@ then their links would only say "Hello". The owner can still make them early if 
   and `owner…` function **refuses unless the signed-in owner is running it** (spec 001's check).
   A salesman's page could try to call them, but he isn't signed in as the owner, so Google
   gives the script no email for him and the check fails.
-- `ownerNewLink` / `ownerCancelLink` accept only `owner`, or a salesman code currently in
-  `Rep_Mapping`. Anything else is refused.
+- `ownerNewLink` accepts only `owner`, or a salesman code currently in `Rep_Mapping`.
+  `ownerCancelLink` also accepts someone no longer there who still has a working link.
+  Anything else is refused.
 - Making and cancelling links runs inside a lock, so two quick taps can't make two working
-  links.
+  links. Edits are saved (`SpreadsheetApp.flush`) before the lock is let go, because Google
+  holds sheet edits back until a run ends. *(Added after review.)*
+- The owner check means "the signed-in person running this is the account the script runs
+  as". In the sheet, that is whoever opens the menu, so **anyone the Sales Diary sheet were
+  shared with could manage links**. Another reason the sheet is never shared.
 - The web app's pages are built with Google's escaping templates. Nothing typed into the
   address is ever placed into a page.
 - The web app is deployed as **Execute as: me (owner)** and **Who has access: Anyone**
@@ -116,7 +125,8 @@ then their links would only say "Hello". The owner can still make them early if 
 
 ## How it's built (for agents)
 - `src/links.js`: making codes, looking codes up, new and cancel (with `LockService`).
-- `src/linksdialog.js` + `src/Links.html`: the Links window and its three `owner…` functions.
+- `src/linkswindow.js` + `src/Links.html`: the Links window, `menuLinks`, and the three
+  `owner…` functions.
 - `src/webapp.js`: `doGet(e)` reads `e.parameter.k`, decides **rep / owner / doesn't work**,
   and serves one escaping template, `Page.html`, with the right words. No `google.script.run`
   on that page yet.

@@ -268,14 +268,16 @@ function makeLockService(options = {}) {
 }
 
 /**
- * Fake `SpreadsheetApp`.
- * @param {{ byId?: Object<string, object>, active?: object | null }} [options]
+ * Fake `SpreadsheetApp`. (The fake sheets write at once, so flush only records that it was
+ * called; `onFlush` lets a test see when.)
+ * @param {{ byId?: Object<string, object>, active?: object | null, onFlush?: () => void }} [options]
  *   byId: spreadsheets openById can open; any other ID throws, like a deleted or
  *   unshared sheet. active: what getActiveSpreadsheet returns.
  */
 function makeSpreadsheetApp(options = {}) {
   const byId = options.byId || {};
   const ui = makeUi();
+  const flushes = { count: 0 };
   return {
     openById(id) {
       if (!Object.prototype.hasOwnProperty.call(byId, id)) {
@@ -285,6 +287,12 @@ function makeSpreadsheetApp(options = {}) {
       return byId[id];
     },
     getActiveSpreadsheet: () => (options.active === undefined ? null : options.active),
+    flush() {
+      flushes.count++;
+      if (options.onFlush) options.onFlush();
+    },
+    /** Test helper: how many times flush was called. */
+    _flushes: flushes,
     getUi: () => ui,
     /** Test helper: the fake UI, to read alerts and menus. */
     _ui: ui,

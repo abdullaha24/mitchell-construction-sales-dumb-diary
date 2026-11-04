@@ -18,7 +18,7 @@ try {
 const PAGE = `file://${path.join(__dirname, '..', '..', 'src', 'Links.html')}`;
 const URL = 'https://script.google.com/macros/s/X/exec';
 const row = (who, label, region, code) => ({
-  who, label, region,
+  who, label, region, former: false,
   link: code ? `${URL}?k=${code}` : '',
   made: code ? '4 Nov 2026' : '',
   message: code ? `${who}, this is your Sales Diary link. Keep it private: anyone with it can use the diary as you. ${URL}?k=${code}` : '',
@@ -30,6 +30,7 @@ const LIST = {
     row('RIA', 'RIA', 'North', 'a'.repeat(64)),
     row('AUR', 'AUR', 'North', ''),
     row('<img src=x onerror="window.__xss=1">', '<img src=x onerror="window.__xss=1">', '<b>North</b>', 'b'.repeat(64)),
+    { who: 'MUB', label: 'MUB', region: '', former: true, link: '', made: '4 Nov 2026', message: '' },
   ],
 };
 
@@ -67,8 +68,14 @@ function stub(list) {
   // Rendering: one block per person, in order; links only where there is one.
   const names = await page.$$eval('.person .name', (els) => els.map((e) => e.firstChild.textContent));
   assert.deepEqual(names, LIST.rows.map((r) => r.label));
-  assert.deepEqual(await page.$$eval('.person .made', (els) => els.map((e) => e.textContent)),
-    ['No link', 'Link made 4 Nov 2026', 'No link', 'Link made 4 Nov 2026']);
+  const made = await page.$$eval('.person .made', (els) => els.map((e) => e.textContent));
+  assert.deepEqual(made.slice(0, 4), ['No link', 'Link made 4 Nov 2026', 'No link', 'Link made 4 Nov 2026']);
+  assert.match(made[4], /^Not in the salesmen list any more/);
+
+  // Someone who has left: only Cancel link, no link shown, no New link.
+  assert.deepEqual(await page.$$eval('.person:nth-child(5) button, .person:nth-child(5) a',
+    (els) => els.map((e) => e.textContent)), ['Cancel link']);
+  assert.equal(await page.locator('.person:nth-child(5) input').count(), 0);
   assert.equal(await page.inputValue('.person:nth-child(2) input.link'), LIST.rows[1].link);
   assert.deepEqual(await page.evaluate(() => window.__calls), [['ownerListLinks']]);
 
@@ -111,11 +118,15 @@ function stub(list) {
   await page.locator('.person:nth-child(1) button:has-text("Cancel link")').click();
   assert.equal(await page.locator('.person:nth-child(1) button.confirm').textContent(), 'Tap again to cancel your link');
 
-  // Server refuses: the message shows in red; buttons work again.
+  // Server refuses: the message shows in red; buttons work again, and the next tap asks again.
   await page.evaluate(() => { window.__fail = { message: 'Only the owner can manage links, from the Sales Diary menu.' }; });
   await page.locator('.person:nth-child(1) button.confirm').click();
   await page.waitForSelector('#status.error:has-text("Only the owner")');
   assert.equal(await page.locator('button:disabled').count(), 0);
+  const callsBefore = (await page.evaluate(() => window.__calls)).length;
+  await page.locator('.person:nth-child(1) button:has-text("Cancel link")').click();
+  assert.equal((await page.evaluate(() => window.__calls)).length, callsBefore, 'a single tap after a failure must not act');
+  assert.equal(await page.locator('.person:nth-child(1) button.confirm').textContent(), 'Tap again to cancel your link');
 
   // Copy without clipboard access: the link is selected and the owner is told to press Ctrl+C.
   await page.evaluate(() => { Object.defineProperty(navigator, 'clipboard', { value: undefined }); });

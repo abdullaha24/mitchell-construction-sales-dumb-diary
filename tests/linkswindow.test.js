@@ -87,13 +87,40 @@ test('only "owner" or a salesman in Rep_Mapping right now is accepted', () => {
   }
 });
 
-test("Meta-Data can't be opened: no link is made, and the list says why", () => {
+test("Meta-Data can't be opened: no salesman link is made, and the list says why", () => {
   const w = world({ metaTabs: null });
   assert.throws(() => w.s.ownerNewLink('RIA'), /Can't open the Meta-Data sheet/);
   assert.deepEqual(w.diary._writes(), []);
-  assert.equal(w.s.ownerListLinks().ok, false);
-  // The owner's own link never needs Meta-Data to be made.
-  assert.equal(world({ metaTabs: null }).s.ownerNewLink('owner').ok, false);
+  assert.deepEqual(plain(w.s.ownerListLinks()), {
+    ok: false, message: "Can't open the Meta-Data sheet. Check it still exists and your Google account can open it.",
+  });
+});
+
+test("Meta-Data can't be opened: the owner's own link is still made, then the list says why", () => {
+  const w = world({ metaTabs: null });
+  const before = w.diary.getSheetByName('Links').getLastRow();
+  assert.equal(w.s.ownerNewLink('owner').ok, false);
+  const rows = plain(w.diary.getSheetByName('Links').getDataRange().getValues());
+  assert.equal(rows.length, before + 1);
+  assert.deepEqual(rows[rows.length - 1].slice(0, 2), ['owner', '']);
+  assert.equal(rows[rows.length - 1][3], true);
+});
+
+test('no link code ever appears in an error or a refusal from the owner functions', () => {
+  const codes = [RIA_CODE, SH_OLD, SH_NEW, OWNER_CODE];
+  const failures = [
+    () => world({ metaTabs: null }).s.ownerNewLink('RIA'),
+    () => world({ links: [['role', 'rep']] }).s.ownerNewLink('RIA'),
+    () => world({ links: [['role', 'rep']] }).s.ownerCancelLink('RIA'),
+    () => world().s.ownerNewLink('MUB'),
+    () => world().s.ownerCancelLink('nobody'),
+    () => world({ activeEmail: '' }).s.ownerListLinks(),
+  ];
+  for (const fail of failures) {
+    assert.throws(fail, (error) => codes.every((c) => !error.message.includes(c)));
+  }
+  const listed = JSON.stringify(plain(world({ metaTabs: null }).s.ownerListLinks()));
+  assert.ok(codes.every((c) => !listed.includes(c)));
 });
 
 // ------------------------------------------------------------------------------- The window
@@ -157,6 +184,29 @@ test('Cancel link: it stops working at once; the list shows No link', () => {
   assert.equal(list.rows.find((r) => r.who === 'SH').link, '');
   for (const old of [SH_OLD, SH_NEW]) assert.deepEqual(plain(w.s.whoIsVisiting_(old)), { kind: 'none' });
   assert.deepEqual(plain(w.s.whoIsVisiting_(RIA_CODE)), { kind: 'rep', rep: 'RIA', region: 'North' });
+});
+
+test('someone no longer in Rep_Mapping who still has a working link is listed last, to cancel', () => {
+  const w = world({ links: [LINKS, ['rep', 'RIA', RIA_CODE, true, MADE], ['rep', 'MUB', SH_OLD, true, MADE]] });
+  const list = plain(w.s.ownerListLinks());
+  assert.deepEqual(list.rows.map((r) => r.who), [...ORDER, 'MUB']);
+  const mub = list.rows[list.rows.length - 1];
+  assert.deepEqual(mub, { who: 'MUB', label: 'MUB', region: '', former: true, link: '', made: '4 Nov 2026', message: '' });
+  assert.ok(list.rows.slice(0, -1).every((r) => r.former === false));
+  assert.throws(() => w.s.ownerNewLink('MUB'), /isn't one of your salesmen/);
+  const after = plain(w.s.ownerCancelLink('MUB'));
+  assert.deepEqual(after.rows.map((r) => r.who), ORDER, 'gone once cancelled');
+  assert.throws(() => w.s.ownerCancelLink('MUB'), /isn't one of your salesmen/, 'nothing left to cancel');
+});
+
+test('once cancelled, a leaver\'s old link stays dead even if his code is given to someone new', () => {
+  const tabs = metaDataTabs();
+  const w = world({ links: [LINKS, ['rep', 'MUB', SH_OLD, true, MADE]], metaTabs: tabs });
+  w.s.ownerCancelLink('MUB');
+  const rejoined = metaDataTabs();
+  rejoined.Rep_Mapping.push(['MUB', 'Center']);
+  const later = world({ links: plain(w.diary.getSheetByName('Links').getDataRange().getValues()), metaTabs: rejoined });
+  assert.deepEqual(plain(later.s.whoIsVisiting_(SH_OLD)), { kind: 'none' });
 });
 
 test('a broken Links tab: the list says what is wrong, without crashing', () => {

@@ -133,6 +133,8 @@ function whoIsVisiting_(code) {
 
 /**
  * Runs `work` while holding the script lock, so two quick taps can't both make a link.
+ * Google holds sheet edits back until a run ends, so they are saved (flush) before the lock is
+ * let go; otherwise the next run could read the tab as it was.
  * @template T
  * @param {() => T} work
  * @returns {T}
@@ -143,8 +145,28 @@ function withScriptLock_(work) {
   try {
     return work();
   } finally {
-    lock.releaseLock();
+    try {
+      SpreadsheetApp.flush();
+    } finally {
+      lock.releaseLock();
+    }
   }
+}
+
+/**
+ * Everyone who has a working link row right now: 'owner' and/or salesman codes, whether or not
+ * they are still in Rep_Mapping.
+ * @param {LinksRead} links
+ * @returns {string[]}
+ */
+function peopleWithWorkingLinks_(links) {
+  /** @type {string[]} */
+  const people = [];
+  for (const row of links.rows) {
+    const who = personOf_(row);
+    if (row.active && who && !people.includes(who)) people.push(who);
+  }
+  return people;
 }
 
 /**

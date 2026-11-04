@@ -32,10 +32,10 @@ function world(options = {}) {
   const metaData = metaTabs && makeSpreadsheet(metaTabs, { readOnly: true, timeZone: META_TIME_ZONE, name: 'Meta-Data' });
   const byId = { [SALES_DIARY_ID]: diary };
   if (metaData) byId[META_DATA_ID] = metaData;
-  const app = makeSpreadsheetApp({ byId });
+  const lockService = makeLockService({ busy: busyLock });
+  const app = makeSpreadsheetApp({ byId, onFlush: () => lockService._events.push('flush') });
   const opened = [];
   const utilities = makeUtilities();
-  const lockService = makeLockService({ busy: busyLock });
   const src = loadSrc({
     SpreadsheetApp: { ...app, openById(id) { opened.push(id); return app.openById(id); } },
     Utilities: utilities,
@@ -211,11 +211,13 @@ test('new link on an empty Links tab, and columns in another order', () => {
   ]));
 });
 
-test('new and cancel run inside the script lock; a busy lock writes nothing', () => {
+test('new and cancel run inside the script lock, saving edits before letting go; a busy lock writes nothing', () => {
   const { s, diary, lockService } = world({ links: STANDARD_LINKS });
   s.newLink_(diary, 'RIA', NOW);
   s.cancelLinks_(diary, 'RIA');
-  assert.deepEqual(lockService._events, ['waitLock 10000', 'releaseLock', 'waitLock 10000', 'releaseLock']);
+  assert.deepEqual(lockService._events, [
+    'waitLock 10000', 'flush', 'releaseLock', 'waitLock 10000', 'flush', 'releaseLock',
+  ]);
 
   const busy = world({ links: STANDARD_LINKS, busyLock: true });
   const before = busy.diary._snapshot();
@@ -224,10 +226,16 @@ test('new and cancel run inside the script lock; a busy lock writes nothing', ()
   assert.deepEqual(busy.diary._snapshot(), before);
 });
 
-test('the lock is released even when the work fails', () => {
+test('edits are saved and the lock released even when the work fails', () => {
   const { s, diary, lockService } = world({ links: [['role', 'rep']] });
   assert.throws(() => s.newLink_(diary, 'RIA', NOW), /no 'token' column/);
-  assert.deepEqual(lockService._events, ['waitLock 10000', 'releaseLock']);
+  assert.deepEqual(lockService._events, ['waitLock 10000', 'flush', 'releaseLock']);
+});
+
+test('peopleWithWorkingLinks_: everyone with an active row, once each, leavers included', () => {
+  const { s, diary } = world({ links: [...STANDARD_LINKS, ['rep', 'RIA', code('f'), true, NOW]] });
+  const read = s.readLinks_(diary.getSheetByName('Links'));
+  assert.deepEqual(plain(s.peopleWithWorkingLinks_(read)), ['RIA', 'owner', 'MUB']);
 });
 
 test('cancel: every working link of that person stops; nobody else is touched', () => {
