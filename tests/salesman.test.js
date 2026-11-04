@@ -99,7 +99,7 @@ for (const [what, k] of NOT_A_SALESMAN) {
     const w = world();
     const before = JSON.stringify(w.diary._snapshot());
     for (const call of [() => w.s.repLoad(k), () => w.s.repCheckPhone(k, '03001234567'), () => w.s.repAddSite(k, GOOD)]) {
-      assert.throws(call, (e) => e.message === "This link doesn't work. Ask the owner for a new one.");
+      assert.throws(call, (e) => e.message === "This link doesn't work. Ask the admin for a new one.");
     }
     assert.equal(JSON.stringify(w.diary._snapshot()), before);
     assert.deepEqual(w.diary._writes(), []);

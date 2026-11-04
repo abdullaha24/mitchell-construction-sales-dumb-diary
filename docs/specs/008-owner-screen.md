@@ -249,9 +249,9 @@ P7-3), and the history shows it was him.
   - Tabs, filters, Show more and the site screen work **on the phone** with what the page has.
 - **What the page carries** (volume): the **open sites** of every salesman, plus the sites won or
   lost this month and any site in today's saves, each as the salesman's card plus `rep`, `region`
-  and this month's snooze count (~0.4 KB each); the counts and targets; today's saves. No closed
+  and this month's snooze count (~0.45 KB each with a long name and note); the counts and targets; today's saves. No closed
   site from earlier months. At today's pace (~5 new sites a day across the team) that is under
-  ~1,000 open sites in the first six months, ~400 KB before Google compresses it. A test pins the
+  ~1,000 open sites in the first six months, under 500 KB before Google compresses it. A test pins the
   size for 1,000 open sites; if opening ever gets too slow, a later phase moves site details to a
   tap.
 - **Words:** on screen only glossary words: stage names, Won Rs., "logged, not invoiced",

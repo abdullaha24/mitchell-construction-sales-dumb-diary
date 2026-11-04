@@ -391,35 +391,80 @@ function hisRow_(sites, siteId, rep) {
 }
 
 /**
- * Checks and saves an Update (spec 004) to one of his sites, **inside the lock**, against the
- * row as it is at that moment (so a save that landed a moment earlier can't be undone or
- * bypassed). Writes only the cells that change, plus one `Activity` row.
+ * Who is saving an Update: a salesman (his own sites only, ADR-0004) or the admin from his
+ * screen (any site, spec 008, ADR-0010).
+ * @typedef {{ rep: string, region: string } | { admin: true }} Saver
+ */
+
+const CHANGED_MESSAGE = 'This site was changed a moment ago. Here it is now: check it and save again.';
+const NOT_IN_DIARY_MESSAGE = "That site isn't in the diary.";
+
+/**
+ * Any salesman's site, found by its ID (the admin's Update, spec 008). Throws the "isn't in the
+ * diary" message if there is none.
+ * @param {Tab} sites
+ * @param {any} siteId
+ */
+function anySiteRow_(sites, siteId) {
+  const row = typeof siteId === 'string' && /^S\d{6,}$/.test(siteId)
+    ? sites.rows.find((r) => text_(r.site_id) === siteId) : undefined;
+  if (!row) throw new Error(NOT_IN_DIARY_MESSAGE);
+  return row;
+}
+
+/**
+ * A site's card as a save's reply carries it: the admin's card also names its salesman.
+ * @param {Saver} saver
+ * @param {Object<string, any>} row
+ */
+function replyCard_(saver, row) {
+  const card = cardOf_(row);
+  return 'admin' in saver ? { ...card, rep: tidyCode_(row.rep), region: text_(row.region) } : card;
+}
+
+/**
+ * Checks and saves an Update (spec 004) to a site, **inside the lock**, against the row as it is
+ * at that moment (so a save that landed a moment earlier can't be undone or bypassed). Writes
+ * only the cells that change, plus one `Activity` row. A salesman reaches only his own sites; the
+ * admin any site (spec 008): his row says `admin` in `Activity`, his note starts "Admin: ", and
+ * he never resets going cold (`worked_at`, owner P7-5). A form opened on an older state of the
+ * site is refused (changedSince_), with the site as it is now.
  * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} diary
- * @param {{ rep: string, region: string }} salesman
+ * @param {Saver} saver
  * @param {any} siteId
  * @param {any} input what the page sent
  * @param {Date} now
  * @param {string} saveId
- * @returns {SaveOutcome} result: { ok: true, site, warning } or { ok: false, message }
+ * @returns {SaveOutcome} result: { ok: true, site, warning }, { ok: false, message } or
+ *   { ok: false, changed: true, message, site }
  */
-function saveUpdate_(diary, salesman, siteId, input, now, saveId) {
-  return oncePerSave_(salesman.rep, saveId, fingerprintOf_(siteId, input), 'redo', () => {
+function saveUpdate_(diary, saver, siteId, input, now, saveId) {
+  const admin = 'admin' in saver;
+  const key = 'admin' in saver ? ADMIN_ACTOR : saver.rep;
+  return oncePerSave_(key, saveId, fingerprintOf_(siteId, input), 'redo', () => {
     const sites = readTab_(diary, DIARY_TABS.sites);
     const activity = readTab_(diary, DIARY_TABS.activity);
-    const row = hisRow_(sites, siteId, salesman.rep);
+    const row = 'admin' in saver ? anySiteRow_(sites, siteId) : hisRow_(sites, siteId, saver.rep);
+    const rep = tidyCode_(row.rep);
     const before = currentSiteOf_(row);
-    const choices = choicesFor_(readTab_(diary, DIARY_TABS.lists), salesman.region);
+    if (input && typeof input === 'object' && changedSince_(input.seen, before)) {
+      return { ok: false, changed: true, message: CHANGED_MESSAGE, site: replyCard_(saver, row) };
+    }
+    const region = 'admin' in saver ? text_(row.region) : saver.region;
+    const choices = choicesFor_(readTab_(diary, DIARY_TABS.lists), region);
     const checked = checkUpdate_(input, before, choices, dayKey_(now));
     if (!checked.ok) return checked;
     const update = checked.update;
-    const warning = update.phone ? phoneOwners_(sites, update.phone, salesman.rep) : { team: false, mine: [] };
+    const warning = update.phone ? phoneOwners_(sites, update.phone, rep) : { team: false, mine: [] };
     const followUp = update.followUp ? dayStart_(update.followUp) : '';
     const valueStage = VALUE_STAGES.includes(update.stage);
+    const note = admin && update.note ? ADMIN_NOTE_PREFIX + update.note : update.note;
 
     // Only what changes: a value or reason the owner typed by hand is never overwritten by an
-    // unrelated update. A real Update is work on the site: it resets going cold (spec 007, P6-2).
+    // unrelated update. A salesman's Update is work on the site: it resets going cold (spec 007,
+    // P6-2); the admin's never does (P7-5).
     /** @type {Object<string, any>} */
-    const cells = { updated_at: now, worked_at: now };
+    const cells = admin ? { updated_at: now } : { updated_at: now, worked_at: now };
     if (update.stage !== before.stage) cells.stage = update.stage;
     if (valueStage && (update.value !== before.value || update.terms !== before.terms)) {
       cells.value_rs = update.value;
@@ -427,8 +472,8 @@ function saveUpdate_(diary, salesman, siteId, input, now, saveId) {
     }
     if (update.lostReason !== before.lostReason) cells.lost_reason = update.lostReason;
     if (update.followUp !== before.followUp) cells.next_followup = followUp;
-    if (update.note) {
-      cells.last_note = update.note;
+    if (note) {
+      cells.last_note = note;
       cells.note_at = now;
     }
     if (update.phone) cells.contact_phone = update.phone;
@@ -437,17 +482,17 @@ function saveUpdate_(diary, salesman, siteId, input, now, saveId) {
     const stageChanged = update.stage !== before.stage;
     appendRows_(activity.sheet, [rowFor_(activity.columns, {
       activity_id: nextId_(activity.rows.map((r) => r.activity_id), 'A', 7),
-      timestamp: now, rep: asText_(salesman.rep), site_id: siteId,
+      timestamp: now, rep: asText_(admin ? ADMIN_ACTOR : rep), site_id: siteId,
       action: stageChanged ? 'stage_change' : 'update',
       from_stage: stageChanged ? asText_(before.stage) : '',
       to_stage: stageChanged ? asText_(update.stage) : '',
       value_rs: valueStage && update.value !== null ? update.value : '',
       payment_terms: valueStage ? asText_(update.terms) : '',
       lost_reason: asText_(update.lostReason),
-      note: asText_([update.note, update.phone ? `Phone added ${update.phone}` : ''].filter(Boolean).join(' · ')),
+      note: asText_([note, update.phone ? `Phone added ${update.phone}` : ''].filter(Boolean).join(' · ')),
       next_followup: followUp,
     })]);
-    return { ok: true, site: cardOf_({ ...row, ...cells }), warning };
+    return { ok: true, site: replyCard_(saver, { ...row, ...cells }), warning };
   });
 }
 

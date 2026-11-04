@@ -28,7 +28,7 @@
 /** Throws unless the signed-in owner is running this. */
 function requireOwner_() {
   if (!isSignedInSelf_()) {
-    throw new Error('Only the owner can manage links, from the Sales Diary menu.');
+    throw new Error('Only the admin can manage links, from the Sales Diary menu.');
   }
 }
 
@@ -119,7 +119,7 @@ function listLinks_() {
   }
 
   const current = salesmen.salesmen.map((s) => s.rep);
-  const people = [{ who: OWNER_ROLE, label: 'You (owner)', region: '', former: false }].concat(
+  const people = [{ who: OWNER_ROLE, label: 'You (admin)', region: '', former: false }].concat(
     REGIONS.flatMap((region) => salesmen.salesmen
       .filter((s) => s.region === region)
       .map((s) => ({ who: s.rep, label: s.rep, region, former: false }))),
@@ -143,7 +143,7 @@ function listLinks_() {
           ? Utilities.formatDate(row.issuedAt, APP_TIME_ZONE, 'd MMM yyyy') : '',
         message: !link ? ''
           : person.who === OWNER_ROLE
-            ? `My Sales Diary owner link. Keep it private: anyone with it can see everything. ${link}`
+            ? `My Sales Diary admin link. Keep it private: anyone with it can see and change everything. ${link}`
             : `${person.who}, this is your Sales Diary link. Keep it private: anyone with it can ` +
               `use the diary as you. ${link}`,
       };

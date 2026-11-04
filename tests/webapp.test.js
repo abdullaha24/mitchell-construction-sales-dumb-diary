@@ -114,7 +114,7 @@ test('cancelled, unknown, badly shaped or missing codes all get the same "doesn\
   ].map((page) => assertSafePage(page));
   for (const html of pages) {
     assert.match(html, NO_LINK);
-    assert.ok(html.includes('Ask the owner for a new one.'));
+    assert.ok(html.includes('Ask the admin for a new one.'));
     assert.equal(html, pages[0], 'every refusal looks the same: it never hints whether a link existed');
   }
 });

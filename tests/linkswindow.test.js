@@ -76,7 +76,7 @@ for (const [why, activeEmail, effectiveEmail] of REFUSALS) {
     test(`${name} refuses ${why}, and touches nothing`, () => {
       const w = world({ activeEmail, effectiveEmail });
       const before = JSON.stringify(w.diary._snapshot());
-      assert.throws(() => w.s[name](...args), /Only the owner can manage links/);
+      assert.throws(() => w.s[name](...args), /Only the admin can manage links/);
       assert.equal(JSON.stringify(w.diary._snapshot()), before);
       assert.deepEqual(w.diary._writes(), []);
       assert.deepEqual(w.calls, { openById: 0 });
@@ -148,7 +148,7 @@ test('the list: you first, then salesmen North, Center, South, with working link
   assert.deepEqual(list.rows.map((r) => r.who), ORDER);
   assert.deepEqual(list.rows.map((r) => r.region), ['', 'North', 'North', 'North', 'Center', 'Center', 'Center', 'South']);
   const byWho = Object.fromEntries(list.rows.map((r) => [r.who, r]));
-  assert.equal(byWho.owner.label, 'You (owner)');
+  assert.equal(byWho.owner.label, 'You (admin)');
   assert.equal(byWho.owner.link, '', 'a cancelled owner link is not shown');
   assert.equal(byWho.RIA.link, `${WEB_APP_URL}?k=${RIA_CODE}`);
   assert.equal(byWho.RIA.made, '4 Nov 2026');
@@ -182,8 +182,8 @@ test("New link for the owner gives him a working owner link", () => {
   const owner = plain(w.s.ownerNewLink('owner')).rows[0];
   assert.equal(owner.who, 'owner');
   assert.ok(owner.link);
-  assert.match(owner.message, /^My Sales Diary owner link\. Keep it private/);
-  assert.deepEqual(plain(w.s.whoIsVisiting_(owner.link.split('?k=')[1])), { kind: 'owner' });
+  assert.match(owner.message, /^My Sales Diary admin link\. Keep it private: anyone with it can see and change everything/);
+  assert.equal(plain(w.s.whoIsVisiting_(owner.link.split('?k=')[1])).kind, 'owner');
 });
 
 test('Cancel link: it stops working at once; the list shows No link', () => {

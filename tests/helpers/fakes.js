@@ -60,6 +60,7 @@ function makeSpreadsheet(tabs = {}, options = {}) {
     const charts = [];
     const images = [];
     let frozenRows = 0;
+    let rowsRead = 0; // every row any getValues() returned (spec 008: Activity is read from the bottom)
     let maxRows = Math.max(DEFAULT_MAX_ROWS, cells.length);
     let maxColumns = Math.max(DEFAULT_MAX_COLUMNS, ...cells.map((r) => r.length), 0);
 
@@ -101,6 +102,7 @@ function makeSpreadsheet(tabs = {}, options = {}) {
         getNumRows: () => numRows,
         getNumColumns: () => numColumns,
         getValues() {
+          rowsRead += numRows;
           const out = [];
           for (let r = row; r < row + numRows; r++) {
             const line = [];
@@ -170,6 +172,8 @@ function makeSpreadsheet(tabs = {}, options = {}) {
       },
       /** Test helper: how many times the whole tab was read. */
       _reads: 0,
+      /** Test helper: how many rows were read in all, by any range. */
+      get _rowsRead() { return rowsRead; },
       /** Test helper (not a Google method): everything about this tab, as plain data. */
       _snapshot() {
         const sorted = (map) => Object.fromEntries([...map].sort());
@@ -241,6 +245,12 @@ function makeUtilities() {
       const part = (type) => parts.find((p) => p.type === type).value;
       if (pattern === 'yyyy-MM') return `${part('year')}-${part('month')}`;
       if (pattern === 'yyyy-MM-dd') return `${part('year')}-${part('month')}-${part('day').padStart(2, '0')}`;
+      if (pattern === 'HH:mm') {
+        const t = new Intl.DateTimeFormat('en-US', { timeZone, hourCycle: 'h23', hour: '2-digit', minute: '2-digit' })
+          .formatToParts(date);
+        const get = (type) => t.find((p) => p.type === type).value;
+        return `${get('hour')}:${get('minute')}`;
+      }
       if (pattern === 'd MMM yyyy') {
         const month = new Intl.DateTimeFormat('en-US', { timeZone, month: 'short' }).format(date);
         return `${part('day')} ${month} ${part('year')}`;

@@ -120,9 +120,10 @@ test("a salesman's working link says who he is", () => {
     { kind: 'rep', rep: 'RIA', region: 'North' });
 });
 
-test("the owner's working link opens the owner, without reading Meta-Data", () => {
+test("the owner's (admin's) working link opens the admin, without reading Meta-Data", () => {
   const { s, opened } = world({ links: STANDARD_LINKS });
-  assert.deepEqual(plain(s.whoIsVisiting_(OWNER_CODE)), { kind: 'owner' });
+  // Spec 008: with who has a working link (people's codes only; never a link code).
+  assert.deepEqual(plain(s.whoIsVisiting_(OWNER_CODE)), { kind: 'owner', linked: ['RIA', 'MUB'] });
   assert.deepEqual(opened, [SALES_DIARY_ID]);
 });
 
@@ -198,7 +199,7 @@ test('new link: a working row for that person, cancelling only his older ones', 
   ]));
   assert.deepEqual(who(s.whoIsVisiting_(newCode)), { kind: 'rep', rep: 'RIA', region: 'North' });
   assert.deepEqual(plain(s.whoIsVisiting_(RIA_CODE)), { kind: 'none' });
-  assert.deepEqual(plain(s.whoIsVisiting_(OWNER_CODE)), { kind: 'owner' });
+  assert.deepEqual(plain(s.whoIsVisiting_(OWNER_CODE)), { kind: 'owner', linked: ['MUB', 'RIA'] });
 });
 
 test('new owner link: role owner, rep blank, old owner link cancelled', () => {
@@ -259,7 +260,7 @@ test('cancel: every working link of that person stops; nobody else is touched', 
 
 // ------------------------------------------------------------------- Salesmen and targets
 
-test('readSalesmenAndTargets_ reads Rep_Mapping and Rep-Targets only, read-only', () => {
+test('readSalesmenAndTargets_ reads Rep_Mapping, Rep-Targets and Targets, read-only', () => {
   const { s, metaData } = world();
   const read = s.readSalesmenAndTargets_();
   assert.equal(read.ok, true);
@@ -268,7 +269,11 @@ test('readSalesmenAndTargets_ reads Rep_Mapping and Rep-Targets only, read-only'
   assert.deepEqual(metaData._writes(), []);
   const noRegionTargets = metaDataTabs();
   delete noRegionTargets.Targets;
-  assert.equal(world({ metaTabs: noRegionTargets }).s.readSalesmenAndTargets_().ok, true, 'Targets is not read');
+  assert.ok(Object.keys(read.regionTargets).some((key) => key.startsWith('UNASSIGNED|')), 'house / office target (spec 008)');
+  const noTargets = world({ metaTabs: noRegionTargets }).s.readSalesmenAndTargets_();
+  assert.equal(noTargets.ok, true, 'a missing Targets tab never stops the salesmen');
+  assert.deepEqual(plain(noTargets.regionTargets), {});
+  assert.ok(noTargets.problems.includes("The Meta-Data sheet has no 'Targets' tab."));
   assert.deepEqual(plain(world({ metaTabs: null }).s.readSalesmenAndTargets_()).ok, false);
   const tabs = metaDataTabs();
   delete tabs.Rep_Mapping;

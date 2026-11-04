@@ -60,16 +60,40 @@ function world(options = {}) {
 
 // ----------------------------------------------------------------------------------- Safety
 
-test('the only public functions are the 15 specs 002 to 007 list', () => {
+test('the only public functions are the 18 specs 002 to 008 list', () => {
   const { src } = world();
   const publicFunctions = Object.keys(src.sandbox)
     .filter((name) => !src.globalNamesBefore.has(name))
     .filter((name) => typeof src.sandbox[name] === 'function' && !name.endsWith('_'));
   assert.deepEqual(publicFunctions.sort(), [
+    'adminPageLoad', 'adminPageSaveStatus', 'adminPageUpdateSite',
     'doGet', 'menuCheckSetup', 'menuLinks', 'menuRefreshSalesmen', 'onOpen',
     'ownerCancelLink', 'ownerListLinks', 'ownerNewLink',
     'repAddSite', 'repCheckPhone', 'repEditSite', 'repLoad', 'repSaveStatus', 'repSnoozeSite', 'repUpdateSite',
   ]);
+});
+
+test('each kind of public function starts with its own check (spec 008)', () => {
+  // adminPage…: opened by the admin's LINK (no signed-in email): the admin-link check.
+  // menu… / owner…: run from the sheet's menu: the signed-in check. rep…: the salesman's link.
+  const { src } = world();
+  const firstLines = (name) => String(src.sandbox[name]).split('\n').slice(1, 4).map((l) => l.trim()).join(' ');
+  const names = Object.keys(src.sandbox).filter((n) => typeof src.sandbox[n] === 'function' && !n.endsWith('_') &&
+    !src.globalNamesBefore.has(n));
+  for (const name of names) {
+    const first = firstLines(name);
+    if (name.startsWith('adminPage')) {
+      assert.match(first, /^return forAdminPage_\(\(\) => \{ (const \{ [\w, ]+ \} = )?requireAdminLink_\(k\);/, name);
+    } else if (name.startsWith('rep')) {
+      assert.match(first, /^return forSalesman_\(\(\) => \{ (const tidy = tidyPhone_\(phone\); )?const \{ [\w, ]+ \} = requireRep_\(k\);/, name);
+    } else if (name.startsWith('owner') || name === 'menuLinks') {
+      assert.match(first, /^requireOwner_\(\);/, name);
+    } else if (name.startsWith('menu')) {
+      assert.match(first, /^if \(!isSignedInSelf_\(\)\) \{/, name);
+    } else {
+      assert.ok(['doGet', 'onOpen'].includes(name), name);
+    }
+  }
 });
 
 test('no top-level const, let or var holds a function (would dodge the check above)', () => {
@@ -89,7 +113,7 @@ for (const [why, activeEmail, effectiveEmail] of REFUSALS) {
   test(`menuCheckSetup refuses when ${why}, and touches nothing`, () => {
     const { src, diary, metaData, ui, calls } = world({ activeEmail, effectiveEmail });
     const before = JSON.stringify(diary._snapshot());
-    assert.throws(() => src.sandbox.menuCheckSetup(), /only be run by the owner/);
+    assert.throws(() => src.sandbox.menuCheckSetup(), /only be run by the admin/);
     assert.equal(JSON.stringify(diary._snapshot()), before);
     assert.deepEqual(diary._writes(), []);
     assert.deepEqual(metaData._writes(), []);

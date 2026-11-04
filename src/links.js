@@ -7,8 +7,10 @@
 
 /** @typedef {{ month: string, amount: number }} MonthTarget his target for one `yyyy-MM` month */
 /**
+ * Who a link belongs to. The owner's row (shown to people as the admin, spec 008) also says which
+ * salesmen have a working link (`linked`: codes of people, never link codes).
  * @typedef {{ kind: 'rep', rep: string, region: string, target: MonthTarget | null }
- *   | { kind: 'owner' } | { kind: 'none' }} Visitor
+ *   | { kind: 'owner', linked: string[] } | { kind: 'none' }} Visitor
  */
 /**
  * One row of the `Links` tab, tidied.
@@ -130,7 +132,9 @@ function whoIsVisiting_(code, diary) {
   const { links } = openLinks_(diary || openSalesDiary_());
   const match = links.rows.find((r) => r.active && r.token === code);
   if (!match) return { kind: 'none' };
-  if (match.role === OWNER_ROLE) return { kind: 'owner' };
+  if (match.role === OWNER_ROLE) {
+    return { kind: 'owner', linked: peopleWithWorkingLinks_(links).filter((who) => who !== OWNER_ROLE) };
+  }
   if (match.role !== REP_ROLE || !match.rep) return { kind: 'none' };
 
   const now = new Date();

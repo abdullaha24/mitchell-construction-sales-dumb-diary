@@ -37,7 +37,7 @@ function isSignedInSelf_() {
  */
 function menuCheckSetup() {
   if (!isSignedInSelf_()) {
-    throw new Error('Check setup can only be run by the owner, from the Sales Diary menu.');
+    throw new Error('Check setup can only be run by the admin, from the Sales Diary menu.');
   }
   const diary = SpreadsheetApp.getActiveSpreadsheet();
   if (!diary) throw new Error('Open the Sales Diary sheet and use its Sales Diary menu.');
@@ -47,7 +47,7 @@ function menuCheckSetup() {
   const metaData = readMetaData_();
   // Check setup also refreshes the salesmen list and targets the app keeps (specs 005, 006).
   // (Even if a targets tab has a problem, the salesmen list is still refreshed.)
-  if (metaData.ok) keepSalesmen_(metaData.salesmen, metaData.repTargets, new Date());
+  if (metaData.ok) keepSalesmen_(metaData.salesmen, metaData.repTargets, new Date(), metaData.regionTargets);
   else refreshSalesmen_(new Date());
   const problems = setup.problems.slice();
   /** @type {string[]} */
@@ -76,7 +76,7 @@ function menuCheckSetup() {
  */
 function menuRefreshSalesmen() {
   if (!isSignedInSelf_()) {
-    throw new Error('Refresh salesmen & targets can only be run by the owner, from the Sales Diary menu.');
+    throw new Error('Refresh salesmen & targets can only be run by the admin, from the Sales Diary menu.');
   }
   const now = new Date();
   const read = refreshSalesmen_(now);

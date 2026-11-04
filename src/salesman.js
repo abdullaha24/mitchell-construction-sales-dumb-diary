@@ -4,7 +4,7 @@
 // Who he is (code, region) always comes from the server, never from the page. Replies hold
 // only his own sites; about other salesmen, only yes/no (ADR-0004). No Dates in replies.
 
-const NO_LINK_MESSAGE = "This link doesn't work. Ask the owner for a new one.";
+const NO_LINK_MESSAGE = "This link doesn't work. Ask the admin for a new one.";
 const TRY_AGAIN_MESSAGE = 'Something went wrong. Try again in a minute.';
 
 /**
@@ -57,12 +57,19 @@ function loadFor_(salesman, diary) {
     target: salesman.target,
     sites: sitesOf_(readTab_(diary, DIARY_TABS.sites), salesman.rep),
     ...choicesFor_(lists, salesman.region),
-    // The stage rules, so the page asks for the same things the server checks (spec 004).
-    rules: {
-      stages: STAGES, valueStages: VALUE_STAGES, numberStages: NUMBER_STAGES,
-      closedStages: CLOSED_STAGES, lostStage: LOST_STAGE, paymentTerms: PAYMENT_TERMS, hotStages: HOT_STAGES,
-      coldDays: COLD_DAYS,
-    },
+    rules: pageRules_(),
+  };
+}
+
+/**
+ * The stage rules, so a page asks for the same things the server checks (spec 004). The same for
+ * the salesman's page and the admin's (spec 008).
+ */
+function pageRules_() {
+  return {
+    stages: STAGES, valueStages: VALUE_STAGES, numberStages: NUMBER_STAGES,
+    closedStages: CLOSED_STAGES, lostStage: LOST_STAGE, paymentTerms: PAYMENT_TERMS, hotStages: HOT_STAGES,
+    coldDays: COLD_DAYS,
   };
 }
 
@@ -177,10 +184,20 @@ function repSnoozeSite(k, siteId, input) {
 function repSaveStatus(k, saveIds) {
   return forSalesman_(() => {
     const { salesman } = requireRep_(k);
-    const ids = Array.isArray(saveIds) ? saveIds.slice(0, 50) : [];
-    const cache = CacheService.getScriptCache();
-    const landed = ids.filter((id) => typeof id === 'string' && /^[A-Za-z0-9]{8,40}$/.test(id) &&
-      cache.get(`save:${salesman.rep}:${id}`) !== null);
-    return { ok: true, landed };
+    return { ok: true, landed: landedSaves_(salesman.rep, saveIds) };
   });
+}
+
+/**
+ * Which of up to 50 one-time save IDs were saved under `who` (a salesman's code, or the admin's
+ * key): nobody can learn about anyone else's saves.
+ * @param {string} who
+ * @param {any} saveIds
+ * @returns {string[]}
+ */
+function landedSaves_(who, saveIds) {
+  const ids = Array.isArray(saveIds) ? saveIds.slice(0, 50) : [];
+  const cache = CacheService.getScriptCache();
+  return ids.filter((id) => typeof id === 'string' && /^[A-Za-z0-9]{8,40}$/.test(id) &&
+    cache.get(`save:${who}:${id}`) !== null);
 }

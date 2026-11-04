@@ -12,7 +12,7 @@
 /** @type {Object<string, PageText>} */
 const PAGE_TEXT = {
   owner: { heading: 'Hello, owner', note: 'Your screen comes in a later phase.' },
-  none: { heading: "This link doesn't work.", note: 'Ask the owner for a new one.' },
+  none: { heading: "This link doesn't work.", note: 'Ask the admin for a new one.' },
   error: { heading: 'Something went wrong.', note: 'Try again in a minute.' },
 };
 

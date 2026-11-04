@@ -109,7 +109,7 @@ test('junk codes cost nothing: no sheet is opened', () => {
   const w = world();
   for (const call of [() => w.s.repAddSite('junk', {}), () => w.s.repUpdateSite('junk', 'S000001', {}), () => w.s.repSnoozeSite('junk', 'S000001', {}), () => w.s.repLoad(undefined)]) {
     const result = w.cost(() => { try { call(); } catch (e) { return e.message; } return ''; });
-    assert.equal(result.result, "This link doesn't work. Ask the owner for a new one.");
+    assert.equal(result.result, "This link doesn't work. Ask the admin for a new one.");
     assert.deepEqual(result.opens, []);
   }
 });
@@ -129,8 +129,10 @@ test('the salesmen list is read once and then kept: Meta-Data is not opened agai
 test('the kept list is used for up to 24 hours, then read again', () => {
   const w = world();
   const now = Date.now();
-  w.props._store.set('salesmen', JSON.stringify({ at: now - 60 * 60 * 1000, salesmen: [{ rep: 'SH', region: 'Center', row: 5 }], targets: {} }));
+  w.props._store.set('salesmen', JSON.stringify({ at: now - 60 * 60 * 1000, salesmen: [{ rep: 'SH', region: 'Center', row: 5 }], targets: {}, regionTargets: {} }));
   assert.throws(() => w.s.repLoad(RIA), /This link doesn't work/, 'RIA is not in the kept list, so not yet known');
+  w.props._store.set('salesmen', JSON.stringify({ at: now - 60 * 60 * 1000, salesmen: [{ rep: 'SH', region: 'Center', row: 5 }], targets: {} }));
+  assert.equal(w.s.repLoad(RIA).ok, true, 'a copy kept before region targets were (spec 008) is read again');
   w.props._store.set('salesmen', JSON.stringify({ at: now - 60 * 60 * 1000, salesmen: [{ rep: 'SH', region: 'Center', row: 5 }] }));
   assert.equal(w.s.repLoad(RIA).ok, true, 'a copy kept before targets were (spec 006) is read again');
   w.props._store.set('salesmen', JSON.stringify({ at: now - 25 * 60 * 60 * 1000, salesmen: [{ rep: 'SH', region: 'Center', row: 5 }], targets: {} }));
@@ -164,7 +166,7 @@ test('Sales Diary → Refresh salesmen & targets reads Rep_Mapping and Rep-Targe
 });
 
 test('Refresh salesmen: owner only; and a Meta-Data problem is shown, the old list kept', () => {
-  assert.throws(() => world({ activeEmail: '' }).s.menuRefreshSalesmen(), /only be run by the owner/);
+  assert.throws(() => world({ activeEmail: '' }).s.menuRefreshSalesmen(), /only be run by the admin/);
   const w = world({ metaTabs: null });
   w.props._store.set('salesmen', JSON.stringify({ at: 1, salesmen: [{ rep: 'SH', region: 'Center', row: 5 }] }));
   w.s.menuRefreshSalesmen();

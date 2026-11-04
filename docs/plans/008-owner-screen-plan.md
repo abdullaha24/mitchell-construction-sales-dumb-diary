@@ -5,11 +5,11 @@
 > commit per step, `npm run check` (+ `check:browser` when HTML changes) green each time. On
 > screen the owner is **Admin** (P7-7); code names use `admin` for the new parts.
 
-## [ ] Step 1: Spec approved, answers recorded, this plan
+## [x] Step 1: Spec approved, answers recorded, this plan
 - Spec → Approved with P7-4 to P7-7; ADR-0010 Accepted; open questions, glossary (Admin /
   Administrator), indexes.
 
-## [ ] Step 2: Server
+## [x] Step 2: Server
 - Kept targets: the `salesmen` Script Properties entry also keeps region and house targets
   (`regionTargets`, this month and next); a copy without it is read again; a `Targets` problem
   never stops salesmen.
@@ -23,6 +23,10 @@
 - Tests (`tests/admin.test.js` + updates): rules, ADR-0004 safety for each new function (junk,
   salesman's code, cancelled admin code), update, speed; allow-list 15 → 18 and the check each kind
   starts with.
+- Done: `tests/admin.test.js` (25 tests). 12 key assertions mutation-checked (each broken on
+  purpose, a test failed, restored): the admin-link check, `worked_at`, the block stop, `rep` =
+  `admin`, the stale-form check, won by its own stage, snooze counts, today only, the "Admin: "
+  note, save keys, kept region targets, the link list.
 
 ## [ ] Step 3: The page
 - `Admin.html` inserted into `App.html` for the admin only: top bar (Admin, Updated, Refresh),

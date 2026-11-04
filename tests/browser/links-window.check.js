@@ -26,7 +26,7 @@ const row = (who, label, region, code) => ({
 const LIST = {
   ok: true,
   rows: [
-    row('owner', 'You (owner)', '', ''),
+    row('owner', 'You (admin)', '', ''),
     row('RIA', 'RIA', 'North', 'a'.repeat(64)),
     row('AUR', 'AUR', 'North', ''),
     row('<img src=x onerror="window.__xss=1">', '<img src=x onerror="window.__xss=1">', '<b>North</b>', 'b'.repeat(64)),
@@ -111,7 +111,7 @@ function stub(list) {
 
   // The owner's own row says "your".
   await page.evaluate(() => { window.__answer = () => ({ ok: true, rows: [
-    { who: 'owner', label: 'You (owner)', region: '', link: 'https://x/exec?k=' + 'e'.repeat(64), made: '4 Nov 2026', message: 'm' },
+    { who: 'owner', label: 'You (admin)', region: '', link: 'https://x/exec?k=' + 'e'.repeat(64), made: '4 Nov 2026', message: 'm' },
   ] }); });
   await page.click('.person:nth-child(3) button:has-text("New link")'); // AUR again, re-renders
   await page.waitForSelector('#status:has-text("Link made.")');
@@ -119,9 +119,9 @@ function stub(list) {
   assert.equal(await page.locator('.person:nth-child(1) button.confirm').textContent(), 'Tap again to cancel your link');
 
   // Server refuses: the message shows in red; buttons work again, and the next tap asks again.
-  await page.evaluate(() => { window.__fail = { message: 'Only the owner can manage links, from the Sales Diary menu.' }; });
+  await page.evaluate(() => { window.__fail = { message: 'Only the admin can manage links, from the Sales Diary menu.' }; });
   await page.locator('.person:nth-child(1) button.confirm').click();
-  await page.waitForSelector('#status.error:has-text("Only the owner")');
+  await page.waitForSelector('#status.error:has-text("Only the admin")');
   assert.equal(await page.locator('button:disabled').count(), 0);
   const callsBefore = (await page.evaluate(() => window.__calls)).length;
   await page.locator('.person:nth-child(1) button:has-text("Cancel link")').click();

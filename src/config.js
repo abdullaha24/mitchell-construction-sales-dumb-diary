@@ -157,5 +157,15 @@ const PAYMENT_TERMS = ['Cash', 'Credit'];
 /** How `Sites.products` joins categories: their names can contain commas. */
 const PRODUCTS_SEPARATOR = ' | ';
 
+/**
+ * What `Activity.rep` says for a change the admin (the owner, as people see him: owner P7-7)
+ * made from his screen, and the key his saves are remembered under (spec 008). Salesman codes are
+ * upper case, so it can't be mistaken for one.
+ */
+const ADMIN_ACTOR = 'admin';
+
+/** How the admin's note starts on the salesman's card and in the history (owner P7-4). */
+const ADMIN_NOTE_PREFIX = 'Admin: ';
+
 /** Google's name for the empty first tab of a new spreadsheet. */
 const DEFAULT_FIRST_TAB = 'Sheet1';

@@ -74,8 +74,8 @@ for (const [name, call] of [
 ]) {
   test(`${name}: only a working salesman link, and only his own sites`, () => {
     for (const [k, id, message] of [
-      [OWNER, 'S000001', "This link doesn't work. Ask the owner for a new one."],
-      ['junk', 'S000001', "This link doesn't work. Ask the owner for a new one."],
+      [OWNER, 'S000001', "This link doesn't work. Ask the admin for a new one."],
+      ['junk', 'S000001', "This link doesn't work. Ask the admin for a new one."],
       [RIA, 'S000002', "That site isn't in your list."], // SH's site
       [SH, 'S000001', "That site isn't in your list."], // RIA's site
       [RIA, 'S999999', "That site isn't in your list."],

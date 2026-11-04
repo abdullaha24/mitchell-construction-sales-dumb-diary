@@ -350,6 +350,25 @@ function checkUpdate_(input, current, choices, todayKey) {
 }
 
 /**
+ * Two people, one site (spec 008): true when the site no longer matches what the Update form was
+ * opened on (`seen`: stage, value, Cash / Credit, lost reason, follow-up), because someone else
+ * (the salesman, the admin, or his other phone) saved a change since. Such a save is refused, not
+ * merged, so a screen loaded in the morning can't undo an afternoon update. A form without `seen`
+ * (a page from before spec 008) is not checked.
+ * @param {any} seen
+ * @param {CurrentSite} current
+ */
+function changedSince_(seen, current) {
+  if (!seen || typeof seen !== 'object') return false;
+  const value = isBlank_(seen.value) ? null : Number(seen.value);
+  /** @param {any} v */
+  const textOf = (v) => (typeof v === 'string' ? v : '');
+  return seen.stage !== current.stage || (value || null) !== current.value ||
+    textOf(seen.terms) !== current.terms || textOf(seen.lostReason) !== current.lostReason ||
+    textOf(seen.followUp) !== current.followUp;
+}
+
+/**
  * Checks Edit details (spec 004) against the site as it is now: the same field rules as a new
  * site, plus "a number can be changed, not removed". Lists what changed, with old → new number,
  * for the history.

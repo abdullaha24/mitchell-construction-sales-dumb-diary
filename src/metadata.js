@@ -56,11 +56,14 @@ function readMetaData_() {
   });
 }
 
+/** @typedef {SalesmenRead & { repTargets: TargetAmounts, regionTargets: TargetAmounts }} KeptSalesmen */
+
 /**
- * Reads the salesmen (`Rep_Mapping`) and their targets (`Rep-Targets`), skipping the region
- * targets: what the app keeps for salesman calls (specs 005, 006). A problem with `Rep-Targets`
- * never stops the salesmen list: it is listed, and nobody has a target until it's fixed.
- * @returns {SalesmenRead & { repTargets: TargetAmounts } | Failure}
+ * Reads the salesmen (`Rep_Mapping`), their targets (`Rep-Targets`) and the region and house /
+ * office targets (`Targets`, spec 008): what the app keeps for salesman and admin calls (specs
+ * 005, 006, 008). A problem with a targets tab never stops the salesmen list: it is listed, and
+ * there is no such target until it's fixed.
+ * @returns {KeptSalesmen | Failure}
  */
 function readSalesmenAndTargets_() {
   const metaData = openMetaData_();
@@ -70,19 +73,35 @@ function readSalesmenAndTargets_() {
   const salesmen = readSalesmen_(tab.values, META_TABS.salesmen);
   if (!salesmen.ok) return salesmen;
   const targetsTab = readMetaTab_(metaData, META_TABS.repTargets);
+  const timeZone = metaData.getSpreadsheetTimeZone();
   const targets = targetsTab.ok
     ? readTargets_(targetsTab.values, {
       tabName: META_TABS.repTargets,
       keyColumn: 'Rep',
       keys: salesmen.salesmen.map((s) => s.rep),
       unknownKeys: 'ignore',
-      timeZone: metaData.getSpreadsheetTimeZone(),
+      timeZone,
     })
     : targetsTab;
-  if (!targets.ok) {
-    return { ...salesmen, repTargets: {}, problems: salesmen.problems.concat([targets.message]) };
-  }
-  return { ...salesmen, repTargets: targets.amounts, problems: salesmen.problems.concat(targets.problems) };
+  const regionTab = readMetaTab_(metaData, META_TABS.regionTargets);
+  const regions = regionTab.ok
+    ? readTargets_(regionTab.values, {
+      tabName: META_TABS.regionTargets,
+      keyColumn: 'Region',
+      keys: REGIONS.concat([HOUSE_REGION]),
+      unknownKeys: 'ignore',
+      timeZone,
+    })
+    : regionTab;
+  /** @type {string[]} */
+  const problems = salesmen.problems.slice();
+  for (const read of [targets, regions]) problems.push(...(read.ok ? read.problems : [read.message]));
+  return {
+    ...salesmen,
+    repTargets: targets.ok ? targets.amounts : {},
+    regionTargets: regions.ok ? regions.amounts : {},
+    problems,
+  };
 }
 
 /** Where the salesmen list is kept between calls (Script Properties), and for how long. */
@@ -111,39 +130,54 @@ function targetsToKeep_(salesmen, repTargets, now) {
 }
 
 /**
- * Keeps the salesmen list (codes and regions only) and their targets (targetsToKeep_) for
- * SALESMEN_KEEP_MS. A salesman moved to another region keeps his old region on new sites until
- * the list is refreshed.
+ * The region and house / office targets worth keeping (spec 008): North, Center, South and
+ * UNASSIGNED, this month and next month. Kept apart from the salesmen's, so a code can never be
+ * mistaken for a region.
+ * @param {TargetAmounts} regionTargets
+ * @param {Date} now
+ * @returns {TargetAmounts}
+ */
+function regionTargetsToKeep_(regionTargets, now) {
+  return targetsToKeep_(REGIONS.concat([HOUSE_REGION]).map((key) => ({ rep: key, region: '', row: 0 })), regionTargets, now);
+}
+
+/**
+ * Keeps the salesmen list (codes and regions only), their targets (targetsToKeep_) and the region
+ * and house targets (regionTargetsToKeep_) for SALESMEN_KEEP_MS. A salesman moved to another
+ * region keeps his old region on new sites until the list is refreshed.
  * @param {Salesman[]} salesmen
  * @param {TargetAmounts} repTargets
  * @param {Date} now
+ * @param {TargetAmounts} [regionTargets]
  */
-function keepSalesmen_(salesmen, repTargets, now) {
+function keepSalesmen_(salesmen, repTargets, now, regionTargets = {}) {
   PropertiesService.getScriptProperties().setProperty(SALESMEN_KEY, JSON.stringify({
     at: now.getTime(),
     salesmen: salesmen.map((s) => ({ rep: s.rep, region: s.region })),
     targets: targetsToKeep_(salesmen, repTargets, now),
+    regionTargets: regionTargetsToKeep_(regionTargets, now),
   }));
 }
 
 /**
- * Reads `Rep_Mapping` and `Rep-Targets` now and keeps them (Refresh salesmen & targets, Check
- * setup, the Links window, or when the kept copy is older than a day).
+ * Reads `Rep_Mapping`, `Rep-Targets` and `Targets` now and keeps them (Refresh salesmen & targets,
+ * Check setup, the Links window, or when the kept copy is older than a day).
  * @param {Date} now
- * @returns {SalesmenRead & { repTargets: TargetAmounts } | Failure}
+ * @returns {KeptSalesmen | Failure}
  */
 function refreshSalesmen_(now) {
   const read = readSalesmenAndTargets_();
-  if (read.ok) keepSalesmen_(read.salesmen, read.repTargets, now);
+  if (read.ok) keepSalesmen_(read.salesmen, read.repTargets, now, read.regionTargets);
   return read;
 }
 
 /**
  * The salesmen list and kept targets for salesman calls (specs 005, 006, owner P4b-3): the kept
  * copy if it is less than a day old, so a save doesn't open the Meta-Data sheet; otherwise read
- * and kept again. A copy kept before targets were (no `targets`) is read again too.
+ * and kept again. A copy kept before targets were (no `targets`, or no `regionTargets`: spec 008)
+ * is read again too.
  * @param {Date} now
- * @returns {SalesmenRead & { repTargets: TargetAmounts } | Failure}
+ * @returns {KeptSalesmen | Failure}
  */
 function knownSalesmen_(now) {
   const stored = PropertiesService.getScriptProperties().getProperty(SALESMEN_KEY);
@@ -152,8 +186,9 @@ function knownSalesmen_(now) {
       const kept = JSON.parse(stored);
       const age = now.getTime() - kept.at;
       if (Array.isArray(kept.salesmen) && kept.targets && typeof kept.targets === 'object' &&
+          kept.regionTargets && typeof kept.regionTargets === 'object' &&
           age >= 0 && age < SALESMEN_KEEP_MS) {
-        return { ok: true, salesmen: kept.salesmen, repTargets: kept.targets, problems: [] };
+        return { ok: true, salesmen: kept.salesmen, repTargets: kept.targets, regionTargets: kept.regionTargets, problems: [] };
       }
     } catch (e) {
       // Unreadable copy: read again below.
