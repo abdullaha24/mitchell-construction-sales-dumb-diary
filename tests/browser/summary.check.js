@@ -67,6 +67,9 @@ function buildWorld() {
     payment_terms: 'Credit', next_followup: dayCell(2) }));
   rows.push(site({ site_id: 'S000033', rep: 'AUR', site_name: 'AUR Hidden', stage: 'Rate Quoted', value_rs: 777000,
     payment_terms: 'Cash', next_followup: dayCell(1) }));
+  // Late and going cold: named under NOW (owner S9-7).
+  rows.push(site({ site_id: 'S000034', rep: 'RIA', site_name: 'Late Plaza', stage: 'Rate Quoted', value_rs: 650000,
+    payment_terms: 'Cash', next_followup: dayCell(-3), worked_at: dayCell(-10) }));
   // Eleven more quotes today (one with a long name), so the Quotes table shows "+ 2 more" (spec 010).
   for (let i = 40; i <= 50; i++) {
     rows.push(site({ site_id: `S0000${i}`, rep: 'RIA', site_name: i === 40 ? 'Defence Housing Authority Phase Eight Commercial Plaza Block C'
@@ -179,7 +182,7 @@ let browser;
       const left = await page.$$eval('#sumBody .num', (els) => els.filter((e) => getComputedStyle(e).textAlign !== 'right')
         .map((e) => e.textContent));
       assert.deepEqual(left, [], 'numbers on the right');
-      const wrapped = await page.$$eval('#sumBody .num, #sumBody .tile .rs', (els) => els.filter((e) => {
+      const wrapped = await page.$$eval('#sumBody tr:not(.w) .num, #sumBody .tile .rs', (els) => els.filter((e) => {
         const r = document.createRange();
         r.selectNodeContents(e);
         return new Set([...r.getClientRects()].filter((x) => x.width > 0).map((x) => Math.round(x.top))).size > 1;
@@ -235,7 +238,7 @@ let browser;
       g.none ? '' : ` / bar ${Math.min(g.pct, 100)}%`}`];
     return [view.title, view.sub, view.logged, asOf].filter(Boolean)
       .concat(view.tiles.map((t) => `tile ${[t.n, t.l].concat(t.rs ? [t.rs] : []).join(' / ')}`), goal,
-        ...view.tables.map(tableLines), [view.now.cap], tableLines(view.now));
+        ...view.tables.map(tableLines), [view.now.cap], tableLines(view.now), ...(view.now.tables || []).map(tableLines));
   };
 
   // ================================================================ The salesman's page (RIA)
@@ -273,6 +276,15 @@ let browser;
     assert.equal(await page.locator('#sumBody .tile').count(), 6, 'six tiles');
     assert.equal(await page.locator('#sumBody .goal').count(), 0, 'a week has no target bar');
     assert.ok((await h.screenLines()).includes('+ 2 more'), 'the Quotes table: 10 rows, then "+ 2 more"');
+    // NOW names his hot sites and the late / going cold ones (owner S9-7), after the NOW table.
+    const heads = await h.texts('#sumBody .sumt h3');
+    assert.deepEqual(heads.slice(-2), [`Hot sites${mine.now.tables[0].n}`, 'Late & going coldLate 1 · Cold 1'], 'the two NOW tables last');
+    assert.equal(await page.locator('#sumBody .sumt tr.late').count(), 2, 'the NOW Late row and the late site');
+    const lateRow = page.locator('#sumBody .sumt tr.late.w');
+    assert.equal(await lateRow.locator('td').first().textContent(), 'Late Plaza');
+    assert.equal(await lateRow.locator('td.num').textContent(), '3 days late · no update for 10 days');
+    assert.equal(await lateRow.evaluate((r) => getComputedStyle(r).color), 'rgb(180, 35, 24)', 'late in red');
+    assert.ok(mine.text.includes('\n*Late & going cold*\n- Late Plaza · 3 days late · no update for 10 days'), 'and in the WhatsApp text');
     assert.ok(await page.$eval('#sumBody td.extra', (td) => td.getBoundingClientRect().width > td.closest('table').getBoundingClientRect().width - 1),
       '"+ 2 more" spans the table');
     await h.numbersNeat();
@@ -410,6 +422,7 @@ let browser;
     assert.equal(await page.getAttribute('#sumWa', 'href'), `https://wa.me/?text=${encodeURIComponent(all.text)}`);
     assert.ok(!/owner/i.test(await page.evaluate(() => document.body.innerText)), 'the word on screen is Admin');
     assert.deepEqual(await h.texts('#sumBody tr.tap td:first-child'), ['RIA', 'AUR', 'SH'], 'each salesman\'s row can be tapped');
+    assert.equal(await page.locator('#sumBody .sumt h3:has-text("Hot sites")').count(), 0, 'the team\'s NOW: counts only');
     await h.numbersNeat();
     // The team table: five columns that fit at 360 px, numbers lined up on the right.
     const fit = await page.$eval('#sumBody table.cols', (t) => {

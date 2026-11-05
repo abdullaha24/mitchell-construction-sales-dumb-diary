@@ -50,9 +50,7 @@
 - Spec 009 points to spec 010 for layout; AGENTS.md (served-size pin), src/README, tests/README,
   roadmap (speed pass now spec 011), handoff; spec criteria ticked (not the live ones).
 - Done. 375 unit tests and 8 browser checks pass. Choices where the spec was silent:
-  - The NOW part is the four-row table only, on screen and in WhatsApp: spec 009's named top 5 hot
-    sites and 3 biggest late / cold sites are not shown any more (spec 010 and mockup A show
-    counts only; nothing counted changed).
+  - (Withdrawn by the coordinator, see the fix below: the first build showed NOW as counts only.)
   - Salesman's tables show "Rs. 450,000" in the right column (spec text) where the mockup shows
     the bare number; the admin's tiles keep full Rs. (S10-4 names only the team table and the
     team WhatsApp table for millions).
@@ -69,5 +67,13 @@
     italics, the team table (Name / Worked / Quotes / Won / % or Lost, millions, "Not in list"),
     lost reasons as a list ("- Price Too High · 6").
   - The admin's served-size pin is 92,300 bytes (90,275 served + about 2 KB).
+
+- [x] Fix (coordinator, consistent with owner S9-7): the salesman's NOW names his items again, in
+  the table style: a **Hot sites** table (top 5, Hot Pipeline order: name | Rs., or Sample / Trial in
+  grey) and a **Late & going cold** table (the 3 biggest: name | "5 days late" red / "no update for
+  9 days" amber / both / "no follow-up date"; the reason may wrap, in half the width), each left
+  out when empty; in the WhatsApp text (This week / This month) as `- ` lists after the NOW block.
+  The team's NOW stays counts only. Unit and browser tests added (each failed with the tables left
+  out).
 
 ## [ ] Step 6: Live (coordinator)

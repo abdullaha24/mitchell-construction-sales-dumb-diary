@@ -15,6 +15,9 @@
 const SUMMARY_PERIODS = ['this-week', 'last-week', 'this-month', 'last-month'];
 /** Named sites per table before "+ N more". */
 const SUMMARY_LIST_MAX = 10;
+/** A salesman's NOW names his top hot sites and the biggest late / going cold ones (owner S9-7). */
+const SUMMARY_HOT_MAX = 5;
+const SUMMARY_LATE_MAX = 3;
 /** "Follow-ups due in the next 7 days": today and the 6 days after (specs 006 to 008). */
 const SUMMARY_DUE_DAYS = 7;
 /** What counts as work on a site (owner S9-12): never a snooze or Edit details (P6-2). */
@@ -404,20 +407,34 @@ function shownRs_(s) {
  * NOW: things as they are today (specs 006 to 008 rules): hot = Sample / Trial or Rate Quoted
  * (Rs. of the Rate Quoted ones); due = an open site's follow-up today or in the 6 days after; late
  * = open with a follow-up before today or none; going cold = hot with no real Update for COLD_DAYS
- * days (spec 007). Counts only (spec 010), on screen under every button; in the text of This week
- * / This month only (S9-15).
+ * days (spec 007). On screen under every button; in the text of This week / This month only
+ * (S9-15). `named` (a salesman's own summary, owner S9-7): also his top hot sites in the Hot
+ * Pipeline order (Rs. biggest first, then soonest follow-up, then newest, owner P5-1) and the
+ * biggest late or going cold ones, as tables and as WhatsApp lists. The team's: counts only.
  * @param {SummarySite[]} sites
  * @param {string} today
+ * @param {boolean} [named]
  */
-function nowPart_(sites, today) {
+function nowPart_(sites, today, named) {
   const open = sites.filter((s) => !CLOSED_STAGES.includes(s.stage));
-  const hot = open.filter((s) => HOT_STAGES.includes(s.stage));
+  /** @param {SummarySite} a @param {SummarySite} b */
+  const byFollowUp = (a, b) => (a.followUp < b.followUp ? -1 : a.followUp > b.followUp ? 1 : a.order - b.order);
+  /** @param {SummarySite} a @param {SummarySite} b */
+  const order = (a, b) => shownRs_(b) - shownRs_(a) || byFollowUp(a, b);
+  const hot = open.filter((s) => HOT_STAGES.includes(s.stage)).sort(order);
   const hotRs = hot.reduce((sum, s) => sum + shownRs_(s), 0);
   const lastDue = addDays_(today, SUMMARY_DUE_DAYS - 1);
   const due = open.filter((s) => s.followUp && s.followUp >= today && s.followUp <= lastDue).length;
-  const late = open.filter((s) => !s.followUp || s.followUp < today).length;
-  const cold = hot.filter((s) => s.worked && daysBetween_(s.worked, today) >= COLD_DAYS).length;
-  return {
+  /** @param {SummarySite} s */
+  const isLate = (s) => !s.followUp || s.followUp < today;
+  /** @param {SummarySite} s */
+  const coldFor = (s) => {
+    const days = HOT_STAGES.includes(s.stage) && s.worked ? daysBetween_(s.worked, today) : 0;
+    return days >= COLD_DAYS ? days : 0;
+  };
+  const late = open.filter(isLate).length;
+  const cold = open.filter(coldFor).length;
+  const part = {
     cap: `Now · ${shortDay_(today)}`, heading: `Now, ${shortDay_(today)}`,
     rows: [
       { c: ['Hot sites', `${hot.length}${hotRs ? ` · ${formatRs_(hotRs)}` : ''}`] },
@@ -427,7 +444,32 @@ function nowPart_(sites, today) {
     ],
     mono: [monoRow_('Hot sites', hot.length, hotRs || undefined), monoRow_(`Due in ${SUMMARY_DUE_DAYS} days`, due),
       monoRow_('Late', late), monoRow_('Going cold', cold)],
+    /** @type {SummaryTable[]} */
+    tables: [],
+    /** @type {Array<{ h: string, list: string[] }>} */
+    lists: [],
   };
+  if (!named) return part;
+  // His top hot sites: name | Rs. (Rate Quoted), or name | Sample / Trial in grey.
+  const top = hot.slice(0, SUMMARY_HOT_MAX);
+  if (top.length) {
+    const right = (/** @type {SummarySite} */ s) => (shownRs_(s) ? formatRs_(shownRs_(s)) : s.stage);
+    part.tables.push({ h: 'Hot sites', n: String(hot.length),
+      rows: top.map((s) => ({ c: [siteName_(s), right(s)], ...(shownRs_(s) ? {} : { k: 'm' }) })) });
+    part.lists.push({ h: 'Hot sites', list: top.map((s) => `- ${siteName_(s)} · ${right(s)}`) });
+  }
+  // The biggest late or going cold: name | "5 days late" (red) / "no update for 9 days" (amber).
+  const behind = open.filter((s) => isLate(s) || coldFor(s)).sort(order).slice(0, SUMMARY_LATE_MAX);
+  if (behind.length) {
+    const why = (/** @type {SummarySite} */ s) => [
+      ...(isLate(s) ? [s.followUp ? `${plural_(daysBetween_(s.followUp, today), 'day')} late` : 'no follow-up date'] : []),
+      ...(coldFor(s) ? [`no update for ${coldFor(s)} days`] : []),
+    ].join(' · ');
+    part.tables.push({ h: 'Late & going cold', n: `Late ${late} · Cold ${cold}`,
+      rows: behind.map((s) => ({ c: [siteName_(s), why(s)], k: `${isLate(s) ? 'late' : 'cold'} w` })) });
+    part.lists.push({ h: 'Late & going cold', list: behind.map((s) => `- ${siteName_(s)} · ${why(s)}`) });
+  }
+  return part;
 }
 
 /**
@@ -446,7 +488,10 @@ function summaryText_(heading, blocks, notes, lists, now, running) {
   let text = `*${heading}*\n${mono(blocks[0])}${notes.map((n) => `\n_${n}_`).join('')}`;
   for (const block of blocks.slice(1)) text += `\n\n${mono(block)}`;
   for (const l of lists) if (l.list.length) text += `\n\n*${l.h}*\n${l.list.join('\n')}`;
-  if (running) text += `\n\n*${now.heading}*\n${mono(now.mono)}`;
+  if (running) {
+    text += `\n\n*${now.heading}*\n${mono(now.mono)}`;
+    for (const l of now.lists) text += `\n\n*${l.h}*\n${l.list.join('\n')}`;
+  }
   return text;
 }
 
@@ -481,7 +526,7 @@ function salesmanSummary_(rep, facts, period, target, title, withDays) {
       return { value: lost.value, name, r: lost.reason, m: true, text: name + (lost.reason ? ` · ${lost.reason}` : '') };
     })),
   ];
-  const now = nowPart_(facts.sites.filter((s) => s.rep === rep), period.today);
+  const now = nowPart_(facts.sites.filter((s) => s.rep === rep), period.today, true);
   const mono = numberMono_(n, withDays);
   if (period.month) mono.push(targetMono_(period.month, target, n.wonRs));
   return {
@@ -490,7 +535,7 @@ function salesmanSummary_(rep, facts, period, target, title, withDays) {
     tiles: summaryTiles_(n),
     ...(period.month ? { target: targetPart_('Target', period.month, target, n.wonRs) } : {}),
     tables: parts.filter((p) => p.table.rows.length).map((p) => p.table),
-    now: { cap: now.cap, rows: now.rows },
+    now: { cap: now.cap, rows: now.rows, tables: now.tables },
     text: summaryText_(`${rep} · ${period.name} (${period.days})`, [mono], ['Rs. logged, not invoiced'],
       parts.map((p) => ({ h: p.table.h, list: p.list })), now, period.running),
   };

@@ -40,6 +40,13 @@ itself, top to bottom:
    **Follow-ups next 7 days** | *9* · **Late** | *3* (red) · **Going cold** | *2* (amber). Nothing late
    or going cold: those two rows show **0** in grey. Under Last week / Last month this part shows on
    screen as in spec 009 (S9-15).
+   **Named, as spec 009 had them (owner S9-7; decided after the first build, which had left them
+   out):** after the four-row table, a **Hot sites** table (his top 5 in the Hot Pipeline order: name
+   | Rs., or *Sample / Trial* in grey; the count of all hot sites in the top row) and a **Late &
+   going cold** table (the 3 biggest by Rs.: name | *"5 days late"* in red / *"no update for 9
+   days"* in amber / both / *"no follow-up date"*; *"Late 3 · Cold 2"* in the top row), each left out
+   when empty. In the WhatsApp text (This week / This month only) the same items follow the NOW
+   block as `- ` lists. The admin's view of a salesman is the same; the team's NOW stays counts only.
 6. **Share on WhatsApp** (green) and **Copy**, side by side, the same height.
 
 Long site names wrap inside their cell; Rs. never wraps (spec 009 live fix kept).

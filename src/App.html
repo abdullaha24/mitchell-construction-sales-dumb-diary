@@ -146,6 +146,7 @@
       .sumt .late { color: var(--red); }
       .sumt .cold { color: var(--orange); }
       .sumt .b .num { font-weight: 700; }
+      .sumt .w .num { white-space: normal; width: 50%; } /* a late / cold reason may wrap; Rs. never does */
       .nowcap { font-size: 12px; font-weight: 700; color: var(--soft); text-transform: uppercase; letter-spacing: .04em; margin: 14px 2px 6px; }
       #sumWa { background: #1fa855; border-color: #1fa855; color: #fff; }
       #sumCopy { width: 100%; height: 50vh; font: inherit; }
@@ -1622,7 +1623,7 @@
         }
         v.tables.forEach(function (t) { sumTable(box, t); });
         box.appendChild(el('div', v.now.cap, 'nowcap'));
-        sumTable(box, v.now);
+        [v.now].concat(v.now.tables || []).forEach(function (t) { sumTable(box, t); });
         $('sumWa').href = 'https://wa.me/?text=' + encodeURIComponent(v.text);
       }
       function nb(text) { return text.replace(/Rs\. /g, 'Rs.\u00a0'); } // "Rs. 400,000" never splits

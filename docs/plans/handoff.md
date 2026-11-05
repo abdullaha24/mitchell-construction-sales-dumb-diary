@@ -68,8 +68,8 @@ Owner's order (S9-2): **summaries → speed pass → launch.**
    S10-4, mockup `docs/specs/010-mockup.html`), built and checked locally (plan
    [010](010-summary-tables-plan.md), steps 1–5 ticked), not yet live.** Pages are now served
    through `servedHtml_` (comments and indentation removed when Google sends the page; no build
-   step): salesman's page **69,574 bytes served** (source 92,149; it was 87,826 source / served
-   whole before), admin's 90,275 (pins 75,000 and 92,300, `tests/served.test.js`). The summary is
+   step): salesman's page **69,735 bytes served** (source 92,316; it was 87,826 source / served
+   whole before), admin's 90,436 (pins 75,000 and 92,300, `tests/served.test.js`). The summary is
    six tiles, a target bar, two-column tables and a NOW table; the admin gets one team table (Won
    in millions) with tappable salesman rows; WhatsApp numbers in a monospace block (≤ 30
    characters a line). **Next:** independent review, then live (push, `update-deployment`, agent

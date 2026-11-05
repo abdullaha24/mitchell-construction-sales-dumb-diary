@@ -629,6 +629,43 @@ test('NOW: hot sites and their Rs. (Rate Quoted), follow-ups due today and the 6
     { c: ['Late', '0'], k: 'none' }, { c: ['Going cold', '0'], k: 'none' }], 'due: today 4 Nov to 10 Nov (not 11 Nov, not the Won site)');
 });
 
+test('NOW, named (owner S9-7): his top 5 hot sites in Hot Pipeline order; the 3 biggest late or going cold', () => {
+  const sites = [
+    site('S000001', 'RIA', 'Sample Old', { stage: SAMPLE, next_followup: day(2026, 11, 8), created_at: pk(2026, 9, 1) }),
+    site('S000002', 'RIA', 'Sample New', { stage: SAMPLE, next_followup: day(2026, 11, 8), created_at: pk(2026, 9, 2) }),
+    site('S000003', 'RIA', 'Sample Soon', { stage: SAMPLE, next_followup: day(2026, 11, 5) }),
+    site('S000004', 'RIA', 'Quote Late Date', { stage: RQ, value_rs: 500000, payment_terms: 'Cash', next_followup: day(2026, 11, 9) }),
+    site('S000005', 'RIA', 'Quote Soon Date', { stage: RQ, value_rs: 500000, payment_terms: 'Cash', next_followup: day(2026, 11, 10) }),
+    site('S000006', 'RIA', 'Quote Big', { stage: RQ, value_rs: 900000, payment_terms: 'Cash', next_followup: day(2026, 11, 11) }),
+    site('S000007', 'RIA', 'Lead Due', { next_followup: day(2026, 11, 4) }),
+    site('S000008', 'RIA', 'Won Not Open', { stage: WON, value_rs: 5000000, payment_terms: 'Cash', next_followup: day(2026, 11, 5) }),
+  ];
+  const hot = ria(world({ sites }), 'this-week').now.tables;
+  assert.deepEqual(hot, [{ h: 'Hot sites', n: '6', rows: [
+    { c: ['Quote Big', 'Rs. 900,000'] }, { c: ['Quote Late Date', 'Rs. 500,000'] }, { c: ['Quote Soon Date', 'Rs. 500,000'] },
+    { c: ['Sample Soon', SAMPLE], k: 'm' }, { c: ['Sample New', SAMPLE], k: 'm' },
+  ] }], 'Rs. biggest, then soonest follow-up, then newest; 5 of 6; nothing late or cold: no second table');
+  const behind = [
+    site('S000001', 'RIA', 'Small Late', { stage: RQ, value_rs: 100000, payment_terms: 'Cash', next_followup: day(2026, 11, 3) }),
+    site('S000002', 'RIA', 'Big Cold', { stage: RQ, value_rs: 900000, payment_terms: 'Cash', worked_at: pk(2026, 10, 26) }),
+    site('S000003', 'RIA', 'Mid Late', { stage: RQ, value_rs: 500000, payment_terms: 'Cash', next_followup: day(2026, 10, 30) }),
+    site('S000004', 'RIA', 'Lead Late', { next_followup: day(2026, 11, 3) }),
+  ];
+  const w = world({ sites: behind });
+  assert.deepEqual(ria(w, 'this-week').now.tables[1], { h: 'Late & going cold', n: 'Late 3 · Cold 1', rows: [
+    { c: ['Big Cold', 'no update for 9 days'], k: 'cold w' }, { c: ['Mid Late', '5 days late'], k: 'late w' },
+    { c: ['Small Late', '1 day late'], k: 'late w' },
+  ] }, 'the 3 biggest by Rs.');
+  assert.ok(ria(w, 'this-week').text.endsWith(['*Late & going cold*', '- Big Cold · no update for 9 days', '- Mid Late · 5 days late',
+    '- Small Late · 1 day late'].join('\n')));
+  assert.ok(!ria(w, 'last-week').text.includes('*Hot sites*') && !ria(w, 'last-week').text.includes('*Late & going cold*'),
+    'a past period leaves NOW out of the text (S9-15)');
+  assert.equal(ria(w, 'last-week').now.tables.length, 2, '...but shows it on screen');
+  assert.equal(team(w, 'this-week').now.tables, undefined, 'the team\'s NOW: counts only');
+  assert.ok(!team(w, 'this-week').text.includes('*Hot sites*'));
+  assert.deepEqual(ria(world({ sites: [site('S000001', 'RIA', 'Fine')] }), 'this-week').now.tables, [], 'none: both tables left out');
+});
+
 test('NOW: the Late and Going cold counts follow the Late & cold tab\'s rules; nothing late shows 0 in grey', () => {
   const w = summaryWorld();
   const screen = plain(w.s.adminDataFor_(w.diary, [], NOW));
@@ -708,6 +745,16 @@ test("WhatsApp text: a salesman's week, exactly", () => {
     'Late           2',
     'Going cold     1',
     '```',
+    '',
+    '*Hot sites*',
+    '- Gulberg Heights · Rs. 1,200,000',
+    '- Bahria Villas · Rs. 800,000',
+    '- Reopened · Rs. 200,000',
+    '- Askari Sample · Sample / Trial',
+    '',
+    '*Late & going cold*',
+    '- Gulberg Heights · 2 days late · no update for 15 days',
+    '- No Date Lead · no follow-up date',
   ].join('\n'));
 });
 
@@ -763,6 +810,16 @@ test("WhatsApp text: a salesman's month, exactly", () => {
     'Late           2',
     'Going cold     1',
     '```',
+    '',
+    '*Hot sites*',
+    '- Gulberg Heights · Rs. 1,200,000',
+    '- Bahria Villas · Rs. 800,000',
+    '- Reopened · Rs. 200,000',
+    '- Askari Sample · Sample / Trial',
+    '',
+    '*Late & going cold*',
+    '- Gulberg Heights · 2 days late · no update for 15 days',
+    '- No Date Lead · no follow-up date',
   ].join('\n'));
 });
 
