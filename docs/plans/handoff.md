@@ -53,6 +53,11 @@ Owner's order (S9-2): **summaries → speed pass → launch.**
    inside Google's frame: Share on WhatsApp and Copy; compare RIA's This week / This month and the
    admin's month with the sheet, using the TEST rows, S9-1). Choices made where the spec was silent
    are listed in the builder's report and in the plan (step 6).
+   **Reviewed (session 5):** an independent reviewer agent reviewed the build cold (no blockers or
+   majors; six minors, all fixed in `66030a3`: block-edge margin `ACTIVITY_SKEW_MS` in
+   `activitySince_`, which also protects the admin screen's This month; team lost reasons from
+   current salesmen only; live "not sent yet" line; go-live refresh step; App.html trim; spec
+   wording), then re-reviewed the fixes: **nothing remains.** 364 unit tests + 8 browser checks.
 1. **Speed pass (recommended before launch; owner's top priority is speed on cheap phones):**
    measure where the salesman's open time goes (server time vs page size vs page script), then
    shrink what the salesman's page downloads and runs at open (e.g. strip comments / whitespace
