@@ -34,10 +34,10 @@ ticked to their last step. ADRs 0001–0010 Accepted. Tests: 382 unit (incl. the
 test, ~20 s) + 8 browser checks.
 
 ### Live state (2026-11-05)
-- **TEST rows in the sheet** (kept for checks, S9-1): `Sites` S000001 TEST Quote (Won, Rs. 400,000),
-  S000002 TEST Lead (note "Admin: TEST call the consultant", follow-up 7 Nov), S000003 TEST Gone
-  (Lost, Price Too High); `Activity` A0000001–A0000005 (all 4 Nov). **Delete only with his OK**
-  (read the tabs first; delete pinned to the revision just read).
+- **TEST rows deleted** (owner's OK, 2026-11-05, pinned to the revision just read): `Sites` and
+  `Activity` now hold only their header rows, ready for launch. IDs start again at S000001 /
+  A0000001 (the old TEST rows are gone, so nothing clashes). From now on, live checks use real data
+  read-only, or a TEST row the owner OKs and that is deleted right after.
 - `Links`: row 2 the admin link (`role` `owner`), row 3 RIA's test link, row 4 SJ's test link.
   Cancel RIA's and SJ's only when the owner says, before launch.
 - **Speed** (agent, Chromium at 360 px, warm, version 13): salesman's page opens in ~4.2 s, admin's
@@ -48,7 +48,10 @@ test, ~20 s) + 8 browser checks.
    himself: WhatsApp app opens with the text, the numbers block **lines up**, Copy says "Copied".
    If the block doesn't line up: fall back to bold labels (spec 010, mockup C bottom). Then close
    specs 009 and 010 (Done), roadmap 7b.
-2. **"Delete"** the TEST rows only after that, with his OK.
+2. **Launch prep (owner, 2026-11-05: "ready to roll, fix bugs as they come")**: TEST rows deleted;
+   he makes fresh links for all 7 on the computer (Sales Diary → Links; a new link for RIA / SJ
+   cancels their test links) and sends each salesman his own link privately with the WhatsApp
+   how-to the agent drafted. Bugs: salesmen report to him on WhatsApp; he pastes them in chat.
 3. **Speed pass (spec 011, to write)**: measure where the salesman's open time goes (server vs
    download vs page script), then shrink what runs at open (e.g. defer Update / form code, check
    the page data size). Target ≤ ~3.9 s warm. Spec briefly, owner's OK, build the usual way.
@@ -129,8 +132,8 @@ Give the owner the link; he pastes back the whole address; check its `state=` ma
 - The owner wants **speed on cheap phones and weak signal**: measure, avoid extra trips.
 
 ## Questions for the owner
-Waiting on him: (1) the **phone check** of the summaries (Next, 1); (2) **"delete"** the TEST rows
-after it; (3) go-ahead to **spec the speed pass** (spec 011).
+Waiting on him: (1) the **phone check** of the summaries (Next, 1); (2) making and sending the 7
+links (Next, 2); (3) go-ahead to **spec the speed pass** (spec 011) in the first week.
 
 ## Useful facts
 IDs aren't secret (each needs the owner's Google account):
