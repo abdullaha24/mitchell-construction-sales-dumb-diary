@@ -23,4 +23,4 @@ Status values: `Draft` → `Approved` → `In progress` → `Done` (or `Dropped`
 | [006](006-focus-tabs.md) | Focus tabs: Today's Chase, Hot Pipeline, All My Parties with search; his monthly target | Done |
 | [007](007-card-helpers-areas.md) | Site card helpers: Call / WhatsApp, last-spoken line, going cold, snooze; area filter | Done |
 | [008](008-owner-screen.md) | Owner (admin) screen: team against target, who worked today, late and going cold, won / lost this month; admin updates | Done |
-| [009](009-summaries.md) | Weekly and monthly summaries: one tap, share on WhatsApp; salesman and admin | Draft |
+| [009](009-summaries.md) | Weekly and monthly summaries: one tap, share on WhatsApp; salesman and admin | Approved |

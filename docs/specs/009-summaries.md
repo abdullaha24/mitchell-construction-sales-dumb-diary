@@ -1,8 +1,8 @@
 # 009: Weekly and monthly summaries (one tap, share on WhatsApp)
 
-- **Status:** Draft
-- **Owner approval:** _pending_ (interview 2026-11-05, session 5: answers S9-1 to S9-12; after an
-  adversarial review, S9-13 to S9-15)
+- **Status:** Approved
+- **Owner approval:** approved by the owner on 2026-11-05 (session 5), after the interview (S9-1 to
+  S9-12) and an adversarial review (S9-13 to S9-15)
 - **Related:** roadmap phase 7b (before the speed pass and launch, owner S9-2) ·
   [vision](../product/vision.md) · ADR-0004 (a salesman gets only his own data) · ADR-0006 /
   ADR-0010 (admin link) · [glossary](../product/glossary.md) → Summary · owner answers Q12c, P5-1,

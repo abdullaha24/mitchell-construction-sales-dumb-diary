@@ -25,7 +25,7 @@ Read before any product or UI work:
 ## Status
 
 Phases 0–7 are **done and live** (specs 001–008, deployment version 10). Next: weekly and monthly
-summaries (spec 009, Draft, awaiting the owner's approval), then a speed pass on the salesman's page,
+summaries (spec 009, Approved 2026-11-05, being built), then a speed pass on the salesman's page,
 then launch (phase 8). Current state, next step and IDs: `docs/plans/handoff.md`.
 
 ## Commands
