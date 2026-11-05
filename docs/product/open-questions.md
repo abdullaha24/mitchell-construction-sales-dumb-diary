@@ -7,7 +7,9 @@ the data model, update those too. The ready-to-ask versions (options and recomme
 
 ## Open
 
-_None right now._ Add new questions here as they come up.
+| # | Question | Agent's recommendation |
+| --- | --- | --- |
+| S9-13 | Spec 009: a salesman re-quotes a site already at Rate Quoted (new Rs. value, same stage). Count it as another "quote given"? | **No:** a quote counts when a site moves to Rate Quoted (or is added at it). The history writes the Rs. value on every Update at Rate Quoted, even unchanged, so a new price can't be told from an unchanged one without reading history from before the period. |
 
 ## Answered
 
@@ -106,3 +108,20 @@ Owner, session 4 (phase 7):
 | P7-5 | Spec 008: does the owner's Update reset going cold? | **No.** Only the salesman's own Update writes `worked_at`. |
 | P7-6 | Spec 008: make / cancel links from the phone in phase 7 (P2-2)? | **No.** Links stay in Sales Diary → Links on a computer; in an emergency he unticks `active` in the Sheets app. |
 | P7-7 | (Owner's instruction with the approval) | **Say "Admin" / "Administrator" everywhere a person sees it**, not "owner": the admin screen, the salesman's card ("Admin: …"), the `Activity` value for his changes (`admin`), the Links window, Check setup and menu texts. "Owner" stays only as a docs word. The `Links.role` value `owner` is kept (live data). |
+
+Owner, session 5 (2026-11-05): weekly and monthly summaries ([spec 009](../specs/009-summaries.md))
+
+| # | Question | Answer |
+| --- | --- | --- |
+| S9-1 | The phase 7 TEST rows? | **Keep them until the summaries are tested live**, then delete with his OK. |
+| S9-2 | Order of work? | **Summaries, then the speed pass, then launch** (agent's recommendation). |
+| S9-3 | How does a salesman use his summary at the Friday meeting? | **On screen, plus one tap to share it as a WhatsApp message** (agent added a Copy button as a fallback). |
+| S9-4 | Which days is a week? | **Saturday to Friday**: the week ends on meeting day and includes everything logged up to the tap. |
+| S9-5 | Which summary buttons? | **This week · Last week · This month · Last month** (a monthly review held on the 2nd needs Last month). |
+| S9-6 | Rs. in a salesman's own summary (Q12c, P5-2 said target only)? | **Rs. won and quoted; the month view also shows won against his target with %, "logged, not invoiced".** Only inside his summary: his main page stays target-only. |
+| S9-7 | What goes in a summary? | **All four:** headline numbers; named sites (won, quotes given, lost with reason); coming up (hot sites, follow-ups due); late and going cold. |
+| S9-8 | The admin's summaries? | **All four:** team and region totals (month against targets, plus house / office); salesmen side by side; tap a salesman for his own summary; team lost reasons. |
+| S9-9 | Show "logged something on X days"? | **On the admin's view only**, never on the salesman's own summary. |
+| S9-10 | Where does the button go? | **A Summary button at the top of both pages**; the existing tabs stay as they are. |
+| S9-11 | Save summaries in the sheet? | **No.** Nothing new saved; the history can always rebuild a summary, and the WhatsApp message is the written copy. |
+| S9-12 | What counts as "sites worked"? | **Sites he added or saved an Update on**, each once; snoozes and Edit details don't count (as going cold, P6-2). |

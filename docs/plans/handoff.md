@@ -1,6 +1,6 @@
 # Handoff: start here
 
-> Updated 2026-11-04, end of session 4 (phases 5, 6 and 7). **Every session: read this first, and update it before
+> Updated 2026-11-05, session 5 (owner interview for weekly / monthly summaries; spec 009 Draft). **Every session: read this first, and update it before
 > you finish.** Then read `AGENTS.md` (rules, commands) if you haven't.
 
 ## Where we are
@@ -37,13 +37,27 @@ Specs 001–008 **Done**; plans 001–008 ticked; ADR-0009 and ADR-0010 Accepted
   3.9–4.7 s, up from ~3.9 s** after phase 6 (`App.html` 59 KB → 83 KB, mostly the save-queue /
   two-people logic). After Save, back on the list in ~0.3 s; Google confirms in 2–5 s.
 
-## Next: a speed pass, then launch (phase 8)
+## Next: summaries (spec 009), then a speed pass, then launch (phase 8)
+Owner's order (S9-2): **summaries → speed pass → launch.**
+0. **Summaries ([spec 009](../specs/009-summaries.md), Draft, session 5).** The owner was
+   interviewed (answers S9-1 to S9-12 in `open-questions.md`): a **Summary** button at the top of
+   the salesman's page and the admin's; **This week · Last week · This month · Last month**; a week
+   is **Saturday to Friday**; shown on screen, **Share on WhatsApp** + Copy; Rs. won and quoted, the
+   month against target (inside the summary only; his main page stays target-only); admin: team /
+   region totals, salesmen side by side, each salesman's summary, lost reasons, "logged on X days"
+   (admin only); nothing saved in the sheet. **Waiting for the owner to approve the spec and answer
+   S9-13** (revised quotes). Then build it the session 4 way (builder + reviewer subagents), with
+   two new public functions (`repSummary`, `adminPageSummary`: 18 → 20) and last month's targets in
+   the kept copy (data-model change in the same commit). Test live against the TEST rows (S9-1).
+   Build notes from the interview: the page sits inside a Google frame, so the WhatsApp button
+   should be a `https://wa.me/?text=…` link (like the card's WhatsApp button), not the phone's
+   share sheet; check Copy works inside that frame on a real phone.
 1. **Speed pass (recommended before launch; owner's top priority is speed on cheap phones):**
    measure where the salesman's open time goes (server time vs page size vs page script), then
    shrink what the salesman's page downloads and runs at open (e.g. strip comments / whitespace
    from the served HTML at push time, defer code only needed on Update/forms, check the page data
    size). Target: back to ≤ ~3.9 s warm, with a check that pins the served page size. Spec it
-   briefly (spec 009) and get the owner's OK as usual.
+   briefly (now **spec 010**, after summaries) and get the owner's OK as usual.
 2. **Phase 8, launch** (roadmap): links for all 7 salesmen, a short how-to (WhatsApp-friendly,
    plain words), cancel the RIA / SJ test links, empty TEST data, watch the first week.
 
@@ -115,8 +129,10 @@ matches; `printf '%s\n' '<address>' > "$S/clasp-in"`; delete the log.
   server, and make things feel instant on the phone.
 
 ## Questions for the owner
-Waiting on him (not business questions): (1) **"delete"** the phase 7 TEST rows once he has looked
-at his admin screen; (2) the go-ahead for the **speed pass** (agent recommended it before launch). Ask the owner's way: **one question at a time** (several only when he's brisk and
+Waiting on him: (1) **approve spec 009** (summaries) and answer **S9-13** (count a revised price
+on a site already at Rate Quoted as another quote? agent recommends **no**; ask with tappable options);
+(2) **"delete"** the phase 7 TEST rows, but only **after** the summaries are tested live (S9-1).
+The speed pass is agreed (S9-2): it follows the summaries. Ask the owner's way: **one question at a time** (several only when he's brisk and
 they're independent), tappable options (`AskUserQuestion`), recommended option first and marked
 **(Recommended)**, plain English. He prefers brisk check-ins; don't over-explain routine steps.
 
@@ -133,4 +149,8 @@ IDs aren't secret (each needs the owner's Google account):
 - Owner's Google account: the one that owns both sheets.
 - Branches: sessions 1–2 merged into the default branch; **sessions 3–4 are on
   `claude/clever-hopper-ain3c5`, not merged and no PR opened** (owner hasn't asked for one).
-  Next session: start from this branch unless the owner says it was merged.
+  **Session 5 (spec 009 interview) is on `ccr-f2566cb7-aaz6y0`**, which starts from that branch's
+  last commit. Another branch, `ccr-18f7110f-to6vgz`, holds a salesmen's PDF user guide
+  (`docs/guide`, `scripts/guide`), not merged; it doesn't touch `src/` but also edits `AGENTS.md`,
+  `handoff.md` and `roadmap.md`, so merging it means small conflicts in those three files. Next session: start from
+  `ccr-f2566cb7-aaz6y0` unless the owner says otherwise.
