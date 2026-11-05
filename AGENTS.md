@@ -57,7 +57,9 @@ Code rules that tests enforce (the tests are the source of truth; keep this list
   formulas); an existing row gets only its changed cells written.
 - A salesman call opens Sales Diary once and a save reads each tab once, inside the lock
   (`tests/speed.test.js`); replies carry only the changed card. `Activity` is never read whole
-  (bottom-up blocks, `activitySince_`). `src/App.html` stays ≤ 88,000 bytes (a test pins it).
+  (bottom-up blocks, `activitySince_`). Pages are served through `servedHtml_` (comments and
+  indentation removed, no build step); the served salesman's page stays ≤ 75,000 bytes and the
+  admin's has its own pin (`tests/served.test.js`).
 - Link codes never go into git, logs or errors, and onto no page except the owner's Links
   window and the code holder's own page.
 - **Words on screen say "Admin", never "owner"** (owner P7-7). In code and docs "owner" is fine;

@@ -1,6 +1,6 @@
 # 010: Summary tables (neat layout) and a smaller page download
 
-- **Status:** Approved
+- **Status:** In progress (build plan [010](../plans/010-summary-tables-plan.md))
 - **Owner approval:** approved by the owner on 2026-11-05 (session 5), after choosing the direction
   from a mockup (S10-1 to S10-3) and the Rs. format (S10-4)
 - **Related:** [spec 009](009-summaries.md) (the summaries: what is counted stays exactly the same)

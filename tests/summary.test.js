@@ -4,9 +4,7 @@
 // WhatsApp text, privacy (ADR-0004) and what a summary costs. Amounts are made up.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
-const { loadSrc, plain, SRC_DIR } = require('./helpers/load-src');
+const { loadSrc, plain } = require('./helpers/load-src');
 const {
   makeSpreadsheet, makeSpreadsheetApp, makeUtilities, makeLockService, makeCacheService,
   makePropertiesService, makeHtmlService,
@@ -965,9 +963,4 @@ test('a row a few seconds out of time order at a block edge never hides a row of
   assert.equal(sheet._rowsRead - before, 1 + 500 + 101, 'one more block, read because the stop row was inside the margin');
   const n = numbers(w, ['RIA'], 'last-week');
   assert.deepEqual([n.worked, n.quotes], [1, 0], 'the Friday row counts last week, never this week');
-});
-
-test("the salesman's page stays at or under 88,000 bytes (spec 009: the speed pass starts from a known size)", () => {
-  const size = fs.statSync(path.join(SRC_DIR, 'App.html')).size;
-  assert.ok(size <= 88000, `App.html is ${size} bytes`);
 });
