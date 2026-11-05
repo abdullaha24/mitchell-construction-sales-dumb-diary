@@ -142,12 +142,12 @@ test('a broken Rep-Targets never locks him out: no target, and the owner is told
 
 // ------------------------------------------------------------------------- Kept with the list
 
-test('kept: this month and next month for current salesmen only; nothing older, no regions', () => {
+test('kept: last month (spec 009), this month and next month for current salesmen only; nothing older, no regions', () => {
   const w = world();
   w.s.repLoad(RIA);
   const targets = kept(w).targets;
   const expected = {};
-  for (const [rep] of REPS) for (const offset of [0, 1]) expected[`${rep}|${month(offset)[0]}`] = amount(rep, offset);
+  for (const [rep] of REPS) for (const offset of [-1, 0, 1]) expected[`${rep}|${month(offset)[0]}`] = amount(rep, offset);
   assert.deepEqual(targets, expected);
   assert.deepEqual(w.metaData._writes(), [], 'Meta-Data is only read');
 });

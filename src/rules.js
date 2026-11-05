@@ -164,6 +164,15 @@ function nextMonthKey_(key) {
 }
 
 /**
+ * The month before a `yyyy-MM` month: `2027-01` → `2026-12`.
+ * @param {string} key
+ */
+function previousMonthKey_(key) {
+  const [year, month] = key.split('-').map(Number);
+  return month === 1 ? `${year - 1}-12` : `${year}-${String(month - 1).padStart(2, '0')}`;
+}
+
+/**
  * An amount cell as whole rupees, or null if it isn't a whole number of zero or more.
  * Accepts a number (within WHOLE_NUMBER_TOLERANCE of a whole number, so formula results
  * count), or text such as `12,345,000` or `Rs. 12,345,000` (commas, a leading `Rs.` and

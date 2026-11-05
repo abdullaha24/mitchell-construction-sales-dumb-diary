@@ -1,6 +1,6 @@
 # 009: Weekly and monthly summaries (one tap, share on WhatsApp)
 
-- **Status:** Approved
+- **Status:** In progress (approved by the owner 2026-11-05; build plan [009](../plans/009-summaries-plan.md))
 - **Owner approval:** approved by the owner on 2026-11-05 (session 5), after the interview (S9-1 to
   S9-12) and an adversarial review (S9-13 to S9-15)
 - **Related:** roadmap phase 7b (before the speed pass and launch, owner S9-2) ·

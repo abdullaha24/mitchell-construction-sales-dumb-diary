@@ -129,8 +129,11 @@ test('the salesmen list is read once and then kept: Meta-Data is not opened agai
 test('the kept list is used for up to 24 hours, then read again', () => {
   const w = world();
   const now = Date.now();
-  w.props._store.set('salesmen', JSON.stringify({ at: now - 60 * 60 * 1000, salesmen: [{ rep: 'SH', region: 'Center', row: 5 }], targets: {}, regionTargets: {} }));
+  const months = w.s.keptMonths_(new Date(now)); // spec 009: a copy says which months it holds
+  w.props._store.set('salesmen', JSON.stringify({ at: now - 60 * 60 * 1000, months, salesmen: [{ rep: 'SH', region: 'Center', row: 5 }], targets: {}, regionTargets: {} }));
   assert.throws(() => w.s.repLoad(RIA), /This link doesn't work/, 'RIA is not in the kept list, so not yet known');
+  w.props._store.set('salesmen', JSON.stringify({ at: now - 60 * 60 * 1000, salesmen: [{ rep: 'SH', region: 'Center', row: 5 }], targets: {}, regionTargets: {} }));
+  assert.equal(w.s.repLoad(RIA).ok, true, 'a copy kept before last month was (no months, spec 009) is read again');
   w.props._store.set('salesmen', JSON.stringify({ at: now - 60 * 60 * 1000, salesmen: [{ rep: 'SH', region: 'Center', row: 5 }], targets: {} }));
   assert.equal(w.s.repLoad(RIA).ok, true, 'a copy kept before region targets were (spec 008) is read again');
   w.props._store.set('salesmen', JSON.stringify({ at: now - 60 * 60 * 1000, salesmen: [{ rep: 'SH', region: 'Center', row: 5 }] }));
