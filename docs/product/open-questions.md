@@ -132,3 +132,12 @@ Owner, session 5, after the adversarial review of spec 009 (2026-11-05):
 | S9-14 | Wins and losses in a past week / month (a site won 29 Oct, lost 3 Nov)? | **As the period ended:** a finished week or month never changes after it's shared (won in October, lost in November). This week / This month stay exactly as the Team tab counts them (P7-1). |
 | S9-15 | "Coming up" and "Late & going cold" (always today's state) in a shared Last week / Last month message? | **Left out of past messages.** On screen they show under every button, headed "Now, 5 Nov". |
 | S9-16 | Spec 009: a Won or Lost site moved back to Rate Quoted: a new "quote given"? | **Yes, it counts as a new quote given** (owner, 2026-11-05). |
+
+Owner, session 5: summary layout ([spec 010](../specs/010-summary-tables.md), 2026-11-05)
+
+| # | Question | Answer |
+| --- | --- | --- |
+| S10-1 | The summary screens (he disliked the text-with-dots layout; a mockup after research)? | **Mockups A and B as shown:** six number tiles, a target bar, two-column tables (salesman); one team table with region subtotals and a Team row (admin). |
+| S10-2 | WhatsApp message style? | **Numbers lined up in a monospace block**, names as a list; checked on his phone, fall back to bold labels if it doesn't line up. |
+| S10-3 | Make room on the salesman's page (at its size limit)? | **Strip comments first**: removed when the page is sent to phones (first step of the speed pass). |
+| S10-4 | Rs. in the team table and team WhatsApp table? | **Millions everywhere** (*2.45M*). The salesman's own tiles and tables keep full figures. |
