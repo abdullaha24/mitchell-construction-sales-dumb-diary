@@ -44,13 +44,16 @@
   a past text, no block stop, results not by salesman, former codes dropped, first instead of
   latest quote Rs., an update counted as a move).
 
-## [ ] Step 5: The pages
+## [x] Step 5: The pages
 - `App.html`: a **Summary** button in the top line, the summary screen (four buttons, loading,
   no signal + Try again, "As of", "not sent yet", Share on WhatsApp link, Copy with fallbacks,
   Back to the list where he was). The page renders the server's lines as text. Admin: the same
   screen; tapping a salesman's line shows his summary, Back to the team. `App.html` ≤ 88,000 bytes
   (pinned by a test).
 - Browser check `tests/browser/summary.check.js` (salesman and admin) in `check:browser`.
+- Done. `App.html` 87,935 bytes (the admin-only style of the tappable salesman lines lives in
+  `Admin.html`). 5 page mutations each failed the check (no "As of", no "Press and hold", Back
+  losing his place, no "not sent yet" line, an unencoded WhatsApp link).
 
 ## [ ] Step 6: Docs, local acceptance
 - Data model (kept copy, `Activity` update rows), AGENTS.md (20 public functions), src/README,

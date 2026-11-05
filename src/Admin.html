@@ -29,6 +29,9 @@
   .feed .when { font-size: 14px; font-weight: 600; }
   .feed .what { font-size: 14px; margin-top: 2px; }
   .back { margin-bottom: 10px; }
+  /* Spec 009: on his summary, each salesman's line opens that salesman's own. */
+  button.sum-l { display: block; width: 100%; min-height: 44px; text-align: left; border: 0; border-top: 1px solid var(--line);
+                 background: none; color: var(--blue); }
 </style>
 <script>
   // ---- The admin's screen (spec 008). Called from App.html when data.admin is set. ----
