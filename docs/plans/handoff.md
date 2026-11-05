@@ -1,7 +1,7 @@
 # Handoff: start here
 
-> Updated 2026-11-05, end of session 5 (specs 009 and 010 live as version 13; owner's phone check
-> next). **Every session: read this first, and update it before you finish.** Then read
+> Updated 2026-11-05, end of session 5 (specs 009 and 010 live as version 13; launched to the team;
+> all branches merged into `main`). **Every session: read this first, and update it before you finish.** Then read
 > `AGENTS.md` (rules, commands) if you haven't.
 
 ## Where we are
@@ -48,18 +48,30 @@ test, ~20 s) + 8 browser checks.
    himself: WhatsApp app opens with the text, the numbers block **lines up**, Copy says "Copied".
    If the block doesn't line up: fall back to bold labels (spec 010, mockup C bottom). Then close
    specs 009 and 010 (Done), roadmap 7b.
-2. **Launch prep (owner, 2026-11-05: "ready to roll, fix bugs as they come")**: TEST rows deleted;
-   he makes fresh links for all 7 on the computer (Sales Diary → Links; a new link for RIA / SJ
-   cancels their test links) and sends each salesman his own link privately with the WhatsApp
-   how-to the agent drafted. Bugs: salesmen report to him on WhatsApp; he pastes them in chat.
+2. **Launched (2026-11-05)**: TEST rows deleted; the owner made fresh links for the 7 salesmen and
+   sent each his own privately with a WhatsApp how-to ("ready to roll, fix bugs as they come").
+   The old RIA / SJ test links were replaced, so **the agent has no test link**: to test live, ask
+   the owner's OK to read one link (`Links` columns A, B, D first, then that one `token` cell), or
+   use his admin link. Bugs: salesmen report to him on WhatsApp; he pastes them in chat. Watch the
+   first week (who logs nothing, anything odd) by reading the sheet through the connector.
 3. **Speed pass (spec 011, to write)**: measure where the salesman's open time goes (server vs
    download vs page script), then shrink what runs at open (e.g. defer Update / form code, check
    the page data size). Target ≤ ~3.9 s warm. Spec briefly, owner's OK, build the usual way.
-4. **User guide**: the salesmen's PDF guide (`docs/guide/`, `scripts/guide/`) is on branch
-   `ccr-18f7110f-to6vgz` (another chat), built before summaries. It needs merging with this branch
-   and Summary pages (the owner was given a prompt for that chat on 2026-11-05).
-5. **Phase 8, launch**: links for all 7 salesmen, the guide, cancel the RIA / SJ test links, empty
-   the TEST data, watch the first week.
+4. **User guides** (`docs/guide/`, built by `npm run guide`, see `scripts/README.md`), on `main`:
+   - `sales-diary-guide.pdf`, 17 A5 pages for the salesmen: the app (12) plus **Summary** (5: the
+     button and the 4 buttons, Saturday to Friday; the six tiles and the target bar; the Won /
+     Quotes given / Lost tables and NOW; Share on WhatsApp / Copy with the message as WhatsApp shows
+     it; "saves not sent yet", and Last week / Last month stay as they ended, S9-14); "Friday: share
+     This week" on the last page. **If the owner's phone check makes the WhatsApp message fall back
+     to bold labels (spec 010), page 13 ("the numbers line up in a block") must change.**
+   - `admin-summary-guide.pdf`, 2 pages for the Admin (owner chose a separate short PDF): his
+     Summary, team tiles and target with house / office, the team table (regions, Team, tap a name
+     for "Logged on N days", millions, % / Lost) and lost reasons.
+   - All pictures from the real pages on **fake data** (pretend `DEMO` and teammates, made-up
+     targets, pretend codes); fact-checked by an independent reviewer. **Owner's OK pending**; then
+     send the salesmen's PDF with the links at launch. Rebuild after any visible change (e.g. the
+     speed pass).
+5. **Phase 8 done when** all 7 have logged at least one site (roadmap).
 
 Known limits kept on purpose (specs 006 / 008): a phone clock changed while the app is open can make
 "today" off until reload; a lost reply retried unchanged after midnight, or a retried Update after
@@ -132,8 +144,9 @@ Give the owner the link; he pastes back the whole address; check its `state=` ma
 - The owner wants **speed on cheap phones and weak signal**: measure, avoid extra trips.
 
 ## Questions for the owner
-Waiting on him: (1) the **phone check** of the summaries (Next, 1); (2) making and sending the 7
-links (Next, 2); (3) go-ahead to **spec the speed pass** (spec 011) in the first week.
+Waiting on him: (1) the **phone check** of the summaries (Next, 1); (2) his OK on the **two user
+guide PDFs** (`docs/guide/`), then send the salesmen's PDF to the team; (3) go-ahead to **spec the
+speed pass** (spec 011) in the first week; (4) **bug reports** from the salesmen as they come.
 
 ## Useful facts
 IDs aren't secret (each needs the owner's Google account):
@@ -144,8 +157,9 @@ IDs aren't secret (each needs the owner's Google account):
 - **Web app** (same address since phase 1, now version 13): deployment
   `AKfycbwmWhxLQfpkQRfFIfdv9tZD4CvZfeWEB__YiXnGTSk7-6mlZVZUvLEp2aJDwey0HXaF`,
   https://script.google.com/macros/s/AKfycbwmWhxLQfpkQRfFIfdv9tZD4CvZfeWEB__YiXnGTSk7-6mlZVZUvLEp2aJDwey0HXaF/exec
-- Branches: sessions 1–2 merged into the default branch; sessions 3–4 on
-  `claude/clever-hopper-ain3c5`; **session 5 (specs 009, 010; live code) on
-  `ccr-f2566cb7-aaz6y0`**, which contains sessions 3–4. The user guide is on `ccr-18f7110f-to6vgz`
-  (to be merged with this branch, see Next 4). No PRs opened (owner hasn't asked). Next session:
-  start from `ccr-f2566cb7-aaz6y0` unless the owner says otherwise.
+- **Git: one branch, `main`** (owner, 2026-11-05). It holds the live code (version 13) and the
+  user guides. All older branches (`claude/laughing-fermi-ec4tlp`, `claude/vigilant-volta-yye9pn`,
+  `claude/clever-hopper-ain3c5`, `ccr-f2566cb7-aaz6y0`, `ccr-18f7110f-to6vgz`) were checked to be
+  fully inside `main` (full history, not a shallow clone) and deleted. If a session has to work on
+  its own branch, merge it into `main` before the session ends and delete it, so `main` stays the
+  only branch. No PRs (PR #1 was merged long ago).

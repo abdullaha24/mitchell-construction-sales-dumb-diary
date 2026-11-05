@@ -27,7 +27,7 @@ Read before any product or UI work:
 Phases 0–7 are **done and live** (specs 001–008). Weekly and monthly summaries (spec 009) are
 **live** with their new layout (spec 010: tables, lined-up WhatsApp numbers, pages served without
 comments) as deployment version 13 (2026-11-05), checked live by the agent; the owner's phone check
-is next. Then the rest of the speed pass (spec 011), then launch (phase 8). Current state, next step and IDs: `docs/plans/handoff.md`.
+is next. **Launched to the 7 salesmen on 2026-11-05**; bugs are fixed as they come in. Next: the rest of the speed pass (spec 011). Current state, next step and IDs: `docs/plans/handoff.md`.
 
 ## Commands
 
@@ -40,6 +40,7 @@ Node 22 or newer. All checks run locally with no Google account.
 | `npm run typecheck` | `tsc -p .`: type-checks `src/` (plain JS with JSDoc). |
 | `npm run check` | Type check, then tests. **Must pass before every commit.** |
 | `npm run check:browser` | Drives the owner's Links window, the salesman's page, the admin's screen and both summary screens in Chromium (the pages run against the real server code and fake sheets). Needs Playwright; skips if it isn't installed. Run it when any `.html` changes. |
+| `npm run guide` | Rebuilds the PDF user guides (`docs/guide/`: salesmen's and Admin's) from fresh screenshots on fake data. Needs Playwright. Rerun when the salesman's or admin's page looks different. |
 | `npx clasp push --force` | Sends `src/` to Apps Script. Always `--force`: without it, in a non-interactive shell clasp **silently skips** the push. Git is the source of truth. |
 | `npx clasp show-file-status` | Lists the files a push would send (should be `appsscript.json`, the `.js` files and the `.html` files in `src/`). |
 | `npx clasp create-deployment -d "<note>"` | Creates the web app. **Once only**: each run makes a new address. |
@@ -67,6 +68,9 @@ Code rules that tests enforce (the tests are the source of truth; keep this list
   the `Links.role` value stays `owner`.
 - `src/appsscript.json` is pinned by a test: access `ANYONE_ANONYMOUS`, never `ANYONE`.
 
+**Git:** `main` is the only branch and holds the live code. If you must work on another branch,
+merge it into `main` before you finish and delete it (owner, 2026-11-05).
+
 ## Where things live
 
 | Path | What goes there |
@@ -75,10 +79,11 @@ Code rules that tests enforce (the tests are the source of truth; keep this list
 | `docs/specs/` | One spec per feature, written **before** the code. Copy `_template.md`. |
 | `docs/architecture/` | How the system fits together, and the Google Sheet data model. |
 | `docs/decisions/` | ADRs: one file per significant decision. Copy `_template.md`. |
+| `docs/guide/` | The PDF user guides, salesmen's and Admin's (built by `npm run guide`; don't edit by hand). |
 | `docs/plans/` | `handoff.md` (start here), roadmap, step-by-step build plans. |
 | `src/` | Apps Script source (server code + HTML); clasp's `rootDir`. What each file holds: `src/README.md`. |
 | `tests/` | Automated tests (no Google account needed) and browser checks; see `tests/README.md`. |
-| `scripts/` | Helper scripts for setup and deploy. |
+| `scripts/` | Helper scripts; `scripts/README.md` lists them (e.g. the user guide builder). |
 
 ## How to work
 
