@@ -2,6 +2,8 @@
 // Takes the screenshots for the salesman's user guide (docs/guide/). The real salesman page
 // (doGet + server code) runs on FAKE sheets with made-up sites, a made-up salesman ("DEMO") and no
 // real link code, in Chromium at a cheap-phone size. Nothing touches Google.
+// Also the admin's summary screens, opened with a pretend admin code (pretend teammates AK, BT, FZ,
+// HN, QM and made-up targets).
 // Usage: node scripts/guide/shots.js <out-folder>
 
 const fs = require('node:fs');
@@ -23,7 +25,8 @@ const SITES = ['site_id', 'rep', 'region', 'site_name', 'buyer_type', 'area', 'c
   'next_followup', 'last_note', 'created_at', 'updated_at', 'worked_at', 'note_at'];
 const ACTIVITY = ['activity_id', 'timestamp', 'rep', 'site_id', 'action', 'from_stage', 'to_stage',
   'value_rs', 'payment_terms', 'lost_reason', 'note', 'next_followup'];
-const CODE = 'd'.repeat(64); // a pretend link code, only ever inside this script
+const CODE = 'd'.repeat(64); // pretend link codes, only ever inside this script
+const ADMIN_CODE = 'e'.repeat(64);
 const REP = 'DEMO';
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -34,13 +37,34 @@ function dayCell(offset, hours = 0) {
   const [y, m, d] = dayKey(offset).split('-').map(Number);
   return new Date(Date.UTC(y, m - 1, d) - 5 * 60 * 60 * 1000 + hours * 60 * 60 * 1000);
 }
-const monthCell = () => {
+/** Midnight Pakistan time on the 1st of this month (`back` = 1: last month). */
+function monthCell(back = 0) {
   const [y, m] = dayKey(0).split('-').map(Number);
-  return new Date(Date.UTC(y, m - 1, 1) - 5 * 60 * 60 * 1000);
-};
+  return new Date(Date.UTC(y, m - 1 - back, 1) - 5 * 60 * 60 * 1000);
+}
+/** This week's Saturday (spec 009: a week runs Saturday to Friday), as a day offset from today. */
+function saturdayOffset() {
+  const weekday = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Karachi', weekday: 'short' }).format(new Date());
+  return -['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'].indexOf(weekday);
+}
+
+// Everything "done this week" happens between the start of this week AND this month (whichever is
+// later) and now, so it shows under both This week and This month on any day the guide is built.
+const NOW = Date.now() - 60 * 1000;
+const START = Math.max(dayCell(saturdayOffset()).getTime(), monthCell().getTime());
+/** The i-th of n moments inside that window, in order. */
+const inWeek = (i, n) => new Date(START + ((NOW - START) * (i + 1)) / (n + 1));
+
+// Pretend teammates for the admin's team table (made-up codes, regions and amounts).
+const TEAM = [[REP, 'North'], ['AK', 'North'], ['BT', 'North'], ['FZ', 'Center'], ['HN', 'Center'], ['QM', 'South']];
+const TARGETS = { DEMO: 3500000, AK: 3000000, BT: 2500000, FZ: 4000000, HN: 3000000, QM: 3500000 };
+const REGION_TARGETS = { North: 9000000, Center: 7000000, South: 3500000, UNASSIGNED: 2000000 };
 
 function buildWorld() {
   const site = (o) => SITES.map((h) => ({ rep: REP, region: 'North', ...o })[h] ?? '');
+  // DEMO's week, in order (k = its slot in the window).
+  const N = 10;
+  const t = (k) => inWeek(k, N);
   const rows = [
     site({ site_id: 'S000001', site_name: 'F-11 Commercial Tower', buyer_type: 'Contractor / Applicator', area: 'F-11',
       contact_name: 'Asif (site engineer)', contact_phone: '923000000101', products: 'Tile Adhesives, Waterproofing Job',
@@ -50,11 +74,11 @@ function buildWorld() {
     site({ site_id: 'S000002', site_name: 'Bahria Villa 23', buyer_type: 'Project Owner', area: 'Bahria',
       contact_name: 'Bilal', contact_phone: '923000000102', products: 'Waterproofing Products',
       stage: 'Sample / Trial', next_followup: dayCell(0), last_note: 'Gave 2 bags for a roof trial',
-      created_at: dayCell(-12, 10), updated_at: dayCell(-2, 15), worked_at: dayCell(-2, 15), note_at: dayCell(-2, 15) }),
+      created_at: dayCell(-12, 10), updated_at: t(2), worked_at: t(2), note_at: t(2) }),
     site({ site_id: 'S000003', site_name: 'Al-Noor Hardware', buyer_type: 'Dealer', area: 'G-13',
       contact_name: 'Haji Naveed', contact_phone: '923000000103', products: 'Tile Adhesives, Tile Grouts',
       stage: 'Visited / Lead', next_followup: dayCell(0), last_note: 'Wants our price list',
-      created_at: dayCell(-3, 13), updated_at: dayCell(-3, 13), worked_at: dayCell(-3, 13), note_at: dayCell(-3, 13) }),
+      created_at: t(0), updated_at: t(0), worked_at: t(0), note_at: t(0) }),
     site({ site_id: 'S000004', site_name: 'Askari Heights', buyer_type: 'Contractor / Applicator', area: 'DHA',
       contact_name: 'Tariq (thekedar)', products: 'Floor Hardeners',
       stage: 'Visited / Lead', next_followup: dayCell(-2),
@@ -63,32 +87,74 @@ function buildWorld() {
       contact_name: 'Engr. Imran', contact_phone: '923000000105', products: 'Waterproofing Job',
       stage: 'Rate Quoted', value_rs: 1200000, payment_terms: 'Cash', next_followup: dayCell(3),
       last_note: 'Sent rates for basement waterproofing',
-      created_at: dayCell(-20, 10), updated_at: dayCell(-1, 16), worked_at: dayCell(-1, 16), note_at: dayCell(-1, 16) }),
+      created_at: dayCell(-20, 10), updated_at: t(3), worked_at: t(3), note_at: t(3) }),
     site({ site_id: 'S000006', site_name: 'G-13 School Building', buyer_type: 'Contractor / Applicator', area: 'G-13',
       contact_name: 'Kamran', contact_phone: '923000000106', products: 'Structural Grouts',
       stage: 'Sample / Trial', next_followup: dayCell(5), last_note: 'Trial patch done, looks good',
-      created_at: dayCell(-15, 10), updated_at: dayCell(-3, 11), worked_at: dayCell(-3, 11), note_at: dayCell(-3, 11) }),
+      created_at: dayCell(-15, 10), updated_at: t(8), worked_at: t(8), note_at: t(8) }),
     site({ site_id: 'S000007', site_name: 'DHA Phase 2 House', buyer_type: 'Project Owner', area: 'DHA',
       contact_name: 'Mr. Shahid', contact_phone: '923000000107', products: 'Tile Adhesives',
       stage: 'Won (Order)', value_rs: 300000, payment_terms: 'Cash', last_note: 'Order confirmed, 200 bags',
-      created_at: dayCell(-25, 10), updated_at: dayCell(-2, 12), worked_at: dayCell(-2, 12), note_at: dayCell(-2, 12) }),
+      created_at: dayCell(-25, 10), updated_at: t(5), worked_at: t(5), note_at: t(5) }),
     site({ site_id: 'S000008', site_name: 'Faisal Hills Block C', buyer_type: 'Contractor / Applicator', area: 'Bahria',
       contact_name: 'Usman', contact_phone: '923000000108', products: 'Admixtures',
       stage: 'Visited / Lead', next_followup: dayCell(7),
-      created_at: dayCell(-1, 14), updated_at: dayCell(-1, 14), worked_at: dayCell(-1, 14) }),
+      created_at: t(1), updated_at: t(1), worked_at: t(1) }),
     site({ site_id: 'S000009', site_name: 'Ghauri Town Mosque', buyer_type: 'Project Owner', area: 'F-11',
       contact_name: 'Qari Sahab', contact_phone: '923000000109', products: 'Waterproofing Products',
       stage: 'Lost / Dead', lost_reason: 'Price Too High', last_note: 'Went with a cheaper local brand',
-      created_at: dayCell(-35, 10), updated_at: dayCell(-6, 12), worked_at: dayCell(-6, 12), note_at: dayCell(-6, 12) }),
+      created_at: dayCell(-35, 10), updated_at: t(7), worked_at: t(7), note_at: t(7) }),
+    site({ site_id: 'S000010', site_name: 'Margalla View Apartments', buyer_type: 'Contractor / Applicator', area: 'F-11',
+      contact_name: 'Waqas', contact_phone: '923000000110', products: 'Tile Adhesives',
+      stage: 'Rate Quoted', value_rs: 650000, payment_terms: 'Credit', next_followup: dayCell(2),
+      last_note: 'Rates sent for 3 floors', created_at: t(4), updated_at: t(4), worked_at: t(4), note_at: t(4) }),
+    site({ site_id: 'S000011', site_name: 'Bahria Mall Food Court', buyer_type: 'Contractor / Applicator', area: 'Bahria',
+      contact_name: 'Sohail', contact_phone: '923000000111', products: 'Floor Hardeners',
+      stage: 'Won (Order)', value_rs: 850000, payment_terms: 'Credit', last_note: 'Order for the whole floor',
+      created_at: dayCell(-18, 10), updated_at: t(6), worked_at: t(6), note_at: t(6) }),
   ];
-  const act = (when, siteId, action, o = {}) => ACTIVITY.map((h) => ({ timestamp: when, rep: REP, site_id: siteId, action, ...o })[h] ?? '');
+  const act = (when, rep, siteId, action, o = {}) => ACTIVITY.map((h) => ({ timestamp: when, rep, site_id: siteId, action, ...o })[h] ?? '');
   const activity = [
-    act(dayCell(-30, 11), 'S000001', 'created', { to_stage: 'Visited / Lead', note: 'Met Asif on site' }),
-    act(dayCell(-8, 12), 'S000001', 'stage_change', { from_stage: 'Visited / Lead', to_stage: 'Rate Quoted', value_rs: 450000,
+    act(dayCell(-30, 11), REP, 'S000001', 'created', { to_stage: 'Visited / Lead', note: 'Met Asif on site' }),
+    act(dayCell(-8, 12), REP, 'S000001', 'stage_change', { from_stage: 'Visited / Lead', to_stage: 'Rate Quoted', value_rs: 450000,
       payment_terms: 'Credit', note: 'Quoted tile adhesive @ Rs. 1,450 a bag, waiting for consultant', next_followup: dayCell(-1) }),
-    act(dayCell(-2, 12), 'S000007', 'stage_change', { from_stage: 'Rate Quoted', to_stage: 'Won (Order)', value_rs: 300000,
+    act(t(0), REP, 'S000003', 'created', { to_stage: 'Visited / Lead', note: 'Wants our price list' }),
+    act(t(1), REP, 'S000008', 'created', { to_stage: 'Visited / Lead' }),
+    act(t(2), REP, 'S000002', 'stage_change', { from_stage: 'Visited / Lead', to_stage: 'Sample / Trial', note: 'Gave 2 bags for a roof trial' }),
+    act(t(3), REP, 'S000005', 'stage_change', { from_stage: 'Sample / Trial', to_stage: 'Rate Quoted', value_rs: 1200000,
+      payment_terms: 'Cash', note: 'Sent rates for basement waterproofing' }),
+    act(t(4), REP, 'S000010', 'created', { to_stage: 'Rate Quoted', value_rs: 650000, payment_terms: 'Credit', note: 'Rates sent for 3 floors' }),
+    act(t(5), REP, 'S000007', 'stage_change', { from_stage: 'Rate Quoted', to_stage: 'Won (Order)', value_rs: 300000,
       payment_terms: 'Cash', note: 'Order confirmed, 200 bags' }),
-  ].map((r, i) => { r[0] = `A${String(i + 1).padStart(7, '0')}`; return r; });
+    act(t(6), REP, 'S000011', 'stage_change', { from_stage: 'Rate Quoted', to_stage: 'Won (Order)', value_rs: 850000,
+      payment_terms: 'Credit', note: 'Order for the whole floor' }),
+    act(t(7), REP, 'S000009', 'stage_change', { from_stage: 'Rate Quoted', to_stage: 'Lost / Dead', lost_reason: 'Price Too High',
+      note: 'Went with a cheaper local brand' }),
+    act(t(8), REP, 'S000006', 'update', { note: 'Trial patch done, looks good' }),
+  ];
+
+  // The pretend teammates: a few sites each, made up from one small recipe per person.
+  const plan = {
+    AK: [['Visited / Lead'], ['Rate Quoted', 900000], ['Won (Order)', 1250000], ['Lost / Dead', 0, 'Competitor Approved']],
+    BT: [['Visited / Lead'], ['Sample / Trial'], ['Rate Quoted', 400000]],
+    FZ: [['Rate Quoted', 1800000], ['Won (Order)', 2100000], ['Won (Order)', 600000], ['Lost / Dead', 0, 'Price Too High']],
+    HN: [['Visited / Lead'], ['Rate Quoted', 750000], ['Lost / Dead', 0, 'Credit Terms']],
+    QM: [['Visited / Lead'], ['Sample / Trial'], ['Won (Order)', 950000]],
+  };
+  let n = 100;
+  Object.entries(plan).forEach(([rep, list], r) => {
+    const region = TEAM.find((x) => x[0] === rep)[1];
+    list.forEach(([stage, rs = 0, reason = ''], i) => {
+      const id = `S000${++n}`;
+      const when = new Date(inWeek(i, list.length).getTime() + (r + 1) * 60 * 1000);
+      rows.push(site({ site_id: id, rep, region, site_name: `${rep} Site ${i + 1}`, buyer_type: 'Contractor / Applicator',
+        contact_phone: `9230000${n}00`, products: 'Tile Adhesives', stage, value_rs: rs || '', payment_terms: rs ? 'Cash' : '',
+        lost_reason: reason, next_followup: /Won|Lost/.test(stage) ? '' : dayCell(3),
+        created_at: when, updated_at: when, worked_at: when }));
+      activity.push(act(when, rep, id, 'created', { to_stage: stage, value_rs: rs || '', payment_terms: rs ? 'Cash' : '', lost_reason: reason }));
+    });
+  });
+  activity.sort((x, y) => x[1] - y[1]).forEach((r, i) => { r[0] = `A${String(i + 1).padStart(7, '0')}`; });
 
   const lists = [['list', 'value', 'region', 'added_by', 'active', 'sort']];
   ['Tile Adhesives', 'Waterproofing Job', 'Floor Hardeners', 'Bonding Agents & Sealants', 'Waterproofing Products',
@@ -105,12 +171,14 @@ function buildWorld() {
     Sites: [SITES, ...rows],
     Activity: [ACTIVITY, ...activity],
     Lists: lists,
-    Links: [['role', 'rep', 'token', 'active', 'issued_at'], ['rep', REP, CODE, true, dayCell(-40)]],
+    Links: [['role', 'rep', 'token', 'active', 'issued_at'], ['rep', REP, CODE, true, dayCell(-40)],
+      ['owner', '', ADMIN_CODE, true, dayCell(-40)]],
   }, { name: 'Sales Diary' });
+  const both = (key, amount) => [[key, monthCell(), amount], [key, monthCell(1), amount - 500000]];
   const metaData = makeSpreadsheet({
-    Rep_Mapping: [['Rep', 'Region'], [REP, 'North']],
-    'Rep-Targets': [['Rep', 'Month', 'Target'], [REP, monthCell(), 1000000]],
-    Targets: [['Region', 'Month', 'Target'], ['North', monthCell(), 2000000]],
+    Rep_Mapping: [['Rep', 'Region'], ...TEAM],
+    'Rep-Targets': [['Rep', 'Month', 'Target'], ...Object.entries(TARGETS).flatMap(([k, v]) => both(k, v))],
+    Targets: [['Region', 'Month', 'Target'], ...Object.entries(REGION_TARGETS).flatMap(([k, v]) => both(k, v))],
   }, { readOnly: true, timeZone: META_TIME_ZONE, name: 'Meta-Data' });
   const src = loadSrc({
     PropertiesService: makePropertiesService(),
@@ -159,7 +227,7 @@ function stub() {
 
   const browser = await chromium.launch();
   const context = await browser.newContext({ viewport: { width: 360, height: 740 }, deviceScaleFactor: 2, hasTouch: true });
-  const page = await context.newPage();
+  let page = await context.newPage();
   await page.exposeFunction('__server', (name, argsJson) => JSON.stringify(s[name](...JSON.parse(argsJson))));
   await page.addInitScript(stub);
   await page.goto(`file://${file}`);
@@ -213,8 +281,11 @@ function stub() {
   const top = () => page.evaluate(() => window.scrollTo(0, 0));
 
   // 1. Opening screen: Today's Chase.
-  await shot('01-home', [[1, '#who', 'g'], [2, '#newSite', 'tr'], [3, '#tabs', 'g'],
-    [4, '#sites .card', 'g']]);
+  await shot('01-home', [[1, '#who', 'g'], [2, '#summary', 'tl'], [3, '#newSite', 'tr'], [4, '#tabs', 'g'],
+    [5, '#sites .card', 'g']]);
+  // The top bar alone, for the Summary page.
+  const bar = await page.locator('#tabs').boundingBox();
+  await save('15-sum-button', { x: 0, y: 0, width: 360, height: Math.ceil(bar.y + bar.height) }, [[1, '#summary', 'tr']]);
   // 2. One card, close up.
   const c = cardSel('F-11 Commercial Tower');
   const box = await card('F-11 Commercial Tower').boundingBox();
@@ -293,6 +364,34 @@ function stub() {
   await page.waitForFunction(() => !document.querySelector('.tag.saving'), null, { timeout: 15000 });
   await page.evaluate(() => { window.__delay = 0; });
 
+  // 15-19. The summary (specs 009 + 010): This week, then This month in three parts.
+  const shown = () => page.waitForFunction(() => !document.querySelector('#sumBody').hidden
+    && document.querySelector('#sumMsg').hidden && !document.querySelector('#sumBody').textContent.includes('Getting'));
+  const waText = () => page.$eval('#sumWa', (a) => decodeURIComponent(a.getAttribute('href').replace('https://wa.me/?text=', '')));
+  await top();
+  await page.click('#summary');
+  await shown();
+  await top();
+  await tall('16-sum-week', [[1, '#sumTabs', 'g'], [2, '#sumBody h2', 'g'], [3, '#sumBody .tiles', 'g']], '#sumTabs', '#sumBody .goal, #sumBody .sumt');
+  info._texts = { week: await waText() };
+  await page.click('#sumTabs .tab:nth-child(3)');
+  await shown();
+  const tiles = [1, 2, 3, 4, 5, 6].map((i) => [i, `#sumBody .tiles .tile:nth-child(${i})`, 'tr']);
+  await tall('17-sum-month', [...tiles, [7, '#sumBody .goal', 'g']], '#sumTabs', '#sumBody .sumt');
+  await page.evaluate(() => {
+    document.querySelectorAll('#sumBody .sumt h3').forEach((h, i) => { h.closest('.sumt').id = `guide-t${i}`; });
+    document.querySelector('#sumBody .nowcap').id = 'guide-now';
+  });
+  const titles = await page.$$eval('#sumBody .sumt h3', (hs) => hs.map((h) => h.firstChild.textContent));
+  const at = (title) => `#guide-t${titles.indexOf(title)}`;
+  await tall('18-sum-tables', [[1, at('Won'), 'g'], [2, at('Quotes given'), 'g'], [3, at('Lost'), 'g']], at('Won'), '#guide-now');
+  await tall('19-sum-now', [[1, '#guide-now', 'g'], [2, at('Hot sites'), 'g'], [3, at('Late & going cold'), 'g'],
+    [4, '#sumWa', 'tr'], [5, '#sumCopyBtn', 'tr']], '#guide-now');
+  info._texts.month = await waText();
+  info._titles = titles;
+  await page.click('#sumBack');
+  await page.waitForSelector('#listView:not([hidden])');
+
   // 14. A save that failed (no signal): the card turns orange.
   await page.evaluate(() => { window.__offline = true; });
   await card('Faisal Hills Block C').click();
@@ -303,6 +402,46 @@ function stub() {
   await page.click('#tab-all');
   await top();
   await shot('14-failed', [[1, '#sites .tag.failed', 'r']]);
+
+  // 20. Summary with a save not sent yet.
+  await page.evaluate(() => { window.__offline = false; });
+  await top();
+  await page.click('#summary');
+  await shown();
+  await top();
+  await tall('20-sum-unsent', [[1, '#sumUnsent', 'g']], '#sumTabs', '#sumBody .tiles');
+  await context.close();
+
+  // 21-24. The admin's summary: the same server code, opened with the pretend admin code.
+  const afile = path.join(dir, 'admin.html');
+  fs.writeFileSync(afile, s.doGet({ parameter: { k: ADMIN_CODE } }).getContent());
+  const actx = await browser.newContext({ viewport: { width: 360, height: 740 }, deviceScaleFactor: 2, hasTouch: true });
+  page = await actx.newPage();
+  await page.exposeFunction('__server', (name, argsJson) => JSON.stringify(s[name](...JSON.parse(argsJson))));
+  await page.addInitScript(stub);
+  await page.goto(`file://${afile}`);
+  await page.waitForSelector('#adminTabs');
+  await page.waitForTimeout(300);
+  const abar = await page.locator('#adminTabs').boundingBox();
+  await save('21-admin-button', { x: 0, y: 0, width: 360, height: Math.ceil(abar.y + abar.height) }, [[1, '#summary', 'tr']]);
+  await page.click('#summary');
+  await shown();
+  await page.click('#sumTabs .tab:nth-child(3)');
+  await shown();
+  await tall('22-admin-month', [[1, '#sumBody .tiles', 'g'], [2, '#sumBody .goal', 'g']], '#sumTabs', '#sumBody .sumt');
+  await page.evaluate(() => {
+    document.querySelector('#sumBody table.cols').closest('.sumt').id = 'guide-team';
+    const h = [...document.querySelectorAll('#sumBody .sumt h3')].find((x) => x.firstChild.textContent === 'Lost reasons');
+    h.closest('.sumt').id = 'guide-lost';
+    document.querySelector('#sumBody .nowcap').id = 'guide-now';
+    document.querySelectorAll('#guide-team tr.reg')[1].id = 'guide-reg';
+  });
+  await tall('23-admin-team', [[1, '#guide-reg', 'g'], [2, '#guide-team tr.tap', 'g'], [3, '#guide-team tr.tot', 'g'],
+    [4, '#guide-lost tr', 'g']], '#guide-team', '#guide-now');
+  info._texts.team = await waText();
+  await page.click(`#guide-team tr.tap:has(td:text-is("${REP}"))`);
+  await page.waitForSelector('#sumBody .note:has-text("Logged on")');
+  await tall('24-admin-his', [[1, '#sumBody .note:has-text("Logged on")', 'g']], '#sumBack', '#sumBody .goal');
 
   fs.writeFileSync(path.join(out, 'shots.json'), JSON.stringify(info, null, 1));
   await browser.close();

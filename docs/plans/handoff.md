@@ -52,9 +52,20 @@ test, ~20 s) + 8 browser checks.
 3. **Speed pass (spec 011, to write)**: measure where the salesman's open time goes (server vs
    download vs page script), then shrink what runs at open (e.g. defer Update / form code, check
    the page data size). Target ≤ ~3.9 s warm. Spec briefly, owner's OK, build the usual way.
-4. **User guide**: the salesmen's PDF guide (`docs/guide/`, `scripts/guide/`) is on branch
-   `ccr-18f7110f-to6vgz` (another chat), built before summaries. It needs merging with this branch
-   and Summary pages (the owner was given a prompt for that chat on 2026-11-05).
+4. **User guides** (`docs/guide/`, built by `npm run guide`, see `scripts/README.md`): on branch
+   `ccr-18f7110f-to6vgz`, which now **contains `ccr-f2566cb7-aaz6y0` (merged, version 13 code)**.
+   - `sales-diary-guide.pdf`, 17 A5 pages for the salesmen: the app (12) plus **Summary** (5: the
+     button and the 4 buttons, Saturday to Friday; the six tiles and the target bar; the Won /
+     Quotes given / Lost tables and NOW; Share on WhatsApp / Copy with the message as WhatsApp shows
+     it; "saves not sent yet", and a finished week or month never changes); "Friday: share This
+     week" on the last page.
+   - `admin-summary-guide.pdf`, 2 pages for the Admin (owner chose a separate short PDF): his
+     Summary, team tiles and target with house / office, the team table (regions, Team, tap a name
+     for "Logged on N days", millions, % / Lost) and lost reasons.
+   - All pictures from the real pages on **fake data** (pretend `DEMO` and teammates, made-up
+     targets, pretend codes); fact-checked by an independent reviewer. **Owner's OK pending**; then
+     send the salesmen's PDF with the links at launch. Rebuild after any visible change (e.g. the
+     speed pass).
 5. **Phase 8, launch**: links for all 7 salesmen, the guide, cancel the RIA / SJ test links, empty
    the TEST data, watch the first week.
 
@@ -130,7 +141,8 @@ Give the owner the link; he pastes back the whole address; check its `state=` ma
 
 ## Questions for the owner
 Waiting on him: (1) the **phone check** of the summaries (Next, 1); (2) **"delete"** the TEST rows
-after it; (3) go-ahead to **spec the speed pass** (spec 011).
+after it; (3) go-ahead to **spec the speed pass** (spec 011); (4) his OK on the **two user guide
+PDFs** (`docs/guide/`).
 
 ## Useful facts
 IDs aren't secret (each needs the owner's Google account):
@@ -143,6 +155,7 @@ IDs aren't secret (each needs the owner's Google account):
   https://script.google.com/macros/s/AKfycbwmWhxLQfpkQRfFIfdv9tZD4CvZfeWEB__YiXnGTSk7-6mlZVZUvLEp2aJDwey0HXaF/exec
 - Branches: sessions 1–2 merged into the default branch; sessions 3–4 on
   `claude/clever-hopper-ain3c5`; **session 5 (specs 009, 010; live code) on
-  `ccr-f2566cb7-aaz6y0`**, which contains sessions 3–4. The user guide is on `ccr-18f7110f-to6vgz`
-  (to be merged with this branch, see Next 4). No PRs opened (owner hasn't asked). Next session:
-  start from `ccr-f2566cb7-aaz6y0` unless the owner says otherwise.
+  `ccr-f2566cb7-aaz6y0`**, which contains sessions 3–4. The user guides are on `ccr-18f7110f-to6vgz`,
+  which contains all of `ccr-f2566cb7-aaz6y0` (merged 2026-11-05) plus the guides: it is the most
+  complete branch. No PRs opened (owner hasn't asked). Next session: start from
+  `ccr-18f7110f-to6vgz` unless the owner says otherwise (or merge it into whichever branch you use).
