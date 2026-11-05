@@ -23,7 +23,7 @@ const ADMIN = 'c'.repeat(64);
 const D = new Date('2026-11-04T05:00:00Z');
 /** The served-size pins (bytes of the page as served, before the page data is filled in). */
 const SALESMAN_PIN = 75000;
-const ADMIN_PIN = 89000;
+const ADMIN_PIN = 92300; // 90,275 served (spec 010) + about 2 KB
 
 const { s } = (() => {
   const src = loadSrc({ HtmlService: makeHtmlService(), Utilities: makeUtilities() });

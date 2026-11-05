@@ -29,9 +29,9 @@
   .feed .when { font-size: 14px; font-weight: 600; }
   .feed .what { font-size: 14px; margin-top: 2px; }
   .back { margin-bottom: 10px; }
-  /* Spec 009: on his summary, each salesman's line opens that salesman's own. */
-  button.sum-l { display: block; width: 100%; min-height: 44px; text-align: left; border: 0; border-top: 1px solid var(--line);
-                 background: none; color: var(--blue); }
+  /* Spec 010: on his summary, each salesman's row of the team table opens that salesman's own. */
+  .sumt .tap { cursor: pointer; }
+  .sumt .tap td:first-child { color: var(--blue); font-weight: 600; }
 </style>
 <script>
   // ---- The admin's screen (spec 008). Called from App.html when data.admin is set. ----
@@ -85,13 +85,10 @@
     var r = sum.got[sum.p];
     return r && A_SUM.rep ? r.salesmen.filter(function (x) { return x.rep === A_SUM.rep; })[0] : r;
   }
-  function aSumLine(line, rep) {
-    var row = el(rep ? 'button' : 'div', line, 'sum-l');
-    if (rep) {
-      row.type = 'button';
-      row.addEventListener('click', function () { A_SUM.y = window.scrollY; A_SUM.rep = rep; renderSum(); window.scrollTo(0, 0); });
-    }
-    return row;
+  function aSumTap(row, rep) {
+    row.className += ' tap';
+    row.setAttribute('role', 'button');
+    row.addEventListener('click', function () { A_SUM.y = window.scrollY; A_SUM.rep = rep; renderSum(); window.scrollTo(0, 0); });
   }
   function aSumBack() {
     if (!A_SUM.rep) return false;

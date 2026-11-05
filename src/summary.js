@@ -13,24 +13,23 @@
 
 /** The four summaries (owner S9-5). */
 const SUMMARY_PERIODS = ['this-week', 'last-week', 'this-month', 'last-month'];
-/** Named sites per list before "+ N more", hot sites in Coming up, sites in Late & going cold. */
+/** Named sites per table before "+ N more". */
 const SUMMARY_LIST_MAX = 10;
-const SUMMARY_HOT_MAX = 5;
-const SUMMARY_LATE_MAX = 3;
 /** "Follow-ups due in the next 7 days": today and the 6 days after (specs 006 to 008). */
 const SUMMARY_DUE_DAYS = 7;
 /** What counts as work on a site (owner S9-12): never a snooze or Edit details (P6-2). */
 const WORK_ACTIONS = ['created', 'stage_change', 'update'];
 const WEEKDAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const RS_NOTE = '(Rs. logged, not invoiced)';
 
 /**
  * A summary's period, in Pakistan time. A save counts when start <= its time < end: `end` is the
  * next period's start, so a save at Saturday 00:00 is in that week, never the week before.
  * `month` is the period's `yyyy-MM` for a month summary, '' for a week (a week shows no target).
+ * `name` ("November so far", "Last week", "October") and `days` ("1–20 Nov") make the heading
+ * (spec 010); `title` is both in one line.
  * @typedef {{
  *   key: string, running: boolean, start: number, end: number, month: string, title: string,
- *   today: string,
+ *   name: string, days: string, today: string,
  * }} SummaryPeriod
  */
 
@@ -80,24 +79,26 @@ function summaryPeriod_(period, now) {
   let from;
   let to;
   let month = '';
-  let title;
+  let name;
+  let days;
   if (period === 'this-week' || period === 'last-week') {
     const [y, m, d] = today.split('-').map(Number);
     const saturday = addDays_(today, -((new Date(Date.UTC(y, m - 1, d)).getUTCDay() + 1) % 7));
     from = running ? saturday : addDays_(saturday, -7);
     to = addDays_(from, 7);
     const last = running ? today : addDays_(to, -1);
-    const days = from === last ? weekdayDay_(from) : `${weekdayDay_(from)} – ${weekdayDay_(last)}`;
-    title = `${!running ? 'Last week' : last === addDays_(to, -1) ? 'This week' : 'This week so far'} · ${days}`;
+    days = from === last ? weekdayDay_(from) : `${weekdayDay_(from)} – ${weekdayDay_(last)}`;
+    name = !running ? 'Last week' : last === addDays_(to, -1) ? 'This week' : 'This week so far';
   } else {
     month = running ? today.slice(0, 7) : previousMonthKey_(today.slice(0, 7));
     from = `${month}-01`;
     to = `${nextMonthKey_(month)}-01`;
-    const name = MONTH_NAMES[Number(month.slice(5)) - 1];
-    title = !running ? name
-      : `${name} so far · ${from === today ? shortDay_(today) : `${Number(from.slice(8))}–${shortDay_(today)}`}`;
+    const last = running ? today : addDays_(to, -1);
+    name = MONTH_NAMES[Number(month.slice(5)) - 1] + (running ? ' so far' : '');
+    days = from === last ? shortDay_(last) : `${Number(from.slice(8))}–${shortDay_(last)}`;
   }
-  return { key: period, running, start: dayStart_(from).getTime(), end: dayStart_(to).getTime(), month, title, today };
+  const title = period === 'last-month' ? name : `${name} · ${days}`;
+  return { key: period, running, start: dayStart_(from).getTime(), end: dayStart_(to).getTime(), month, title, name, days, today };
 }
 
 /**
@@ -233,38 +234,157 @@ function summaryNumbers_(facts, reps) {
 /** @typedef {ReturnType<typeof summaryNumbers_>} SummaryNumbers */
 
 /**
- * The Numbers lines (Rs. only next to a count that isn't 0).
+ * One row of a summary table (spec 010): its cells (the first is the name, the rest numbers or a
+ * reason, drawn on the right), `s` small text after the name ("· Cash"), `k` how it looks (`reg`
+ * a region, `tot` the Team, `grey` a heading row, `none` nothing in the period, `late`, `cold`,
+ * `m` a grey right cell, `b` a bold count) and `rep` the salesman the admin can tap.
+ * @typedef {{ c: string[], s?: string, k?: string, rep?: string }} SummaryRow
+ */
+/**
+ * A table: its title and count (top row), column names (the team table), rows, "+ N more".
+ * @typedef {{ h: string, n: string, cols?: string[], rows: SummaryRow[], more?: string }} SummaryTable
+ */
+
+/**
+ * Rs. digits only: `1250000` → `1,250,000` (the monospace block, where Rs. is in the note).
+ * @param {number} amount
+ */
+function rsDigits_(amount) {
+  return formatRs_(amount).slice(4);
+}
+
+/**
+ * Rs. in millions for the team table (owner S10-4): ÷ 1,000,000, 2 decimals, trailing zeros
+ * dropped (2.45M, 1.5M, 0.25M); 0 → 0; under Rs. 5,000 (but not 0) → <0.01M.
+ * @param {number} amount
+ */
+function millions_(amount) {
+  if (!amount) return '0';
+  if (amount < 5000) return '<0.01M';
+  return `${Number((Math.round(amount / 10000) / 100).toFixed(2))}M`;
+}
+
+/** Monospace block lines (spec 010): at most this many characters, so a phone never wraps them. */
+const MONO_WIDTH = 30;
+
+/**
+ * A monospace line: label, count right-aligned at column 16, Rs. right-aligned at column 30 (an
+ * amount up to 13 characters, Rs. 9,999,999,999, keeps a space before it).
+ * @param {string} label
+ * @param {number} count
+ * @param {number} [amount]
+ */
+function monoRow_(label, count, amount) {
+  const left = label.padEnd(13) + String(count).padStart(3);
+  return amount === undefined ? left : left + rsDigits_(amount).padStart(MONO_WIDTH - left.length);
+}
+
+/**
+ * A team table line in monospace: the name, then each cell right-aligned so it ends at columns
+ * 11, 18, 25 and 30 (always at least one space between).
+ * @param {string[]} cells
+ */
+function monoCols_(cells) {
+  let line = cells[0];
+  [11, 18, 25, MONO_WIDTH].forEach((edge, i) => {
+    const cell = cells[i + 1];
+    line += ' '.repeat(Math.max(1, edge - line.length - cell.length)) + cell;
+  });
+  return line;
+}
+
+/**
+ * The six number tiles (spec 010): a count of 0 shows no Rs.
  * @param {SummaryNumbers} n
  */
-function numberLines_(n) {
+function summaryTiles_(n) {
   return [
-    `New sites ${n.created} · Sites worked ${n.worked}`,
-    `Samples given ${n.samples} · Quotes given ${n.quotes}${n.quotes ? ` · ${formatRs_(n.quoteRs)}` : ''}`,
-    `Won ${n.won}${n.won ? ` · ${formatRs_(n.wonRs)}` : ''} · Lost ${n.lost}`,
+    { n: String(n.created), l: 'New sites' },
+    { n: String(n.worked), l: 'Sites worked' },
+    { n: String(n.samples), l: 'Samples' },
+    { n: String(n.quotes), l: 'Quotes', ...(n.quotes ? { rs: formatRs_(n.quoteRs) } : {}) },
+    { n: String(n.won), l: 'Won', c: 'won', ...(n.won ? { rs: formatRs_(n.wonRs) } : {}) },
+    { n: String(n.lost), l: 'Lost', c: 'lost' },
   ];
 }
 
 /**
- * `November target Rs. 12,345,000 · Won Rs. 450,000 (3%)`, or `No target for November`.
+ * The same numbers for the monospace block.
+ * @param {SummaryNumbers} n
+ * @param {boolean} [withDays] the admin's view of a salesman: his days logged (S9-9)
+ */
+function numberMono_(n, withDays) {
+  return [
+    monoRow_('New sites', n.created), monoRow_('Sites worked', n.worked),
+    ...(withDays ? [monoRow_('Days logged', n.days)] : []),
+    monoRow_('Samples', n.samples), monoRow_('Quotes', n.quotes, n.quotes ? n.quoteRs : undefined),
+    monoRow_('Won', n.won, n.won ? n.wonRs : undefined), monoRow_('Lost', n.lost),
+  ];
+}
+
+/**
+ * % of target, rounded down, or null for no target (spec 009).
+ * @param {number} wonRs
+ * @param {number | null} target
+ */
+function pctOf_(wonRs, target) {
+  return target ? Math.floor(wonRs * 100 / target) : null;
+}
+
+/**
+ * The target bar (month only): the % (the bar is full at 100% and above), Won and the target; or
+ * "No target for November".
+ * @param {string} h
  * @param {string} month yyyy-MM
  * @param {number | null} target
  * @param {number} wonRs
  */
-function targetLine_(month, target, wonRs) {
+function targetPart_(h, month, target, wonRs) {
   const name = MONTH_NAMES[Number(month.slice(5)) - 1];
-  if (!target) return `No target for ${name}`;
-  return `${name} target ${formatRs_(target)} · Won ${formatRs_(wonRs)} (${Math.floor(wonRs * 100 / target)}%)`;
+  const pct = pctOf_(wonRs, target);
+  if (pct === null || !target) return { none: `No target for ${name}` };
+  return { h, pct, won: `Won ${formatRs_(wonRs)}`, of: `of ${formatRs_(target)}` };
 }
 
 /**
- * A list of named sites, biggest Rs. first, at most SUMMARY_LIST_MAX, then "+ N more".
- * @param {Array<{ value: number, name: string, text: string }>} items
+ * The target line of the monospace block.
+ * @param {string} month
+ * @param {number | null} target
+ * @param {number} wonRs
  */
-function namedLines_(items) {
-  const sorted = items.slice().sort((a, b) => b.value - a.value || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
-  const lines = sorted.slice(0, SUMMARY_LIST_MAX).map((x) => `• ${x.text}`);
-  if (sorted.length > SUMMARY_LIST_MAX) lines.push(`+ ${sorted.length - SUMMARY_LIST_MAX} more`);
-  return lines;
+function targetMono_(month, target, wonRs) {
+  const pct = pctOf_(wonRs, target);
+  return pct === null || !target ? `No target for ${MONTH_NAMES[Number(month.slice(5)) - 1]}`
+    : `Target ${`${pct}%`.padStart(4)} of ${rsDigits_(target)}`;
+}
+
+/**
+ * Named sites, biggest Rs. first, then by name.
+ * @template {{ value: number, name: string }} T
+ * @param {T[]} items
+ * @returns {T[]}
+ */
+function biggestFirst_(items) {
+  return items.slice().sort((a, b) => b.value - a.value || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+}
+
+/**
+ * A two-column table of named sites (spec 010): up to SUMMARY_LIST_MAX, then "+ N more"; and the
+ * same as a WhatsApp list ("- F-11 Commercial Tower · Rs. 450,000 Cash").
+ * @param {string} h
+ * @param {Array<{ value: number, name: string, s?: string, r: string, m?: boolean, text: string }>} items
+ */
+function siteTable_(h, items) {
+  const sorted = biggestFirst_(items);
+  const shown = sorted.slice(0, SUMMARY_LIST_MAX);
+  const more = sorted.length > SUMMARY_LIST_MAX ? `+ ${sorted.length - SUMMARY_LIST_MAX} more` : '';
+  /** @type {SummaryTable} */
+  const table = {
+    h, n: String(sorted.length),
+    rows: shown.map((x) => ({ c: [x.name, x.r], ...(x.s ? { s: x.s } : {}), ...(x.m ? { k: 'm' } : {}) })),
+    ...(more ? { more } : {}),
+  };
+  return { table, list: shown.map((x) => `- ${x.text}`).concat(more ? [more] : []) };
 }
 
 /** @param {SummarySite} s */
@@ -281,136 +401,119 @@ function shownRs_(s) {
 }
 
 /**
- * One part of a summary: a heading ('' for none) and its lines, as the screen shows them and the
- * WhatsApp text says them. `now`: a part that is always as things are now (Coming up, Late &
- * going cold), left out of a past period's text (owner S9-15). `reps`: the admin's side-by-side
- * lines, the salesman each line is about (his page lets him tap it).
- * @typedef {{ h: string, lines: string[], now?: boolean, reps?: string[] }} SummaryBlock
- */
-
-/**
- * Coming up and Late & going cold, as things are now (specs 006 to 008 rules): hot = Sample /
- * Trial or Rate Quoted, in Hot Pipeline order (Rs. biggest first, then soonest follow-up, owner
- * P5-1); late = open with a follow-up before today or none; going cold = hot with no real Update
- * for COLD_DAYS days (spec 007); due = an open site's follow-up today or in the 6 days after.
- * `named`: a salesman's own summary names his top sites; the team's gives counts only.
+ * NOW: things as they are today (specs 006 to 008 rules): hot = Sample / Trial or Rate Quoted
+ * (Rs. of the Rate Quoted ones); due = an open site's follow-up today or in the 6 days after; late
+ * = open with a follow-up before today or none; going cold = hot with no real Update for COLD_DAYS
+ * days (spec 007). Counts only (spec 010), on screen under every button; in the text of This week
+ * / This month only (S9-15).
  * @param {SummarySite[]} sites
  * @param {string} today
- * @param {boolean} named
- * @returns {SummaryBlock[]}
  */
-function nowBlocks_(sites, today, named) {
+function nowPart_(sites, today) {
   const open = sites.filter((s) => !CLOSED_STAGES.includes(s.stage));
-  /** @param {SummarySite} a @param {SummarySite} b */
-  const byFollowUp = (a, b) => (a.followUp < b.followUp ? -1 : a.followUp > b.followUp ? 1 : a.order - b.order);
-  /** @param {SummarySite} a @param {SummarySite} b */
-  const order = (a, b) => shownRs_(b) - shownRs_(a) || byFollowUp(a, b);
-  const hot = open.filter((s) => HOT_STAGES.includes(s.stage)).sort(order);
+  const hot = open.filter((s) => HOT_STAGES.includes(s.stage));
   const hotRs = hot.reduce((sum, s) => sum + shownRs_(s), 0);
   const lastDue = addDays_(today, SUMMARY_DUE_DAYS - 1);
   const due = open.filter((s) => s.followUp && s.followUp >= today && s.followUp <= lastDue).length;
-  /** @param {SummarySite} s */
-  const isLate = (s) => !s.followUp || s.followUp < today;
-  /** @param {SummarySite} s */
-  const coldFor = (s) => {
-    const days = HOT_STAGES.includes(s.stage) && s.worked ? daysBetween_(s.worked, today) : 0;
-    return days >= COLD_DAYS ? days : 0;
+  const late = open.filter((s) => !s.followUp || s.followUp < today).length;
+  const cold = hot.filter((s) => s.worked && daysBetween_(s.worked, today) >= COLD_DAYS).length;
+  return {
+    cap: `Now · ${shortDay_(today)}`, heading: `Now, ${shortDay_(today)}`,
+    rows: [
+      { c: ['Hot sites', `${hot.length}${hotRs ? ` · ${formatRs_(hotRs)}` : ''}`] },
+      { c: [`Follow-ups next ${SUMMARY_DUE_DAYS} days`, String(due)] },
+      { c: ['Late', String(late)], k: late ? 'late' : 'none' },
+      { c: ['Going cold', String(cold)], k: cold ? 'cold' : 'none' },
+    ],
+    mono: [monoRow_('Hot sites', hot.length, hotRs || undefined), monoRow_(`Due in ${SUMMARY_DUE_DAYS} days`, due),
+      monoRow_('Late', late), monoRow_('Going cold', cold)],
   };
-  const late = open.filter(isLate).length;
-  const cold = open.filter(coldFor).length;
-
-  /** @param {SummarySite} s */
-  const head = (s) => [siteName_(s), s.stage].concat(shownRs_(s) ? [formatRs_(shownRs_(s))] : []);
-  const coming = [`Hot sites ${hot.length}${hotRs ? ` · ${formatRs_(hotRs)} quoted` : ''}`];
-  if (named) coming.push(...hot.slice(0, SUMMARY_HOT_MAX).map((s) => `• ${head(s).join(' · ')}`));
-  coming.push(`Follow-ups due in the next ${SUMMARY_DUE_DAYS} days: ${due}`);
-  const behind = late + cold ? [`Late ${late} · Going cold ${cold}`] : ['Nothing late or going cold.'];
-  if (named) {
-    behind.push(...open.filter((s) => isLate(s) || coldFor(s)).sort(order).slice(0, SUMMARY_LATE_MAX).map((s) => {
-      const bits = head(s);
-      if (isLate(s)) bits.push(s.followUp ? `${plural_(daysBetween_(s.followUp, today), 'day')} late` : 'no follow-up date');
-      if (coldFor(s)) bits.push(`no update for ${coldFor(s)} days`);
-      return `• ${bits.join(' · ')}`;
-    }));
-  }
-  return [
-    { h: `Now, ${shortDay_(today)}`, lines: [], now: true },
-    { h: 'Coming up', lines: coming, now: true },
-    { h: 'Late & going cold', lines: behind, now: true },
-  ];
 }
 
 /**
- * The WhatsApp text (and Copy): the heading line in bold, then each part, fixed headings in
- * bold, short lines. A past period leaves out the "now" parts (owner S9-15).
+ * The WhatsApp text (and Copy), spec 010: the heading in bold, the numbers lined up in a
+ * monospace block (each line at most MONO_WIDTH characters), notes in italics, names as `- `
+ * lists, and NOW in its own block for This week / This month only (S9-15).
  * @param {string} heading
- * @param {SummaryBlock[]} blocks
+ * @param {string[][]} blocks monospace blocks, each followed by its notes
+ * @param {string[]} notes italic lines after the first block
+ * @param {Array<{ h: string, list: string[] }>} lists
+ * @param {ReturnType<typeof nowPart_>} now
  * @param {boolean} running
  */
-function summaryText_(heading, blocks, running) {
-  let text = `*${heading}*`;
-  let gap = '\n';
-  for (const b of blocks) {
-    if (b.now && !running) continue;
-    text += gap + (b.h ? `*${b.h}*` : '') + (b.h && b.lines.length ? '\n' : '') + b.lines.join('\n');
-    gap = b.lines.length ? '\n\n' : '\n';
-  }
+function summaryText_(heading, blocks, notes, lists, now, running) {
+  const mono = (/** @type {string[]} */ lines) => ['```', ...lines, '```'].join('\n');
+  let text = `*${heading}*\n${mono(blocks[0])}${notes.map((n) => `\n_${n}_`).join('')}`;
+  for (const block of blocks.slice(1)) text += `\n\n${mono(block)}`;
+  for (const l of lists) if (l.list.length) text += `\n\n*${l.h}*\n${l.list.join('\n')}`;
+  if (running) text += `\n\n*${now.heading}*\n${mono(now.mono)}`;
   return text;
 }
 
 /**
- * One salesman's summary, exactly as his page shows it (owner S9-7): Numbers (month: against his
- * target), named sites, Coming up, Late & going cold. Built only from his own sites and his own
- * work rows. `days` (the admin's view only, owner S9-9) adds "Logged on 5 days".
+ * One salesman's summary, exactly as his page shows it (spec 009 numbers, spec 010 layout):
+ * heading, six tiles, target bar (month), Won / Quotes given / Lost tables, NOW, and the WhatsApp
+ * text. Built only from his own sites and his own work rows. `withDays` (the admin's view only,
+ * owner S9-9) adds "Logged on 5 days".
  * @param {string} rep
  * @param {PeriodFacts} facts
  * @param {SummaryPeriod} period
  * @param {number | null} target his target for the period's month (a month summary only)
  * @param {string} title what the screen shows on top
  * @param {boolean} [withDays]
- * @returns {{ title: string, blocks: SummaryBlock[], text: string }}
  */
 function salesmanSummary_(rep, facts, period, target, title, withDays) {
   const n = summaryNumbers_(facts, new Set([rep]));
-  const numbers = numberLines_(n);
-  if (withDays) numbers.splice(1, 0, `Logged on ${plural_(n.days, 'day')}`);
-  numbers.push(RS_NOTE);
-  if (period.month) numbers.push(targetLine_(period.month, target, n.wonRs));
-  /** @type {SummaryBlock[]} */
-  const blocks = [{ h: '', lines: numbers }];
   const parts = [
-    ['Won', n.results.filter((r) => r.won).map((r) => {
+    siteTable_('Won', n.results.filter((r) => r.won).map((r) => {
       const won = /** @type {{ value: number, terms: string }} */ (r.won);
-      return { value: won.value, name: siteName_(r.site), text: `${siteName_(r.site)} · ${formatRs_(won.value)}${won.terms ? ` ${won.terms}` : ''}` };
-    })],
-    ['Quotes given', n.results.filter((r) => r.quote !== null).map((r) => ({
-      value: r.quote || 0, name: siteName_(r.site), text: `${siteName_(r.site)} · ${formatRs_(r.quote || 0)}`,
-    }))],
-    ['Lost', n.results.filter((r) => r.lost).map((r) => {
+      const name = siteName_(r.site);
+      return { value: won.value, name, ...(won.terms ? { s: `· ${won.terms}` } : {}), r: formatRs_(won.value),
+        text: `${name} · ${formatRs_(won.value)}${won.terms ? ` ${won.terms}` : ''}` };
+    })),
+    siteTable_('Quotes given', n.results.filter((r) => r.quote !== null).map((r) => {
+      const name = siteName_(r.site);
+      return { value: r.quote || 0, name, r: formatRs_(r.quote || 0), text: `${name} · ${formatRs_(r.quote || 0)}` };
+    })),
+    siteTable_('Lost', n.results.filter((r) => r.lost).map((r) => {
       const lost = /** @type {{ value: number, reason: string }} */ (r.lost);
-      return { value: lost.value, name: siteName_(r.site), text: siteName_(r.site) + (lost.reason ? ` · ${lost.reason}` : '') };
-    })],
+      const name = siteName_(r.site);
+      return { value: lost.value, name, r: lost.reason, m: true, text: name + (lost.reason ? ` · ${lost.reason}` : '') };
+    })),
   ];
-  for (const [h, items] of /** @type {Array<[string, Array<{ value: number, name: string, text: string }>]>} */ (parts)) {
-    if (items.length) blocks.push({ h, lines: namedLines_(items) });
-  }
-  blocks.push(...nowBlocks_(facts.sites.filter((s) => s.rep === rep), period.today, true));
-  return { title, blocks, text: summaryText_(`${rep} · ${period.title}`, blocks, period.running) };
+  const now = nowPart_(facts.sites.filter((s) => s.rep === rep), period.today);
+  const mono = numberMono_(n, withDays);
+  if (period.month) mono.push(targetMono_(period.month, target, n.wonRs));
+  return {
+    title, sub: `${period.days} · Rs. logged, not invoiced`,
+    ...(withDays ? { logged: `Logged on ${plural_(n.days, 'day')}` } : {}),
+    tiles: summaryTiles_(n),
+    ...(period.month ? { target: targetPart_('Target', period.month, target, n.wonRs) } : {}),
+    tables: parts.filter((p) => p.table.rows.length).map((p) => p.table),
+    now: { cap: now.cap, rows: now.rows },
+    text: summaryText_(`${rep} · ${period.name} (${period.days})`, [mono], ['Rs. logged, not invoiced'],
+      parts.map((p) => ({ h: p.table.h, list: p.list })), now, period.running),
+  };
 }
 
 /**
- * A salesman's line side by side with the others (admin only): "RIA · worked 14 · quotes 3 ·
- * Rs. 1,250,000 · won 2 · Rs. 450,000 · lost 1 · logged on 5 days", month: "· 3% of target".
- * @param {string} rep
+ * A row of the team table (spec 010): name, sites worked, quotes, Won in millions (S10-4), and %
+ * of target (months; '—' with no target) or lost (weeks). A salesman with nothing in the period
+ * shows '—'.
+ * @param {string} name
  * @param {SummaryNumbers} n
+ * @param {SummaryPeriod} period
  * @param {number | null} target
+ * @param {boolean} [salesman] a current salesman: "nothing" shows as '—', and the row can be tapped
  */
-function sideLine_(rep, n, target) {
-  if (!n.days && !n.worked && !n.created && !n.results.length) return `${rep} · nothing logged`;
-  const bits = [rep, `worked ${n.worked}`, `quotes ${n.quotes}${n.quotes ? ` · ${formatRs_(n.quoteRs)}` : ''}`,
-    `won ${n.won}${n.won ? ` · ${formatRs_(n.wonRs)}` : ''}`, `lost ${n.lost}`, `logged on ${plural_(n.days, 'day')}`];
-  if (target) bits.push(`${Math.floor(n.wonRs * 100 / target)}% of target`);
-  return bits.join(' · ');
+function teamRow_(name, n, period, target, salesman) {
+  const pct = pctOf_(n.wonRs, target);
+  // A % over 999 shows as 999+, so the column (and a WhatsApp line) keeps its width.
+  const last = period.month ? (pct === null ? '—' : pct > 999 ? '999+' : String(pct)) : String(n.lost);
+  if (salesman && !n.days && !n.worked && !n.created && !n.results.length) {
+    return { c: [name, '—', '—', '—', period.month ? last : '—'], k: 'none', rep: name };
+  }
+  return { c: [name, String(n.worked), String(n.quotes), millions_(n.wonRs), last], ...(salesman ? { rep: name } : {}) };
 }
 
 /**
@@ -440,7 +543,7 @@ function readSummary_(diary, periodKey, now) {
 function repSummaryFor_(diary, rep, periodKey, now) {
   const { period, kept, facts, at } = readSummary_(diary, periodKey, now);
   const target = period.month ? shownTarget_(kept.repTargets, rep, period.month) : null;
-  return { ok: true, period: period.key, at, ...salesmanSummary_(rep, facts, period, target, period.title) };
+  return { ok: true, period: period.key, at, ...salesmanSummary_(rep, facts, period, target, period.name) };
 }
 
 /**
@@ -462,47 +565,60 @@ function teamSummaryFor_(diary, periodKey, now) {
   const regionTargets = REGIONS.map((region) => (month ? shownTarget_(kept.regionTargets, region, month) : null));
 
   const all = summaryNumbers_(facts, known);
-  const allLines = numberLines_(all).concat([RS_NOTE]);
-  /** @type {SummaryBlock[]} */
-  const blocks = [{ h: 'All salesmen', lines: allLines }];
-  if (month) {
-    const present = regionTargets.filter((t) => t !== null);
-    allLines.push(targetLine_(month, present.length ? present.reduce((a, b) => a + (b || 0), 0) : null, all.wonRs));
-    const house = shownTarget_(kept.regionTargets, HOUSE_REGION, month);
-    const name = MONTH_NAMES[Number(month.slice(5)) - 1];
-    blocks.push({ h: HOUSE_REGION_LABEL, lines: [`${house ? `${name} target ${formatRs_(house)}` : `No target for ${name}`} · Not logged in the diary.`] });
-  }
+  const name = month ? MONTH_NAMES[Number(month.slice(5)) - 1] : '';
+  const teamTarget = regionTargets.some((t) => t !== null) ? regionTargets.reduce((sum, t) => (sum || 0) + (t || 0), 0) : null;
+  const house = month ? shownTarget_(kept.regionTargets, HOUSE_REGION, month) : null;
+  const houseNote = house ? `House / office target ${formatRs_(house)} · not in the diary` : `No house / office target for ${name}`;
+
+  /** @type {SummaryRow[]} */
+  const rows = [];
   REGIONS.forEach((region, i) => {
-    const n = summaryNumbers_(facts, new Set(salesmen.filter((s) => s.region === region).map((s) => s.rep)));
-    blocks.push({ h: region, lines: numberLines_(n).concat(month ? [targetLine_(month, regionTargets[i], n.wonRs)] : []) });
+    const reps = salesmen.filter((s) => s.region === region);
+    rows.push({ ...teamRow_(region, summaryNumbers_(facts, new Set(reps.map((s) => s.rep))), period, regionTargets[i]), k: 'reg' });
+    reps.forEach((s) => rows.push(teamRow_(s.rep, summaryNumbers_(facts, new Set([s.rep])), period, repTarget(s.rep), true)));
   });
-  blocks.push({
-    h: 'Salesmen', reps: salesmen.map((s) => s.rep),
-    lines: salesmen.map((s) => sideLine_(s.rep, summaryNumbers_(facts, new Set([s.rep])), repTarget(s.rep))),
-  });
+  rows.push({ ...teamRow_('Team', all, period, teamTarget), k: 'tot' });
   /** @type {Set<string>} */
   const others = new Set();
   facts.results.forEach((r) => others.add(r.site.rep));
   facts.work.forEach((_, rep) => others.add(rep));
   const former = [...others].filter((rep) => rep && !known.has(rep)).sort();
   if (former.length) {
-    blocks.push({ h: 'Not in the salesmen list', lines: former.map((rep) => sideLine_(rep, summaryNumbers_(facts, new Set([rep])), null)) });
+    rows.push({ c: ['Not in the salesmen list'], k: 'grey' });
+    former.forEach((rep) => rows.push(teamRow_(rep, summaryNumbers_(facts, new Set([rep])), period, null)));
   }
-  // The current salesmen's lost sites, so "Lost N" here equals All salesmen's; a former code's
-  // loss shows on his own line under "Not in the salesmen list".
+  const cols = ['Name', 'Worked', 'Quotes', 'Won Rs.', month ? '%' : 'Lost'];
+  /** @type {SummaryTable[]} */
+  const tables = [{ h: 'Salesmen', n: 'tap a name', cols, rows }];
+
+  // The current salesmen's lost sites, so "Lost N" here equals the Lost tile; a former code's loss
+  // shows on his own row under "Not in the salesmen list".
   /** @type {Map<string, number>} */
   const reasons = new Map();
   for (const r of all.results) if (r.lost) reasons.set(r.lost.reason || 'Other', (reasons.get(r.lost.reason || 'Other') || 0) + 1);
-  if (reasons.size) {
-    const list = [...reasons].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
-    const total = list.reduce((sum, x) => sum + x[1], 0);
-    blocks.push({ h: 'Lost reasons', lines: [`Lost ${total}: ${list.map(([reason, n]) => `${reason} ${n}`).join(' · ')}`] });
+  const reasonList = [...reasons].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+  if (reasonList.length) {
+    tables.push({ h: 'Lost reasons', n: String(all.lost), rows: reasonList.map(([reason, count]) => ({ c: [reason, String(count)], k: 'b' })) });
   }
-  blocks.push(...nowBlocks_(facts.sites, period.today, false));
-  const title = `Team · ${period.title}`;
+
+  const mono = numberMono_(all);
+  if (month) {
+    mono.push(targetMono_(month, teamTarget, all.wonRs),
+      house ? 'House target'.padEnd(16) + rsDigits_(house).padStart(MONO_WIDTH - 16) : `No house target for ${name}`);
+  }
+  const table = [monoCols_(['Name'].concat(cols.slice(1).map((c) => c.replace(' Rs.', ''))))]
+    .concat(rows.map((r) => (r.c.length === 1 ? 'Not in list' : monoCols_(r.c))));
+  const nowPart = nowPart_(facts.sites, period.today);
+  const title = `Team · ${period.name}`;
   return {
-    ok: true, period: period.key, at, title, blocks, text: summaryText_(title, blocks, period.running),
-    salesmen: salesmen.map((s) => ({ rep: s.rep, ...salesmanSummary_(s.rep, facts, period, repTarget(s.rep), `${s.rep} · ${period.title}`, true) })),
+    ok: true, period: period.key, at, title, sub: `${period.days} · Rs. logged, not invoiced`,
+    tiles: summaryTiles_(all),
+    ...(month ? { target: { ...targetPart_('Team target', month, teamTarget, all.wonRs), note: houseNote } } : {}),
+    tables, now: { cap: nowPart.cap, rows: nowPart.rows },
+    text: summaryText_(`Team · ${period.name} (${period.days})`, [mono, table],
+      ['Rs. logged, not invoiced'].concat(month ? ['House / office sales are not in the diary'] : []),
+      [{ h: `Lost reasons (${all.lost})`, list: reasonList.map(([reason, count]) => `- ${reason} · ${count}`) }], nowPart, period.running),
+    salesmen: salesmen.map((s) => ({ rep: s.rep, ...salesmanSummary_(s.rep, facts, period, repTarget(s.rep), `${s.rep} · ${period.name}`, true) })),
   };
 }
 

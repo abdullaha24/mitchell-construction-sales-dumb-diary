@@ -67,6 +67,11 @@ function buildWorld() {
     payment_terms: 'Credit', next_followup: dayCell(2) }));
   rows.push(site({ site_id: 'S000033', rep: 'AUR', site_name: 'AUR Hidden', stage: 'Rate Quoted', value_rs: 777000,
     payment_terms: 'Cash', next_followup: dayCell(1) }));
+  // Eleven more quotes today (one with a long name), so the Quotes table shows "+ 2 more" (spec 010).
+  for (let i = 40; i <= 50; i++) {
+    rows.push(site({ site_id: `S0000${i}`, rep: 'RIA', site_name: i === 40 ? 'Defence Housing Authority Phase Eight Commercial Plaza Block C'
+      : `Quote ${i}`, stage: 'Rate Quoted', value_rs: i * 100000, payment_terms: 'Cash', next_followup: dayCell(3) }));
+  }
   let id = 0;
   const act = (when, rep, siteId, action, o = {}) => ACTIVITY.map((h) => ({
     activity_id: `A${String(++id).padStart(7, '0')}`, timestamp: when, rep, site_id: siteId, action, ...o,
@@ -75,6 +80,8 @@ function buildWorld() {
     act(dayCell(0), 'RIA', 'S000031', 'stage_change', { from_stage: 'Rate Quoted', to_stage: 'Won (Order)', value_rs: 450000, payment_terms: 'Cash' }),
     act(dayCell(0), 'RIA', 'S000032', 'stage_change', { from_stage: 'Visited / Lead', to_stage: 'Rate Quoted', value_rs: 800000, payment_terms: 'Credit' }),
     act(dayCell(0), 'AUR', 'S000033', 'created', { to_stage: 'Rate Quoted', value_rs: 777000, payment_terms: 'Cash' }),
+    ...Array.from({ length: 11 }, (_, i) => act(dayCell(0), 'RIA', `S0000${40 + i}`, 'created',
+      { to_stage: 'Rate Quoted', value_rs: (40 + i) * 100000, payment_terms: 'Cash' })),
   ];
   const lists = [['list', 'value', 'region', 'added_by', 'active', 'sort']];
   ['Tile Adhesives'].forEach((v, i) => lists.push(['product_category', v, '', 'owner', true, (i + 1) * 10]));
@@ -152,7 +159,35 @@ let browser;
     noSideways: async (what) =>
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth), 360, `no sideways scrolling: ${what}`),
     /** The summary on screen, line by line, as the server built it. */
-    screenLines: () => page.$$eval('#sumBody > *', (els) => els.map((e) => e.textContent)),
+    /** The summary on screen, part by part, as text (spec 010: tiles, target bar, tables, NOW). */
+    screenLines: () => page.$$eval('#sumBody > *', (els) => els.flatMap((e) => {
+      const kids = (x) => [...x.children].map((c) => c.textContent).join(' / ');
+      if (e.classList.contains('tiles')) return [...e.children].map((t) => `tile ${kids(t)}`);
+      if (e.classList.contains('sumt')) {
+        return [...e.querySelectorAll('h3, tr')].map((r) => (r.tagName === 'H3'
+          ? `table ${[...r.childNodes].map((n) => n.textContent).join(' / ')}` : [...r.cells].map((c) => c.textContent).join(' | ')));
+      }
+      if (e.classList.contains('goal')) {
+        const bar = e.querySelector('.meter i');
+        return [`goal ${[...e.querySelectorAll('.two > *, :scope > div:not(.two):not(.meter)')].map((x) => x.textContent).join(' / ')}${
+          bar ? ` / bar ${bar.style.width}` : ''}`];
+      }
+      return [e.textContent];
+    })),
+    /** Every number cell: right-aligned, on one line; Share and Copy the same height. */
+    numbersNeat: async () => {
+      const left = await page.$$eval('#sumBody .num', (els) => els.filter((e) => getComputedStyle(e).textAlign !== 'right')
+        .map((e) => e.textContent));
+      assert.deepEqual(left, [], 'numbers on the right');
+      const wrapped = await page.$$eval('#sumBody .num, #sumBody .tile .rs', (els) => els.filter((e) => {
+        const r = document.createRange();
+        r.selectNodeContents(e);
+        return new Set([...r.getClientRects()].filter((x) => x.width > 0).map((x) => Math.round(x.top))).size > 1;
+      }).map((e) => e.textContent));
+      assert.deepEqual(wrapped, [], 'no number cell runs onto a second line');
+      const [wa, copy] = await Promise.all([page.locator('#sumWa').boundingBox(), page.locator('#sumCopyBtn').boundingBox()]);
+      assert.equal(Math.round(wa.height), Math.round(copy.height), 'Share on WhatsApp and Copy the same height');
+    },
     /** Both buttons sit in the top line, inside the screen. */
     fitsTopLine: async (other) => {
       const a = await page.locator('#summary').boundingBox();
@@ -191,8 +226,17 @@ let browser;
     },
   });
   const nbsp = (line) => line.replace(/Rs\. /g, 'Rs.\u00a0'); // the page keeps "Rs. 400,000" together
-  const expectedLines = (view, asOf) => [view.title].concat(asOf ? [asOf] : [],
-    ...view.blocks.map((b) => (b.h ? [b.h] : []).concat(b.lines.map(nbsp))));
+  const tableLines = (t) => (t.h ? [`table ${t.h} / ${t.n}`] : []).concat(t.cols ? [t.cols.join(' | ')] : [],
+    t.rows.map((r) => r.c.map((x, i) => (i ? nbsp(x) : x + (r.s ? ` ${r.s}` : ''))).join(' | ')), t.more ? [t.more] : []);
+  /** The server's summary, part by part, as the page should show it. */
+  const expectedLines = (view, asOf) => {
+    const g = view.target;
+    const goal = !g ? [] : [`goal ${(g.none ? [g.none] : [g.h, `${g.pct}%`, g.won, g.of]).concat(g.note ? [nbsp(g.note)] : []).join(' / ')}${
+      g.none ? '' : ` / bar ${Math.min(g.pct, 100)}%`}`];
+    return [view.title, view.sub, view.logged, asOf].filter(Boolean)
+      .concat(view.tiles.map((t) => `tile ${[t.n, t.l].concat(t.rs ? [t.rs] : []).join(' / ')}`), goal,
+        ...view.tables.map(tableLines), [view.now.cap], tableLines(view.now));
+  };
 
   // ================================================================ The salesman's page (RIA)
   {
@@ -225,9 +269,15 @@ let browser;
     await h.rsTogether();
     let mine = world.s.repSummary(RIA, 'this-week');
     assert.deepEqual(await h.screenLines(), expectedLines(mine), 'the server\'s summary, line by line');
-    assert.ok((await h.screenLines()).includes('• Won <b>Tower</b> · Rs.\u00a0450,000 Cash'), 'a site name shows as text');
+    assert.ok((await h.screenLines()).includes('Won <b>Tower</b> · Cash | Rs.\u00a0450,000'), 'a site name shows as text');
+    assert.equal(await page.locator('#sumBody .tile').count(), 6, 'six tiles');
+    assert.equal(await page.locator('#sumBody .goal').count(), 0, 'a week has no target bar');
+    assert.ok((await h.screenLines()).includes('+ 2 more'), 'the Quotes table: 10 rows, then "+ 2 more"');
+    assert.ok(await page.$eval('#sumBody td.extra', (td) => td.getBoundingClientRect().width > td.closest('table').getBoundingClientRect().width - 1),
+      '"+ 2 more" spans the table');
+    await h.numbersNeat();
     await h.rsTogether();
-    assert.equal(await page.locator('#sumBody b').count(), 0, '...never as HTML');
+    assert.equal(await page.locator('#sumBody b:text-is("Tower")').count(), 0, '...never as HTML');
     assert.ok(!(await h.screenLines()).some((l) => /AUR|777/.test(l)), 'nothing of anyone else');
     // Share on WhatsApp: a plain link with the whole text, in a new tab.
     const wa = page.locator('#sumWa');
@@ -248,6 +298,12 @@ let browser;
       await h.shown();
       assert.equal(await page.getAttribute(`#sumTabs .tab:nth-child(${i + 1})`, 'aria-selected'), 'true');
       assert.deepEqual(await h.screenLines(), expectedLines(world.s.repSummary(RIA, period)), period);
+      assert.equal(await page.locator('#sumBody .goal').count(), period.endsWith('month') ? 1 : 0, `target card: ${period}`);
+      assert.equal(await page.locator('#sumBody .goal .meter').count(), period === 'this-month' ? 1 : 0, `target bar: ${period}`);
+      if (shots) await page.screenshot({ path: path.join(shots, `summary-ria-${period}.png`), fullPage: true });
+      if (period === 'last-month') assert.match(await page.textContent('#sumBody .goal'), /^No target for \w+$/, 'no target: one line, no bar');
+      await h.numbersNeat();
+      await h.noSideways(period);
     }
     assert.equal(await count(), 5, 'one trip per tap');
 
@@ -353,7 +409,18 @@ let browser;
     assert.ok(all.title.startsWith('Team · This week'));
     assert.equal(await page.getAttribute('#sumWa', 'href'), `https://wa.me/?text=${encodeURIComponent(all.text)}`);
     assert.ok(!/owner/i.test(await page.evaluate(() => document.body.innerText)), 'the word on screen is Admin');
-    assert.deepEqual(await h.texts('#sumBody button.sum-l'), [...all.blocks.find((b) => b.h === 'Salesmen').lines].map(nbsp), 'each salesman can be tapped');
+    assert.deepEqual(await h.texts('#sumBody tr.tap td:first-child'), ['RIA', 'AUR', 'SH'], 'each salesman\'s row can be tapped');
+    await h.numbersNeat();
+    // The team table: five columns that fit at 360 px, numbers lined up on the right.
+    const fit = await page.$eval('#sumBody table.cols', (t) => {
+      const card = t.closest('.sumt').getBoundingClientRect();
+      const box = t.getBoundingClientRect();
+      const edges = [1, 2, 3, 4].map((i) => new Set([...t.rows].filter((r) => r.cells.length === 5)
+        .map((r) => Math.round(r.cells[i].getBoundingClientRect().right))).size);
+      return { inside: box.right <= card.right + 0.5 && box.left >= card.left - 0.5, edges, width: box.width };
+    });
+    assert.deepEqual(fit.edges, [1, 1, 1, 1], `columns line up: ${JSON.stringify(fit)}`);
+    assert.ok(fit.inside, `the team table fits its card: ${JSON.stringify(fit)}`);
     await h.rsTogether();
     await h.noSideways('team summary');
     if (shots) await page.screenshot({ path: path.join(shots, 'summary-team.png'), fullPage: true });
@@ -361,13 +428,13 @@ let browser;
     // ---- Tapping a salesman: exactly his summary plus "Logged on", instantly, even with no signal. ----
     await page.evaluate(() => { window.__offline = true; window.scrollTo(0, 300); });
     const calls = (await h.calls()).length;
-    await page.click('#sumBody button.sum-l:has-text("RIA ·")');
+    await page.locator('#sumBody tr.tap').first().click();
     const his = all.salesmen.find((x) => x.rep === 'RIA');
     assert.deepEqual(await h.screenLines(), expectedLines(his));
     assert.equal(his.title, `RIA · ${world.s.repSummary(RIA, 'this-week').title}`);
     assert.ok((await h.screenLines()).some((l) => /^Logged on \d+ days?$/.test(l)), 'his days logged (admin only)');
-    assert.equal(his.text.split('\n').filter((l) => !/^Logged on /.test(l)).join('\n'), world.s.repSummary(RIA, 'this-week').text,
-      'the same text he sees, plus that line');
+    assert.equal(his.text.split('\n').filter((l) => !/^Days logged /.test(l)).join('\n'), world.s.repSummary(RIA, 'this-week').text,
+      'the same text he sees, plus his days logged');
     assert.equal(await page.getAttribute('#sumWa', 'href'), `https://wa.me/?text=${encodeURIComponent(his.text)}`);
     assert.equal((await h.calls()).length, calls, 'no trip to Google');
     await page.click('#sumBack');

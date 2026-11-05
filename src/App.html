@@ -118,7 +118,36 @@
       #snoozeProblem { margin: -4px 0 12px; }
       #summary { padding: 8px 12px; }
       #sumTabs { margin: 10px 0; }
-      .sum-l { font-size: 15px; overflow-wrap: anywhere; }
+      /* Spec 010: the summary as tiles, a target bar and tables (mockups A and B). */
+      #sumBody h2 { font-size: 18px; margin: 4px 0 0; }
+      .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0; }
+      .tile, .sumt, .goal { background: #fff; border: 1px solid var(--line); border-radius: 10px; }
+      .tile { padding: 8px 4px; text-align: center; font-size: 12px; color: var(--soft); }
+      .tile b { display: block; font-size: 24px; line-height: 1.1; color: var(--ink); }
+      .tile .rs { color: var(--ink); font-weight: 600; white-space: nowrap; }
+      .tile.won b { color: var(--green); }
+      .tile.lost b { color: var(--red); }
+      .sumt, .goal { margin-bottom: 10px; overflow: hidden; }
+      .goal { padding: 10px 12px; }
+      .two { display: flex; justify-content: space-between; gap: 8px; white-space: nowrap; }
+      .meter { height: 10px; background: #e8ebef; border-radius: 5px; margin: 7px 0 4px; overflow: hidden; }
+      .meter i { display: block; height: 100%; background: var(--green); }
+      .sumt h3 { display: flex; justify-content: space-between; font-size: 14px; margin: 0; padding: 9px 12px; }
+      .sumt h3 small, .sumt th, .sumt .m .num, .sumt .none .num, .sumt .grey td, .sumt .extra { color: var(--soft); }
+      .sumt table { width: 100%; border-collapse: collapse; font-size: 14px; }
+      .sumt td, .sumt th { padding: 7px 12px; border-top: 1px solid var(--line); text-align: left; vertical-align: top;
+                           overflow-wrap: anywhere; }
+      .sumt th { font-size: 12px; background: #fafbfc; }
+      .sumt .cols td, .sumt .cols th { padding: 7px 6px; }
+      .sumt .num { text-align: right; white-space: nowrap; overflow-wrap: normal; font-variant-numeric: tabular-nums; }
+      .sumt .reg td { background: #f3f6fb; font-weight: 700; }
+      .sumt .tot td { background: #eef6ef; font-weight: 700; }
+      .sumt .grey td { font-size: 12px; }
+      .sumt .late { color: var(--red); }
+      .sumt .cold { color: var(--orange); }
+      .sumt .b .num { font-weight: 700; }
+      .nowcap { font-size: 12px; font-weight: 700; color: var(--soft); text-transform: uppercase; letter-spacing: .04em; margin: 14px 2px 6px; }
+      #sumWa { background: #1fa855; border-color: #1fa855; color: #fff; }
       #sumCopy { width: 100%; height: 50vh; font: inherit; }
     </style>
   </head>
@@ -251,7 +280,7 @@
       <div id="sumMsg" class="note" hidden></div>
       <button class="plain" id="sumRetry" hidden>Try again</button>
       <div id="sumUnsent" class="note warn" hidden></div>
-      <div id="sumBody" class="site-head" hidden></div>
+      <div id="sumBody" hidden></div>
       <div id="sumShare" class="btnrow" hidden>
         <a id="sumWa" class="wa" target="_blank" rel="noopener">Share on WhatsApp</a>
         <button id="sumCopyBtn">Copy</button>
@@ -1570,16 +1599,59 @@
         box.hidden = $('sumShare').hidden = !v;
         $('sumHold').hidden = $('sumCopy').hidden = true;
         if (!v) return;
-        box.appendChild(el('div', v.title, 'sheet-title'));
-        if (bad) box.appendChild(el('div', 'As of ' + sum.got[sum.p].at, 'note'));
-        v.blocks.forEach(function (b) {
-          if (b.h) box.appendChild(el('div', b.h, 'label'));
-          b.lines.forEach(function (line, i) {
-            line = line.replace(/Rs\. /g, 'Rs.\u00a0'); // "Rs. 400,000" never splits
-            box.appendChild(ADMIN ? aSumLine(line, b.reps && b.reps[i]) : el('div', line, 'sum-l'));
-          });
+        // Spec 010: heading, six tiles, target bar (months), tables, NOW. All text, never HTML.
+        [['h2', v.title], ['div', v.sub], ['div', v.logged], ['div', bad && 'As of ' + sum.got[sum.p].at]].forEach(function (x) {
+          if (x[1]) box.appendChild(el(x[0], x[1], x[0] === 'div' ? 'note' : ''));
         });
+        var tiles = box.appendChild(el('div', '', 'tiles')), g = v.target;
+        v.tiles.forEach(function (t) {
+          var d = tiles.appendChild(el('div', '', 'tile ' + (t.c || '')));
+          d.appendChild(el('b', t.n));
+          d.appendChild(el('div', t.l));
+          if (t.rs) d.appendChild(el('div', t.rs, 'rs'));
+        });
+        if (g) {
+          var c = box.appendChild(el('div', '', 'goal'));
+          if (g.none) c.appendChild(el('div', g.none));
+          else {
+            sumTwo(c, g.h, g.pct + '%', 'b');
+            c.appendChild(el('div', '', 'meter')).appendChild(el('i')).style.width = Math.min(g.pct, 100) + '%';
+            sumTwo(c, g.won, g.of, 'span').className += ' note';
+          }
+          if (g.note) c.appendChild(el('div', nb(g.note), 'note'));
+        }
+        v.tables.forEach(function (t) { sumTable(box, t); });
+        box.appendChild(el('div', v.now.cap, 'nowcap'));
+        sumTable(box, v.now);
         $('sumWa').href = 'https://wa.me/?text=' + encodeURIComponent(v.text);
+      }
+      function nb(text) { return text.replace(/Rs\. /g, 'Rs.\u00a0'); } // "Rs. 400,000" never splits
+      function sumTwo(box, a, b, tag) {
+        var d = box.appendChild(el('div', '', 'two'));
+        d.appendChild(el(tag, a));
+        d.appendChild(el(tag, b));
+        return d;
+      }
+      // A table: title and count on top, two columns (or the admin's five), numbers on the right.
+      function sumTable(box, t) {
+        var c = box.appendChild(el('div', '', 'sumt')), tb = el('table', undefined, t.cols ? 'cols' : '');
+        if (t.h) c.appendChild(el('h3', t.h)).appendChild(el('small', t.n));
+        if (t.cols) {
+          var hr = tb.insertRow();
+          t.cols.forEach(function (x, i) { hr.appendChild(el('th', x, i ? 'num' : '')); });
+        }
+        t.rows.forEach(function (r) {
+          var tr = tb.insertRow();
+          tr.className = r.k || '';
+          r.c.forEach(function (x, i) {
+            var td = tr.appendChild(el('td', i ? nb(x) : x, i ? 'num' : ''));
+            if (r.s && !i) td.appendChild(el('small', ' ' + r.s, 'note'));
+            if (r.c.length === 1 && t.cols) td.colSpan = t.cols.length;
+          });
+          if (ADMIN && r.rep) aSumTap(tr, r.rep);
+        });
+        if (t.more) tb.insertRow().appendChild(el('td', t.more, 'extra')).colSpan = 2;
+        c.appendChild(tb);
       }
       // In Google's frame: the clipboard, else select-and-copy, else he copies it by hand.
       function copySum() {

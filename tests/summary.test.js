@@ -246,7 +246,20 @@ function numbers(w, reps, period, now = NOW) {
     wonNames: names((r) => r.won), lostNames: names((r) => r.lost), quoteNames: names((r) => r.quote !== null),
   };
 }
-const lines = (summary, h) => (summary.blocks.find((b) => b.h === h) || { lines: null }).lines;
+/** A row as text: "F-11 Commercial Tower · Cash | Rs. 450,000" (spec 010 tables). */
+const rowText = (r) => r.c[0] + (r.s ? ` ${r.s}` : '') + (r.c.length > 1 ? ` | ${r.c.slice(1).join(' | ')}` : '');
+/** A table's rows as text, then its "+ N more"; 'tiles' and 'now' too; null when it isn't there. */
+const lines = (summary, h) => {
+  if (h === 'tiles') return summary.tiles.map((t) => `${t.l} ${t.n}${t.rs ? ` ${t.rs}` : ''}`);
+  if (h === 'now') return summary.now.rows.map(rowText);
+  const t = summary.tables.find((x) => x.h === h);
+  return t ? t.rows.map(rowText).concat(t.more ? [t.more] : []) : null;
+};
+/** One row of the admin's team table, as text. */
+const teamRow = (t, name) => {
+  const r = t.tables[0].rows.find((x) => x.c[0] === name);
+  return r ? rowText(r) : null;
+};
 
 // ---------------------------------------------------------------------------------- Periods
 
@@ -255,13 +268,16 @@ test('periods: a week is Saturday 00:00 to Friday 23:59 in Pakistan time; months
   const p = (period, now) => plain(s.summaryPeriod_(period, now));
   // Wednesday 4 Nov: the week crosses two months.
   assert.deepEqual(p('this-week', NOW), { key: 'this-week', running: true, start: pk(2026, 10, 31, 0).getTime(),
-    end: pk(2026, 11, 7, 0).getTime(), month: '', title: 'This week so far · Sat 31 Oct – Wed 4 Nov', today: '2026-11-04' });
+    end: pk(2026, 11, 7, 0).getTime(), month: '', title: 'This week so far · Sat 31 Oct – Wed 4 Nov', name: 'This week so far', days: 'Sat 31 Oct – Wed 4 Nov',
+    today: '2026-11-04' });
   assert.deepEqual(p('last-week', NOW), { key: 'last-week', running: false, start: pk(2026, 10, 24, 0).getTime(),
-    end: pk(2026, 10, 31, 0).getTime(), month: '', title: 'Last week · Sat 24 Oct – Fri 30 Oct', today: '2026-11-04' });
+    end: pk(2026, 10, 31, 0).getTime(), month: '', title: 'Last week · Sat 24 Oct – Fri 30 Oct', name: 'Last week', days: 'Sat 24 Oct – Fri 30 Oct',
+    today: '2026-11-04' });
   assert.deepEqual(p('this-month', NOW), { key: 'this-month', running: true, start: pk(2026, 11, 1, 0).getTime(),
-    end: pk(2026, 12, 1, 0).getTime(), month: '2026-11', title: 'November so far · 1–4 Nov', today: '2026-11-04' });
+    end: pk(2026, 12, 1, 0).getTime(), month: '2026-11', title: 'November so far · 1–4 Nov', name: 'November so far', days: '1–4 Nov',
+    today: '2026-11-04' });
   assert.deepEqual(p('last-month', NOW), { key: 'last-month', running: false, start: pk(2026, 10, 1, 0).getTime(),
-    end: pk(2026, 11, 1, 0).getTime(), month: '2026-10', title: 'October', today: '2026-11-04' });
+    end: pk(2026, 11, 1, 0).getTime(), month: '2026-10', title: 'October', name: 'October', days: '1–31 Oct', today: '2026-11-04' });
   // Friday at 23:59: the whole week, no "so far".
   assert.equal(p('this-week', pk(2026, 11, 6, 23, 59)).title, 'This week · Sat 31 Oct – Fri 6 Nov');
   assert.equal(p('this-week', pk(2026, 11, 6, 23, 59)).start, pk(2026, 10, 31, 0).getTime());
@@ -344,7 +360,7 @@ test('quotes: Rs. from the latest move to Rate Quoted in the period; a revised p
   });
   const n = numbers(w, ['RIA'], 'this-week');
   assert.deepEqual([n.quotes, n.quoteRs, n.samples], [1, 400000, 1], 'one site, the latest move\'s Rs., a revised price not counted');
-  assert.deepEqual(lines(ria(w, 'this-week'), 'Quotes given'), ['• Requoted · Rs. 400,000']);
+  assert.deepEqual(lines(ria(w, 'this-week'), 'Quotes given'), ['Requoted | Rs. 400,000']);
 });
 
 test('a Won or Lost site moved back to Rate Quoted is a new quote given (owner S9-16)', () => {
@@ -396,12 +412,12 @@ test('this week / this month follow the sheet as it is now, as the Team tab does
     ],
   });
   for (const period of ['this-week', 'this-month']) {
-    assert.deepEqual(lines(ria(w, period), 'Won'), ['• Rs Fixed By Hand · Rs. 650,000 Cash'], period);
+    assert.deepEqual(lines(ria(w, period), 'Won'), ['Rs Fixed By Hand · Cash | Rs. 650,000'], period);
   }
   const screen = plain(w.s.adminDataFor_(w.diary, [], NOW));
   assert.deepEqual(screen.sites.filter((c) => c.closed).map((c) => [c.name, c.value]), [['Rs Fixed By Hand', 650000]], 'as the This month tab');
-  assert.deepEqual(lines(ria(w, 'last-week', pk(2026, 11, 9)), 'Won'), ['• Rs Fixed By Hand · Rs. 600,000 Cash',
-    '• Reopened By Hand · Rs. 300,000 Cash'], 'a finished week: as it ended');
+  assert.deepEqual(lines(ria(w, 'last-week', pk(2026, 11, 9)), 'Won'), ['Rs Fixed By Hand · Cash | Rs. 600,000',
+    'Reopened By Hand · Cash | Rs. 300,000'], 'a finished week: as it ended');
 });
 
 test('won / lost last week and last month: as the period ended (S9-14)', () => {
@@ -410,7 +426,7 @@ test('won / lost last week and last month: as the period ended (S9-14)', () => {
   assert.deepEqual([oct.won, oct.wonRs, oct.lost], [2, 800000, 0]);
   assert.deepEqual(oct.wonNames, ['Repriced After', 'Won 29 Oct Lost 3 Nov'], 'won 29 Oct, lost 3 Nov: won in October');
   assert.ok(numbers(w, ['RIA'], 'this-month').lostNames.includes('Won 29 Oct Lost 3 Nov'), '...and lost in November');
-  assert.deepEqual(lines(ria(w, 'last-week'), 'Won'), ['• Repriced After · Rs. 500,000 Cash', '• Won 29 Oct Lost 3 Nov · Rs. 300,000 Cash'],
+  assert.deepEqual(lines(ria(w, 'last-week'), 'Won'), ['Repriced After · Cash | Rs. 500,000', 'Won 29 Oct Lost 3 Nov · Cash | Rs. 300,000'],
     're-priced after the week: the week\'s Rs.');
 });
 
@@ -442,8 +458,8 @@ test('as the period ended: reopened inside it, won twice, corrected inside it, i
     ],
   });
   const summary = ria(w, 'last-week');
-  assert.deepEqual(lines(summary, 'Won'), ['• Corrected · Rs. 120,000 Credit', '• Won Twice · Rs. 80,000 Cash', '• Admin Moved · Rs. 40,000 Credit']);
-  assert.deepEqual(lines(summary, 'Lost'), ['• Lost Then Reopened · Credit Terms']);
+  assert.deepEqual(lines(summary, 'Won'), ['Corrected · Credit | Rs. 120,000', 'Won Twice · Cash | Rs. 80,000', 'Admin Moved · Credit | Rs. 40,000']);
+  assert.deepEqual(lines(summary, 'Lost'), ['Lost Then Reopened | Credit Terms']);
   const n = numbers(w, ['RIA'], 'last-week');
   assert.deepEqual([n.won, n.wonRs, n.lost, n.worked], [3, 240000, 1, 4], 'the admin\'s move is a result, not RIA\'s work');
 });
@@ -468,8 +484,8 @@ test('the admin\'s saves never count as work', () => {
   assert.equal(facts.work.has('ADMIN'), false);
   assert.ok(!facts.work.get('RIA').worked.has('S000011'), 'the admin marked it Won: not RIA\'s work');
   const t = team(w, 'this-week');
-  assert.ok(!t.text.toLowerCase().includes('admin ·'), 'no line for the admin');
-  assert.deepEqual(lines(t, 'Not in the salesmen list'), ['MUB · worked 1 · quotes 0 · won 0 · lost 0 · logged on 2 days']);
+  assert.ok(!t.tables[0].rows.some((r) => /admin/i.test(r.c[0])), 'no row for the admin');
+  assert.equal(teamRow(t, 'MUB'), 'MUB | 1 | 0 | 0 | 0', 'a former code: worked, quotes, won, lost');
 });
 
 // ------------------------------------------------------------------------------------ Team
@@ -487,11 +503,10 @@ test('team: All salesmen = North + Center + South = the salesmen; a former code 
   assert.equal(all.worked, 11, 'Handed Over was worked by RIA and by AUR: once');
   assert.equal(reps[0].worked + reps[1].worked + reps[3].worked, 12);
   const t = team(w, 'this-week');
-  assert.deepEqual(lines(t, 'All salesmen'), ['New sites 4 · Sites worked 11', 'Samples given 1 · Quotes given 3 · Rs. 1,777,000',
-    'Won 4 · Rs. 1,080,000 · Lost 2', '(Rs. logged, not invoiced)']);
-  assert.deepEqual(lines(t, 'North'), ['New sites 3 · Sites worked 10', 'Samples given 1 · Quotes given 3 · Rs. 1,777,000',
-    'Won 3 · Rs. 580,000 · Lost 2']);
-  assert.equal(lines(t, 'House / office sales'), null, 'a week has no targets');
+  assert.deepEqual(lines(t, 'tiles'), ['New sites 4', 'Sites worked 11', 'Samples 1', 'Quotes 3 Rs. 1,777,000', 'Won 4 Rs. 1,080,000', 'Lost 2']);
+  assert.equal(teamRow(t, 'North'), 'North | 10 | 3 | 0.58M | 2');
+  assert.equal(teamRow(t, 'Team'), 'Team | 11 | 3 | 1.08M | 2');
+  assert.equal(t.target, undefined, 'a week has no targets');
   assert.ok(!JSON.stringify(t).includes('Former Salesman Site'));
 });
 
@@ -500,23 +515,32 @@ test('team regions come from Rep_Mapping, never from Sites.region', () => {
   sites.forEach((row) => { if (row[0] === 'S000001') row[2] = 'South'; }); // a stale region cell
   const w = world({ sites, activity: summaryActivity() });
   const t = team(w, 'this-week');
-  assert.equal(lines(t, 'South')[2], 'Won 0 · Lost 0');
-  assert.equal(lines(t, 'North')[2], 'Won 3 · Rs. 580,000 · Lost 2');
+  assert.equal(teamRow(t, 'South'), 'South | 0 | 0 | 0 | 0');
+  assert.equal(teamRow(t, 'North'), 'North | 10 | 3 | 0.58M | 2');
 });
 
 test('team side by side: Rep_Mapping order, "nothing logged", lost reasons most first', () => {
   const w = summaryWorld();
   const t = team(w, 'this-week');
-  assert.deepEqual(t.blocks.find((b) => b.h === 'Salesmen'), {
-    h: 'Salesmen', reps: ['RIA', 'AUR', 'WAK', 'SH', 'SJ', 'SM', 'IB'], lines: [
-      'RIA · worked 9 · quotes 2 · Rs. 1,000,000 · won 2 · Rs. 510,000 · lost 2 · logged on 5 days',
-      'AUR · worked 2 · quotes 1 · Rs. 777,000 · won 1 · Rs. 70,000 · lost 0 · logged on 2 days',
-      'WAK · nothing logged',
-      'SH · worked 1 · quotes 0 · won 1 · Rs. 500,000 · lost 0 · logged on 1 day',
-      'SJ · nothing logged', 'SM · nothing logged', 'IB · nothing logged',
-    ],
-  });
-  assert.deepEqual(lines(t, 'Lost reasons'), ['Lost 2: Price Too High 1 · Site Delayed 1']);
+  const table = t.tables[0];
+  assert.deepEqual([table.h, table.n, table.cols], ['Salesmen', 'tap a name', ['Name', 'Worked', 'Quotes', 'Won Rs.', 'Lost']]);
+  assert.deepEqual(table.rows, [
+    { c: ['North', '10', '3', '0.58M', '2'], k: 'reg' },
+    { c: ['RIA', '9', '2', '0.51M', '2'], rep: 'RIA' },
+    { c: ['AUR', '2', '1', '0.07M', '0'], rep: 'AUR' },
+    { c: ['WAK', '—', '—', '—', '—'], k: 'none', rep: 'WAK' },
+    { c: ['Center', '1', '0', '0.5M', '0'], k: 'reg' },
+    { c: ['SH', '1', '0', '0.5M', '0'], rep: 'SH' },
+    { c: ['SJ', '—', '—', '—', '—'], k: 'none', rep: 'SJ' },
+    { c: ['SM', '—', '—', '—', '—'], k: 'none', rep: 'SM' },
+    { c: ['South', '0', '0', '0', '0'], k: 'reg' },
+    { c: ['IB', '—', '—', '—', '—'], k: 'none', rep: 'IB' },
+    { c: ['Team', '11', '3', '1.08M', '2'], k: 'tot' },
+    { c: ['Not in the salesmen list'], k: 'grey' },
+    { c: ['MUB', '1', '0', '0', '0'] },
+  ]);
+  assert.deepEqual(lines(t, 'Lost reasons'), ['Price Too High | 1', 'Site Delayed | 1']);
+  assert.equal(t.tables[1].n, '2');
   assert.deepEqual(t.salesmen.map((x) => x.rep), ['RIA', 'AUR', 'WAK', 'SH', 'SJ', 'SM', 'IB']);
 });
 
@@ -537,29 +561,31 @@ test('lost reasons: most first, then by name; a lost site with no reason is Othe
   activity.push(act(pk(2026, 11, 2), 'MUB', 'S000090', 'stage_change', { from_stage: RQ, to_stage: LOST, lost_reason: 'Credit Terms' }));
   activity.push(act(pk(2026, 11, 2), 'admin', 'S000091', 'stage_change', { from_stage: RQ, to_stage: LOST, lost_reason: 'Credit Terms' }));
   const t = team(world({ sites, activity }), 'this-week');
-  assert.deepEqual(lines(t, 'Lost reasons'), ['Lost 6: Price Too High 3 · Competitor Approved 1 · Other 1 · Site Delayed 1']);
-  assert.equal(lines(t, 'All salesmen')[2], 'Won 0 · Lost 6', 'the same Lost count as All salesmen');
-  assert.deepEqual(lines(t, 'Not in the salesmen list'), ['MUB · worked 1 · quotes 0 · won 0 · lost 1 · logged on 1 day'],
-    'the former code\'s loss is on his own line');
+  assert.deepEqual(lines(t, 'Lost reasons'), ['Price Too High | 3', 'Competitor Approved | 1', 'Other | 1', 'Site Delayed | 1']);
+  assert.equal(t.tables[1].n, '6');
+  assert.equal(lines(t, 'tiles')[5], 'Lost 6', 'the same Lost count as the Lost tile');
+  assert.equal(teamRow(t, 'MUB'), 'MUB | 1 | 0 | 0 | 1', 'the former code\'s loss is on his own row');
 });
 
 // ------------------------------------------------------------------------------ Targets, %
 
 test('month targets and %: this month and last month; weeks none; no target means no %', () => {
   const w = summaryWorld();
-  assert.equal(lines(ria(w, 'this-month'), '')[4], `November target Rs. 1,140,000 · Won Rs. 510,000 (44%)`);
+  assert.deepEqual(ria(w, 'this-month').target, { h: 'Target', pct: 44, won: 'Won Rs. 510,000', of: 'of Rs. 1,140,000' });
   assert.equal(fakeTarget('RIA', '2026-11'), 1140000);
-  assert.equal(lines(ria(w, 'last-month'), '')[4], `October target Rs. 1,130,000 · Won Rs. 800,000 (70%)`);
+  assert.deepEqual(ria(w, 'last-month').target, { h: 'Target', pct: 70, won: 'Won Rs. 800,000', of: 'of Rs. 1,130,000' });
+  assert.ok(ria(w, 'last-month').text.includes('\nTarget  70% of 1,130,000\n'));
   for (const period of ['this-week', 'last-week']) {
-    assert.ok(!ria(w, period).text.includes('target'), period);
-    assert.ok(!team(w, period).text.includes('target'), period);
+    assert.ok(!/target/i.test(ria(w, period).text) && ria(w, period).target === undefined, period);
+    assert.ok(!/target/i.test(team(w, period).text) && team(w, period).target === undefined, period);
   }
   const tabs = metaDataTabs();
   tabs['Rep-Targets'] = tabs['Rep-Targets'].filter((r) => !(r[0] === 'RIA' && r[1] instanceof Date && r[1].getTime() === pk(2026, 11, 1, 0).getTime()));
   const none = world({ metaTabs: tabs, sites: summarySites(), activity: summaryActivity() });
-  assert.equal(lines(ria(none, 'this-month'), '')[4], 'No target for November');
+  assert.deepEqual(ria(none, 'this-month').target, { none: 'No target for November' });
+  assert.ok(ria(none, 'this-month').text.includes('\nNo target for November\n'));
   assert.ok(!ria(none, 'this-month').text.includes('%'));
-  assert.ok(team(none, 'this-month').blocks.find((b) => b.h === 'Salesmen').lines[0].endsWith('logged on 4 days'), 'no % of target');
+  assert.equal(teamRow(team(none, 'this-month'), 'RIA'), 'RIA | 8 | 2 | 0.51M | —', 'no % of target');
 });
 
 test('team month: target = North + Center + South; house / office target for the admin only', () => {
@@ -567,11 +593,12 @@ test('team month: target = North + Center + South; house / office target for the
   const t = team(w, 'this-month');
   const teamTarget = fakeTarget('North', '2026-11') + fakeTarget('Center', '2026-11') + fakeTarget('South', '2026-11');
   assert.equal(teamTarget, 6720000);
-  assert.equal(lines(t, 'All salesmen')[4], 'November target Rs. 6,720,000 · Won Rs. 1,080,000 (16%)');
-  assert.deepEqual(lines(t, 'House / office sales'), ['November target Rs. 2,440,000 · Not logged in the diary.']);
-  assert.equal(lines(t, 'North')[3], 'November target Rs. 2,140,000 · Won Rs. 580,000 (27%)');
+  assert.deepEqual(t.target, { h: 'Team target', pct: 16, won: 'Won Rs. 1,080,000', of: 'of Rs. 6,720,000',
+    note: 'House / office target Rs. 2,440,000 · not in the diary' });
+  assert.equal(teamRow(t, 'North'), 'North | 9 | 3 | 0.58M | 27', 'the region\'s % of its target');
+  assert.equal(teamRow(t, 'Team'), 'Team | 10 | 3 | 1.08M | 16');
   const oct = team(w, 'last-month');
-  assert.deepEqual(lines(oct, 'House / office sales'), [`October target ${w.s.formatRs_(fakeTarget('UNASSIGNED', '2026-10'))} · Not logged in the diary.`]);
+  assert.equal(oct.target.note, `House / office target ${w.s.formatRs_(fakeTarget('UNASSIGNED', '2026-10'))} · not in the diary`);
   for (const period of ['this-month', 'last-month']) {
     const json = JSON.stringify(ria(w, period));
     assert.ok(!json.includes('House') && !json.includes(w.s.formatRs_(fakeTarget('UNASSIGNED', '2026-11'))) &&
@@ -580,13 +607,12 @@ test('team month: target = North + Center + South; house / office target for the
   const tabs = metaDataTabs();
   tabs.Targets = [tabs.Targets[0]];
   const none = team(world({ metaTabs: tabs, sites: summarySites(), activity: summaryActivity() }), 'this-month');
-  assert.equal(lines(none, 'All salesmen')[4], 'No target for November');
-  assert.deepEqual(lines(none, 'House / office sales'), ['No target for November · Not logged in the diary.']);
+  assert.deepEqual(none.target, { none: 'No target for November', note: 'No house / office target for November' });
 });
 
 // ------------------------------------------------------------------------- Coming up, late
 
-test('Coming up: Hot Pipeline order (Rs. biggest, then soonest follow-up, then newest); top 5; due in 7 days', () => {
+test('NOW: hot sites and their Rs. (Rate Quoted), follow-ups due today and the 6 days after', () => {
   const extra = { stage: SAMPLE };
   const sites = [
     site('S000001', 'RIA', 'Sample Old', { ...extra, next_followup: day(2026, 11, 8), created_at: pk(2026, 9, 1) }),
@@ -598,21 +624,19 @@ test('Coming up: Hot Pipeline order (Rs. biggest, then soonest follow-up, then n
     site('S000007', 'RIA', 'Lead Due', { next_followup: day(2026, 11, 4) }),
     site('S000008', 'RIA', 'Won Not Open', { stage: WON, value_rs: 5000000, payment_terms: 'Cash', next_followup: day(2026, 11, 5) }),
   ];
-  const coming = lines(ria(world({ sites }), 'this-week'), 'Coming up');
-  assert.deepEqual(coming, ['Hot sites 6 · Rs. 1,900,000 quoted', '• Quote Big · Rate Quoted · Rs. 900,000',
-    '• Quote Late Date · Rate Quoted · Rs. 500,000', '• Quote Soon Date · Rate Quoted · Rs. 500,000', '• Sample Soon · Sample / Trial',
-    '• Sample New · Sample / Trial', 'Follow-ups due in the next 7 days: 6'],
-    'due: today 4 Nov to 10 Nov (not 11 Nov, not the Won site)');
+  const now = ria(world({ sites }), 'this-week').now;
+  assert.deepEqual(now.rows, [{ c: ['Hot sites', '6 · Rs. 1,900,000'] }, { c: ['Follow-ups next 7 days', '6'] },
+    { c: ['Late', '0'], k: 'none' }, { c: ['Going cold', '0'], k: 'none' }], 'due: today 4 Nov to 10 Nov (not 11 Nov, not the Won site)');
 });
 
-test('Late & going cold: the Late & cold tab\'s counts; the 3 biggest by Rs.; nothing: one line', () => {
+test('NOW: the Late and Going cold counts follow the Late & cold tab\'s rules; nothing late shows 0 in grey', () => {
   const w = summaryWorld();
   const screen = plain(w.s.adminDataFor_(w.diary, [], NOW));
   const today = '2026-11-04';
   const open = screen.sites.filter((c) => ![WON, LOST].includes(c.stage));
   const late = open.filter((c) => !c.followUp || c.followUp < today).length;
   const cold = open.filter((c) => [SAMPLE, RQ].includes(c.stage) && w.s.daysBetween_(c.worked, today) >= 7).length;
-  assert.deepEqual(lines(team(w, 'this-week'), 'Late & going cold'), [`Late ${late} · Going cold ${cold}`]);
+  assert.deepEqual(lines(team(w, 'this-week'), 'now').slice(2), [`Late | ${late}`, `Going cold | ${cold}`]);
   assert.deepEqual([late, cold], [2, 1]);
   const sites = [
     site('S000001', 'RIA', 'Small Late', { stage: RQ, value_rs: 100000, payment_terms: 'Cash', next_followup: day(2026, 11, 3) }),
@@ -620,89 +644,126 @@ test('Late & going cold: the Late & cold tab\'s counts; the 3 biggest by Rs.; no
     site('S000003', 'RIA', 'Mid Late', { stage: RQ, value_rs: 500000, payment_terms: 'Cash', next_followup: day(2026, 10, 30) }),
     site('S000004', 'RIA', 'Lead Late', { next_followup: day(2026, 11, 3) }),
   ];
-  assert.deepEqual(lines(ria(world({ sites }), 'this-week'), 'Late & going cold'), ['Late 3 · Going cold 1',
-    '• Big Cold · Rate Quoted · Rs. 900,000 · no update for 9 days', '• Mid Late · Rate Quoted · Rs. 500,000 · 5 days late',
-    '• Small Late · Rate Quoted · Rs. 100,000 · 1 day late']);
-  assert.deepEqual(lines(ria(world({ sites: [site('S000001', 'RIA', 'Fine')] }), 'this-week'), 'Late & going cold'),
-    ['Nothing late or going cold.']);
+  assert.deepEqual(ria(world({ sites }), 'this-week').now.rows, [{ c: ['Hot sites', '3 · Rs. 1,500,000'] },
+    { c: ['Follow-ups next 7 days', '0'] }, { c: ['Late', '3'], k: 'late' }, { c: ['Going cold', '1'], k: 'cold' }]);
+  assert.deepEqual(ria(world({ sites: [site('S000001', 'RIA', 'Fine')] }), 'this-week').now.rows.slice(2),
+    [{ c: ['Late', '0'], k: 'none' }, { c: ['Going cold', '0'], k: 'none' }]);
 });
 
-test('Now parts: on screen under every button, headed "Now, <today>"; left out of past periods\' text (S9-15)', () => {
+test('NOW: on screen under every button, headed "Now · <today>"; left out of past periods\' text (S9-15)', () => {
   const w = summaryWorld();
   for (const period of ['this-week', 'last-week', 'this-month', 'last-month']) {
     const summary = ria(w, period);
-    const heads = summary.blocks.filter((b) => b.now).map((b) => b.h);
-    assert.deepEqual(heads, ['Now, 4 Nov', 'Coming up', 'Late & going cold'], period);
-    const inText = summary.text.includes('*Coming up*') && summary.text.includes('*Late & going cold*') && summary.text.includes('*Now, 4 Nov*');
-    assert.equal(inText, period.startsWith('this'), period);
-    assert.equal(team(w, period).text.includes('*Coming up*'), period.startsWith('this'), `team ${period}`);
+    assert.equal(summary.now.cap, 'Now · 4 Nov', period);
+    assert.equal(summary.now.rows.length, 4, period);
+    assert.equal(summary.text.includes('*Now, 4 Nov*') && summary.text.includes('Hot sites'), period.startsWith('this'), period);
+    assert.equal(team(w, period).text.includes('*Now, 4 Nov*'), period.startsWith('this'), `team ${period}`);
+    assert.equal(team(w, period).now.cap, 'Now · 4 Nov');
   }
 });
 
 // ------------------------------------------------------------------------- The WhatsApp text
 
+/** Every line inside a monospace block (``` … ```) is at most 30 characters (spec 010). */
+function monoLines(text) {
+  const out = [];
+  let inside = false;
+  for (const line of text.split('\n')) {
+    if (line === '```') inside = !inside;
+    else if (inside) out.push(line);
+  }
+  assert.equal(inside, false, 'every block is closed');
+  return out;
+}
+
 test("WhatsApp text: a salesman's week, exactly", () => {
   assert.equal(ria(summaryWorld(), 'this-week').text, [
-    '*RIA · This week so far · Sat 31 Oct – Wed 4 Nov*',
-    'New sites 2 · Sites worked 9',
-    'Samples given 1 · Quotes given 2 · Rs. 1,000,000',
-    'Won 2 · Rs. 510,000 · Lost 2',
-    '(Rs. logged, not invoiced)',
+    '*RIA · This week so far (Sat 31 Oct – Wed 4 Nov)*',
+    '```',
+    'New sites      2',
+    'Sites worked   9',
+    'Samples        1',
+    'Quotes         2     1,000,000',
+    'Won            2       510,000',
+    'Lost           2',
+    '```',
+    '_Rs. logged, not invoiced_',
     '',
     '*Won*',
-    '• F-11 Commercial Tower · Rs. 450,000 Cash',
-    '• Admin Won · Rs. 60,000 Credit',
+    '- F-11 Commercial Tower · Rs. 450,000 Cash',
+    '- Admin Won · Rs. 60,000 Credit',
     '',
     '*Quotes given*',
-    '• Bahria Villas · Rs. 800,000',
-    '• Reopened · Rs. 200,000',
+    '- Bahria Villas · Rs. 800,000',
+    '- Reopened · Rs. 200,000',
     '',
     '*Lost*',
-    '• DHA Plaza · Price Too High',
-    '• Won 29 Oct Lost 3 Nov · Site Delayed',
+    '- DHA Plaza · Price Too High',
+    '- Won 29 Oct Lost 3 Nov · Site Delayed',
     '',
     '*Now, 4 Nov*',
-    '*Coming up*',
-    'Hot sites 4 · Rs. 2,200,000 quoted',
-    '• Gulberg Heights · Rate Quoted · Rs. 1,200,000',
-    '• Bahria Villas · Rate Quoted · Rs. 800,000',
-    '• Reopened · Rate Quoted · Rs. 200,000',
-    '• Askari Sample · Sample / Trial',
-    'Follow-ups due in the next 7 days: 3',
-    '',
-    '*Late & going cold*',
-    'Late 2 · Going cold 1',
-    '• Gulberg Heights · Rate Quoted · Rs. 1,200,000 · 2 days late · no update for 15 days',
-    '• No Date Lead · Visited / Lead · no follow-up date',
+    '```',
+    'Hot sites      4     2,200,000',
+    'Due in 7 days  3',
+    'Late           2',
+    'Going cold     1',
+    '```',
   ].join('\n'));
 });
 
-test("WhatsApp text: a salesman's past week, without the Now parts", () => {
+test("WhatsApp text: a salesman's past week, without the Now part", () => {
   assert.equal(ria(summaryWorld(), 'last-week').text, [
-    '*RIA · Last week · Sat 24 Oct – Fri 30 Oct*',
-    'New sites 0 · Sites worked 3',
-    'Samples given 0 · Quotes given 0',
-    'Won 2 · Rs. 800,000 · Lost 0',
-    '(Rs. logged, not invoiced)',
+    '*RIA · Last week (Sat 24 Oct – Fri 30 Oct)*',
+    '```',
+    'New sites      0',
+    'Sites worked   3',
+    'Samples        0',
+    'Quotes         0',
+    'Won            2       800,000',
+    'Lost           0',
+    '```',
+    '_Rs. logged, not invoiced_',
     '',
     '*Won*',
-    '• Repriced After · Rs. 500,000 Cash',
-    '• Won 29 Oct Lost 3 Nov · Rs. 300,000 Cash',
+    '- Repriced After · Rs. 500,000 Cash',
+    '- Won 29 Oct Lost 3 Nov · Rs. 300,000 Cash',
   ].join('\n'));
 });
 
 test("WhatsApp text: a salesman's month, exactly", () => {
-  const text = ria(summaryWorld(), 'this-month').text.split('\n');
-  assert.deepEqual(text.slice(0, 7), [
-    '*RIA · November so far · 1–4 Nov*',
-    'New sites 1 · Sites worked 8',
-    'Samples given 0 · Quotes given 2 · Rs. 1,000,000',
-    'Won 2 · Rs. 510,000 · Lost 2',
-    '(Rs. logged, not invoiced)',
-    'November target Rs. 1,140,000 · Won Rs. 510,000 (44%)',
+  assert.equal(ria(summaryWorld(), 'this-month').text, [
+    '*RIA · November so far (1–4 Nov)*',
+    '```',
+    'New sites      1',
+    'Sites worked   8',
+    'Samples        0',
+    'Quotes         2     1,000,000',
+    'Won            2       510,000',
+    'Lost           2',
+    'Target  44% of 1,140,000',
+    '```',
+    '_Rs. logged, not invoiced_',
     '',
-  ]);
-  assert.deepEqual(text.slice(7), ria(summaryWorld(), 'this-week').text.split('\n').slice(6), 'the same named sites and Now parts');
+    '*Won*',
+    '- F-11 Commercial Tower · Rs. 450,000 Cash',
+    '- Admin Won · Rs. 60,000 Credit',
+    '',
+    '*Quotes given*',
+    '- Bahria Villas · Rs. 800,000',
+    '- Reopened · Rs. 200,000',
+    '',
+    '*Lost*',
+    '- DHA Plaza · Price Too High',
+    '- Won 29 Oct Lost 3 Nov · Site Delayed',
+    '',
+    '*Now, 4 Nov*',
+    '```',
+    'Hot sites      4     2,200,000',
+    'Due in 7 days  3',
+    'Late           2',
+    'Going cold     1',
+    '```',
+  ].join('\n'));
 });
 
 test("WhatsApp text: a salesman's month on the 1st", () => {
@@ -716,81 +777,125 @@ test("WhatsApp text: a salesman's month on the 1st", () => {
     ],
   });
   assert.equal(ria(w, 'this-month', nov1).text, [
-    '*RIA · November so far · 1 Nov*',
-    'New sites 0 · Sites worked 1',
-    'Samples given 0 · Quotes given 0',
-    'Won 1 · Rs. 1,234,000 · Lost 0',
-    '(Rs. logged, not invoiced)',
-    'November target Rs. 1,140,000 · Won Rs. 1,234,000 (108%)',
+    '*RIA · November so far (1 Nov)*',
+    '```',
+    'New sites      0',
+    'Sites worked   1',
+    'Samples        0',
+    'Quotes         0',
+    'Won            1     1,234,000',
+    'Lost           0',
+    'Target 108% of 1,140,000',
+    '```',
+    '_Rs. logged, not invoiced_',
     '',
     '*Won*',
-    '• First Day Win · Rs. 1,234,000 Credit',
+    '- First Day Win · Rs. 1,234,000 Credit',
     '',
     '*Now, 1 Nov*',
-    '*Coming up*',
-    'Hot sites 0',
-    'Follow-ups due in the next 7 days: 0',
-    '',
-    '*Late & going cold*',
-    'Nothing late or going cold.',
+    '```',
+    'Hot sites      0',
+    'Due in 7 days  0',
+    'Late           0',
+    'Going cold     0',
+    '```',
   ].join('\n'));
-  assert.equal(ria(w, 'last-month', nov1).text.split('\n')[2], 'Samples given 0 · Quotes given 1 · Rs. 1,234,000');
+  assert.ok(ria(w, 'last-month', nov1).text.includes('\nQuotes         1     1,234,000\n'));
 });
 
-test('WhatsApp text: the team month, exactly', () => {
+test('WhatsApp text: the team month, exactly (Won in millions, S10-4)', () => {
   assert.equal(team(summaryWorld(), 'this-month').text, [
-    '*Team · November so far · 1–4 Nov*',
-    '*All salesmen*',
-    'New sites 3 · Sites worked 10',
-    'Samples given 0 · Quotes given 3 · Rs. 1,777,000',
-    'Won 4 · Rs. 1,080,000 · Lost 2',
-    '(Rs. logged, not invoiced)',
-    'November target Rs. 6,720,000 · Won Rs. 1,080,000 (16%)',
+    '*Team · November so far (1–4 Nov)*',
+    '```',
+    'New sites      3',
+    'Sites worked  10',
+    'Samples        0',
+    'Quotes         3     1,777,000',
+    'Won            4     1,080,000',
+    'Lost           2',
+    'Target  16% of 6,720,000',
+    'House target         2,440,000',
+    '```',
+    '_Rs. logged, not invoiced_',
+    '_House / office sales are not in the diary_',
     '',
-    '*House / office sales*',
-    'November target Rs. 2,440,000 · Not logged in the diary.',
+    '```',
+    'Name Worked Quotes    Won    %',
+    'North     9      3  0.58M   27',
+    'RIA       8      2  0.51M   44',
+    'AUR       2      1  0.07M    5',
+    'WAK       —      —      —    0',
+    'Center    1      0   0.5M   22',
+    'SH        1      0   0.5M   40',
+    'SJ        —      —      —    0',
+    'SM        —      —      —    0',
+    'South     0      0      0    0',
+    'IB        —      —      —    0',
+    'Team     10      3  1.08M   16',
+    'Not in list',
+    'MUB       1      0      0    —',
+    '```',
     '',
-    '*North*',
-    'New sites 2 · Sites worked 9',
-    'Samples given 0 · Quotes given 3 · Rs. 1,777,000',
-    'Won 3 · Rs. 580,000 · Lost 2',
-    'November target Rs. 2,140,000 · Won Rs. 580,000 (27%)',
-    '',
-    '*Center*',
-    'New sites 1 · Sites worked 1',
-    'Samples given 0 · Quotes given 0',
-    'Won 1 · Rs. 500,000 · Lost 0',
-    'November target Rs. 2,240,000 · Won Rs. 500,000 (22%)',
-    '',
-    '*South*',
-    'New sites 0 · Sites worked 0',
-    'Samples given 0 · Quotes given 0',
-    'Won 0 · Lost 0',
-    'November target Rs. 2,340,000 · Won Rs. 0 (0%)',
-    '',
-    '*Salesmen*',
-    'RIA · worked 8 · quotes 2 · Rs. 1,000,000 · won 2 · Rs. 510,000 · lost 2 · logged on 4 days · 44% of target',
-    'AUR · worked 2 · quotes 1 · Rs. 777,000 · won 1 · Rs. 70,000 · lost 0 · logged on 2 days · 5% of target',
-    'WAK · nothing logged',
-    'SH · worked 1 · quotes 0 · won 1 · Rs. 500,000 · lost 0 · logged on 1 day · 40% of target',
-    'SJ · nothing logged',
-    'SM · nothing logged',
-    'IB · nothing logged',
-    '',
-    '*Not in the salesmen list*',
-    'MUB · worked 1 · quotes 0 · won 0 · lost 0 · logged on 2 days',
-    '',
-    '*Lost reasons*',
-    'Lost 2: Price Too High 1 · Site Delayed 1',
+    '*Lost reasons (2)*',
+    '- Price Too High · 1',
+    '- Site Delayed · 1',
     '',
     '*Now, 4 Nov*',
-    '*Coming up*',
-    'Hot sites 6 · Rs. 2,977,000 quoted',
-    'Follow-ups due in the next 7 days: 3',
-    '',
-    '*Late & going cold*',
-    'Late 2 · Going cold 1',
+    '```',
+    'Hot sites      6     2,977,000',
+    'Due in 7 days  3',
+    'Late           2',
+    'Going cold     1',
+    '```',
   ].join('\n'));
+});
+
+test('WhatsApp text: monospace lines at most 30 characters, numbers and Rs. lined up, even for big amounts', () => {
+  activityId = 0;
+  const sites = [];
+  const activity = [];
+  for (let i = 1; i <= 10; i++) {
+    const id = `S${String(i).padStart(6, '0')}`;
+    sites.push(site(id, 'RIA', `Big ${i}`, { stage: WON, value_rs: 999999999, payment_terms: 'Cash', next_followup: '' }));
+    activity.push(act(pk(2026, 11, 2), 'RIA', id, 'created', { to_stage: WON, value_rs: 999999999, payment_terms: 'Cash' }));
+  }
+  const w = world({ sites, activity });
+  const texts = [];
+  for (const period of ['this-week', 'last-week', 'this-month', 'last-month']) {
+    texts.push(ria(w, period).text, team(w, period).text, ria(summaryWorld(), period).text, team(summaryWorld(), period).text);
+    texts.push(...team(summaryWorld(), period).salesmen.map((x) => x.text));
+  }
+  for (const text of texts) {
+    for (const line of monoLines(text)) {
+      assert.ok(line.length <= 30, `${line.length}: ${line}`);
+      const row = /^([A-Z][a-z]+(?: [a-z0-9]+)*) +(\d+)( +[\d,]+)?$/.exec(line);
+      if (!row || /^(Name|North|Center|South|Team)\b/.test(line)) continue;
+      // A count row: the label from column 1, the count ending at column 16, Rs. ending at column 30.
+      assert.ok(line.slice(0, 16).endsWith(row[2]) && line.slice(0, 13).trimEnd() === row[1], `count at column 16: ${line}`);
+      if (row[3]) assert.ok(/^ +\d/.test(line.slice(16)), `a space before the Rs.: ${line}`);
+      if (row[3]) assert.equal(line.length, 30, `Rs. at column 30: ${line}`);
+    }
+  }
+  assert.ok(ria(w, 'this-week').text.includes('\nWon           10 9,999,999,990\n'), 'a 13-character amount still fits');
+  assert.ok(team(w, 'this-month').text.includes('\nNorth    10      0 10000M 999+\n'), 'a huge % keeps its column');
+});
+
+test('WhatsApp text: the team table columns end at characters 11, 18, 25 and 30', () => {
+  for (const period of ['this-week', 'this-month']) {
+    const lines = monoLines(team(summaryWorld(), period).text).filter((l) => /^(Name|North|Center|South|Team|RIA|AUR|WAK|SH|SJ|SM|IB|MUB) /.test(l) &&
+      !/^(New|Sites|Samples|Quotes|Won|Lost)/.test(l));
+    assert.equal(lines.length, 13, period);
+    for (const line of lines) {
+      for (const edge of [11, 18, 25, 30]) assert.ok(line[edge - 1] !== ' ' && (line[edge] === ' ' || line[edge] === undefined), `${edge}: ${line}`);
+    }
+  }
+});
+
+test('millions (owner S10-4): 2 decimals, trailing zeros dropped; 0 and under Rs. 5,000', () => {
+  const { s } = world();
+  const m = (n) => s.millions_(n);
+  assert.deepEqual([2450000, 1500000, 250000, 6100000, 0, 4999, 5000, 1, 12345678, 999999999].map(m),
+    ['2.45M', '1.5M', '0.25M', '6.1M', '0', '<0.01M', '0.01M', '<0.01M', '12.35M', '1000M']);
 });
 
 test("the admin's view of a salesman: exactly his summary plus his days logged", () => {
@@ -799,10 +904,16 @@ test("the admin's view of a salesman: exactly his summary plus his days logged",
     const his = ria(w, period);
     const view = team(w, period).salesmen.find((x) => x.rep === 'RIA');
     const withDays = his.text.split('\n');
-    withDays.splice(2, 0, `Logged on ${period === 'this-week' ? 5 : 5} days`);
+    assert.ok(withDays[3].startsWith('Sites worked'), period);
+    withDays.splice(4, 0, 'Days logged    5');
     assert.equal(view.text, withDays.join('\n'), period);
     assert.equal(view.title, `RIA · ${his.title}`);
-    assert.ok(!his.text.includes('Logged on'), 'never on his own summary (S9-9)');
+    assert.equal(view.logged, 'Logged on 5 days');
+    const { title, logged, text, rep, ...parts } = view;
+    const { title: t2, text: x2, ...hisParts } = his;
+    assert.deepEqual(parts, Object.fromEntries(Object.entries(hisParts).filter(([key]) => !['ok', 'period', 'at'].includes(key))),
+      'the same tiles, target, tables and NOW');
+    assert.ok(!his.text.includes('Days logged') && his.logged === undefined, 'never on his own summary (S9-9)');
   }
 });
 
@@ -818,8 +929,10 @@ test('named lists: up to 10, biggest Rs. first, then "+ N more"; an empty list i
   const summary = ria(world({ sites, activity }), 'this-week');
   const quotes = lines(summary, 'Quotes given');
   assert.equal(quotes.length, 11);
-  assert.deepEqual([quotes[0], quotes[9], quotes[10]], ['• Quote 13 · Rs. 1,300,000', '• Quote 4 · Rs. 400,000', '+ 3 more']);
-  assert.equal(lines(summary, 'Won'), null, 'no Won heading when nothing was won');
+  assert.deepEqual([quotes[0], quotes[9], quotes[10]], ['Quote 13 | Rs. 1,300,000', 'Quote 4 | Rs. 400,000', '+ 3 more']);
+  assert.equal(summary.tables.find((x) => x.h === 'Quotes given').n, '13', 'the count in the top row: all of them');
+  assert.ok(summary.text.includes('*Quotes given*\n- Quote 13 · Rs. 1,300,000\n') && summary.text.includes('- Quote 4 · Rs. 400,000\n+ 3 more'));
+  assert.equal(lines(summary, 'Won'), null, 'no Won table when nothing was won');
   assert.equal(lines(summary, 'Lost'), null);
   assert.ok(!summary.text.includes('*Won*'));
 });
@@ -835,10 +948,11 @@ test("privacy: RIA's summary holds nothing of AUR's, MUB's or SH's, and no team 
       w.s.formatRs_(fakeTarget('AUR', '2026-11')), w.s.formatRs_(fakeTarget('North', '2026-11'))]) {
       assert.ok(!json.includes(other), `${period}: ${other}`);
     }
-    assert.deepEqual(Object.keys(ria(w, period)).sort(), ['at', 'blocks', 'ok', 'period', 'text', 'title']);
+    assert.deepEqual(Object.keys(ria(w, period)).filter((key) => key !== 'target').sort(),
+      ['at', 'now', 'ok', 'period', 'sub', 'tables', 'text', 'tiles', 'title']);
   }
   // Hot sites and late counts are his own: AUR's open quote is not in them.
-  assert.equal(lines(ria(w, 'this-week'), 'Coming up')[0], 'Hot sites 4 · Rs. 2,200,000 quoted');
+  assert.equal(lines(ria(w, 'this-week'), 'now')[0], 'Hot sites | 4 · Rs. 2,200,000');
 });
 
 test('privacy: AUR sees only his own, through his own link', () => {
@@ -848,7 +962,7 @@ test('privacy: AUR sees only his own, through his own link', () => {
   for (const other of ['RIA', 'F-11 Commercial Tower', 'Bahria Villas', 'DHA Plaza', 'Gulberg Heights', 'Admin Won', 'SH Mall']) {
     assert.ok(!JSON.stringify(his).includes(other), other);
   }
-  assert.deepEqual(lines(his, 'Won'), ['• Handed Over · Rs. 70,000 Cash'], 'a row by RIA on his site now: his result, no name of who wrote it');
+  assert.deepEqual(lines(his, 'Won'), ['Handed Over · Cash | Rs. 70,000'], 'a row by RIA on his site now: his result, no name of who wrote it');
 });
 
 test('repSummary and adminPageSummary refuse junk (no sheet opened), cancelled and wrong-kind codes', () => {
@@ -926,8 +1040,8 @@ test('speed: each summary opens Sales Diary once, reads Sites once, never Activi
       assert.equal(w.lock._events.length, lockEvents, `${what}: no lock`);
     }
   }
-  assert.ok(w.s.repSummary(RIA, 'last-month').text.includes('Sites worked 1'), 'the 40 rows of last month were read');
-  assert.ok(w.s.repSummary(RIA, 'this-month').text.includes('Sites worked 0'));
+  assert.equal(w.s.repSummary(RIA, 'last-month').tiles[1].n, '1', 'the 40 rows of last month were read');
+  assert.equal(w.s.repSummary(RIA, 'this-month').tiles[1].n, '0');
 });
 
 test('speed: a long period is read in blocks from the bottom until it reaches a row from before it', () => {
@@ -959,7 +1073,7 @@ test('a row a few seconds out of time order at a block edge never hides a row of
   const sheet = w.diary.getSheetByName('Activity');
   assert.equal(sheet.getLastRow(), 602);
   const before = sheet._rowsRead;
-  assert.deepEqual(lines(ria(w, 'this-week'), 'Quotes given'), ['• Saturday Quote · Rs. 250,000'], 'the Sat 00:00:01 quote is counted');
+  assert.deepEqual(lines(ria(w, 'this-week'), 'Quotes given'), ['Saturday Quote | Rs. 250,000'], 'the Sat 00:00:01 quote is counted');
   assert.equal(sheet._rowsRead - before, 1 + 500 + 101, 'one more block, read because the stop row was inside the margin');
   const n = numbers(w, ['RIA'], 'last-week');
   assert.deepEqual([n.worked, n.quotes], [1, 0], 'the Friday row counts last week, never this week');
