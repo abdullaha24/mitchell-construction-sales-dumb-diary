@@ -1,7 +1,8 @@
 # 009: Weekly and monthly summaries (one tap, share on WhatsApp)
 
-- **Status:** In progress: built and checked locally (build plan [009](../plans/009-summaries-plan.md)); the live
-  check with the owner is next
+- **Status:** In progress: **live as deployment version 12** (2026-11-05) and checked live by the
+  agent (build plan [009](../plans/009-summaries-plan.md)); the owner's own check on his phone is
+  the last open item
 - **Owner approval:** approved by the owner on 2026-11-05 (session 5), after the interview (S9-1 to
   S9-12) and an adversarial review (S9-13 to S9-16)
 - **Related:** roadmap phase 7b (before the speed pass and launch, owner S9-2) ·
@@ -290,10 +291,14 @@ lines added up (a site worked by two people, e.g. handed over in the week).
 - [x] Salesman's page: opening the app makes no new trip to Google; `src/App.html` stays at or
       under **88,000 bytes** (83,042 before this spec, 87,826 built), pinned by a test, so the speed pass starts from a
       known size.
-- [ ] Live check with the TEST rows (owner S9-1): RIA's This week and This month match the sheet
-      read through the connector; the admin's month numbers match the Team and This month tabs; on
-      the owner's phone **inside Google's frame**, Share on WhatsApp opens WhatsApp with the text and
-      Copy copies it (or shows "Press and hold").
+- [x] Live check with the TEST rows (owner S9-1), by the agent in Chromium at 360 px on the live
+      app (version 12, inside Google's frame): RIA's four summaries match the sheet read through the
+      connector (This week: 3 new, 3 worked, 1 quote and 1 won at Rs. 400,000, 1 lost Price Too High,
+      1 follow-up due; the admin's note not counted as her work); the admin's team, region and RIA
+      lines add up; every target matches Meta-Data (`Rep-Targets`, `Targets`) for both months; past
+      periods' text leaves out the Now parts; Share on WhatsApp opens `api.whatsapp.com/send` with
+      the text; Copy says "Copied"; tapping a salesman and Back work; no page errors.
+- [ ] The same on the **owner's own phone** (Share on WhatsApp opens the WhatsApp app; Copy).
 - [x] Docs updated: glossary (Summary), data model (kept copy, `Activity` update rows), open
       questions (S9-1 to S9-16),
       AGENTS.md (20 public functions), roadmap, handoff.

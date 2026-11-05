@@ -4,7 +4,7 @@
 > you finish.** Then read `AGENTS.md` (rules, commands) if you haven't.
 
 ## Where we are
-**Phases 0–7 are done and live** (deployment version 10).
+**Phases 0–7 are done and live; spec 009 (summaries) is live too** (deployment version 12, 2026-11-05).
 - **Salesman** (his private link): Today's Chase / Hot Pipeline / All My Parties (search, area
   filter), his own monthly target, cards with Call / WhatsApp, last-spoken line, going cold,
   Snooze; add / Update / Edit details; instant saves with a queue (failed saves orange).
@@ -45,7 +45,13 @@ Owner's order (S9-2): **summaries → speed pass → launch.**
    public functions 18 → 20; the lines and the WhatsApp text are built on the server), the Summary
    screen in `App.html` (87,826 bytes after the live layout fixes, pinned ≤ 88,000) for both pages, last month's targets and a
    `months` marker in the kept copy, and S9-13 (an `update` row records Rs. only when it changed).
-   **Next:** live (push, `update-deployment`; **right after `update-deployment`, run Sales Diary →
+   **Live (session 5):** version 11 went live 2026-11-05; the agent drove RIA's and the admin's
+   links in Chromium at 360 px: every number matched the sheet and every target matched Meta-Data,
+   WhatsApp and Copy worked inside Google's frame. Two layout defects (Rs. split from its amount;
+   the Summary button squeezing the target / "Won …" line) were fixed in `4977275` and went live as
+   **version 12**, retested clean. The kept copy was rebuilt on the first live call (targets right),
+   so the Refresh step below wasn't needed this time. Left: the **owner's own phone check**.
+   (Original go-live note, for reference: push, `update-deployment`; **right after `update-deployment`, run Sales Diary →
    Refresh salesmen & targets in the sheet**, so the kept copy, now with `months`, is rebuilt under
    the owner's eyes rather than on a salesman's first tap: an old copy without `months` is read
    again on first use, and if Meta-Data were unreachable then, salesmen would see "Something went
@@ -135,7 +141,9 @@ matches; `printf '%s\n' '<address>' > "$S/clasp-in"`; delete the log.
   server, and make things feel instant on the phone.
 
 ## Questions for the owner
-Waiting on him: (1) **test the summaries live** on his phone (spec 009, built and checked locally);
+Waiting on him: (1) **tap Summary on his phone** (spec 009, live as version 12, checked live by the
+agent): Share on WhatsApp should open the WhatsApp app with the text, and Copy should say "Copied";
+then close spec 009 (Done) and start the speed pass (spec 010);
 (2) **"delete"** the phase 7 TEST rows, but only **after** the summaries are tested live (S9-1).
 The speed pass is agreed (S9-2): it follows the summaries. Ask the owner's way: **one question at a time** (several only when he's brisk and
 they're independent), tappable options (`AskUserQuestion`), recommended option first and marked
@@ -148,7 +156,7 @@ IDs aren't secret (each needs the owner's Google account):
 - **Sales Diary** sheet: `1tuyVPDB33x1Vw8JQYashM4PRQSjGjQq8MBs7l4cJn5Y`. **Never share it**
   (it holds link codes).
 - **Apps Script** (bound to Sales Diary): script ID in `.clasp.json`.
-- **Web app** (same address since phase 1, now version 10): deployment
+- **Web app** (same address since phase 1, now version 12): deployment
   `AKfycbwmWhxLQfpkQRfFIfdv9tZD4CvZfeWEB__YiXnGTSk7-6mlZVZUvLEp2aJDwey0HXaF`,
   https://script.google.com/macros/s/AKfycbwmWhxLQfpkQRfFIfdv9tZD4CvZfeWEB__YiXnGTSk7-6mlZVZUvLEp2aJDwey0HXaF/exec
 - Owner's Google account: the one that owns both sheets.

@@ -24,9 +24,9 @@ Read before any product or UI work:
 
 ## Status
 
-Phases 0–7 are **done and live** (specs 001–008, deployment version 10). Weekly and monthly
-summaries (spec 009, approved 2026-11-05) are **built and checked locally**, not yet live; then a
-speed pass on the salesman's page, then launch (phase 8). Current state, next step and IDs: `docs/plans/handoff.md`.
+Phases 0–7 are **done and live** (specs 001–008). Weekly and monthly summaries (spec 009) are
+**live** (deployment version 12, 2026-11-05), checked live by the agent; the owner's phone check is
+next; then a speed pass on the salesman's page, then launch (phase 8). Current state, next step and IDs: `docs/plans/handoff.md`.
 
 ## Commands
 
