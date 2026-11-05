@@ -15,6 +15,9 @@ page is also at its size limit (87,826 of 88,000 bytes), so the page first gets 
 are removed when Google sends the page out (owner S10-3), which is also the first step of the speed
 pass.
 
+The mockup the owner chose (made-up numbers) is [`010-mockup.html`](010-mockup.html): open it in a
+browser. Build to it; where it and this text differ, this text wins.
+
 ## What the salesman sees (owner S10-1, mockup A)
 Same Summary button, Back, and the four buttons (This week · Last week · This month · Last
 month), the same loading, no-signal, *"As of"* and *"not sent yet"* lines as spec 009. The summary
