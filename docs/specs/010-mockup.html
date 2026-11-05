@@ -1,0 +1,182 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  :root { --ink:#1f2328; --soft:#5b6470; --line:#e3e6ea; --bg:#f4f6f9; --blue:#1d5fd0; --green:#1a7f37; --red:#c2410c; --amber:#b45309; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#d9dde3; font:15px/1.35 -apple-system, "Segoe UI", Roboto, Arial, sans-serif; color:var(--ink); }
+  .row { display:flex; gap:28px; padding:24px; align-items:flex-start; }
+  .cap { font:600 13px Arial; color:#333; margin:0 0 8px 4px; }
+  .phone { width:360px; background:var(--bg); border-radius:18px; overflow:hidden; box-shadow:0 2px 10px rgba(0,0,0,.15); }
+  .bar { background:#fff; padding:12px 16px; border-bottom:1px solid var(--line); }
+  .bar b { font-size:20px; }
+  .tabs { display:flex; background:#fff; border-bottom:1px solid var(--line); }
+  .tabs span { flex:1; text-align:center; padding:10px 0; font-size:13.5px; color:var(--soft); font-weight:600; }
+  .tabs .on { color:var(--blue); box-shadow:inset 0 -3px 0 var(--blue); }
+  .wrap { padding:12px; }
+  h2 { font-size:17px; margin:2px 4px 2px; }
+  .sub { color:var(--soft); font-size:13px; margin:0 4px 10px; }
+  .tiles { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:10px; }
+  .tile { background:#fff; border:1px solid var(--line); border-radius:10px; padding:8px 8px 7px; text-align:center; }
+  .tile .n { font-size:24px; font-weight:700; line-height:1.1; }
+  .tile .l { font-size:12px; color:var(--soft); }
+  .tile .rs { font-size:11.5px; color:var(--ink); font-weight:600; margin-top:2px; white-space:nowrap; }
+  .won .n { color:var(--green); } .lost .n { color:var(--red); }
+  .card { background:#fff; border:1px solid var(--line); border-radius:10px; margin-bottom:10px; overflow:hidden; }
+  .card h3 { font-size:14px; margin:0; padding:9px 12px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; }
+  .card h3 small { color:var(--soft); font-weight:600; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  td, th { padding:7px 12px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; }
+  tr:last-child td { border-bottom:0; }
+  th { font-size:12px; color:var(--soft); font-weight:600; background:#fafbfc; }
+  .num { text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .muted { color:var(--soft); }
+  .target { padding:10px 12px; }
+  .target .t { display:flex; justify-content:space-between; font-size:13.5px; }
+  .meter { height:10px; background:#e8ebef; border-radius:5px; margin:7px 0 4px; overflow:hidden; }
+  .meter i { display:block; height:100%; background:var(--green); }
+  .note { font-size:12px; color:var(--soft); }
+  .now { font-size:12px; font-weight:700; color:var(--soft); letter-spacing:.04em; text-transform:uppercase; margin:14px 4px 6px; }
+  .late { color:var(--red); } .cold { color:var(--amber); }
+  .btns { display:flex; gap:8px; margin-top:4px; }
+  .btns span { flex:1; text-align:center; padding:11px; border-radius:10px; font-weight:700; border:1px solid var(--line); background:#fff; }
+  .btns .wa { background:#1fa855; color:#fff; border-color:#1fa855; }
+  .reg td { background:#f3f6fb; font-weight:700; }
+  .tot td { background:#eef6ef; font-weight:700; border-top:2px solid #cfe3d3; }
+  .tbl th:first-child, .tbl td:first-child { position:sticky; left:0; }
+  .tbl td, .tbl th { padding:7px 8px; }
+  /* WhatsApp */
+  .wa-bg { background:#efe7de; padding:14px 10px; min-height:500px; }
+  .bubble { background:#d9fdd3; border-radius:8px; padding:7px 9px 18px; font-size:14.2px; line-height:1.38; max-width:300px; margin-left:auto; position:relative; box-shadow:0 1px .5px rgba(0,0,0,.13); white-space:pre-wrap; }
+  .bubble .tm { position:absolute; right:8px; bottom:3px; font-size:11px; color:#667781; }
+  .mono { font-family:"Courier New", Courier, monospace; font-size:13px; }
+  .wa-head { background:#008069; color:#fff; padding:12px 14px; font-weight:600; }
+</style></head><body>
+
+<div class="row">
+<div>
+<div class="cap">A · Salesman: This month (screen)</div>
+<div class="phone">
+  <div class="bar"><b>RIA</b><div class="muted" style="font-size:13px">November target: Rs. 12,345,000</div></div>
+  <div class="wrap" style="padding-bottom:0"><span class="btns" style="display:inline-flex"><span style="flex:none;padding:8px 14px">‹ Back</span></span></div>
+  <div class="tabs"><span>This week</span><span>Last week</span><span class="on">This month</span><span>Last month</span></div>
+  <div class="wrap">
+    <h2>November so far</h2><div class="sub">1–20 Nov · Rs. logged, not invoiced</div>
+    <div class="tiles">
+      <div class="tile"><div class="n">9</div><div class="l">New sites</div></div>
+      <div class="tile"><div class="n">31</div><div class="l">Sites worked</div></div>
+      <div class="tile"><div class="n">4</div><div class="l">Samples</div></div>
+      <div class="tile"><div class="n">6</div><div class="l">Quotes</div><div class="rs">Rs. 3,850,000</div></div>
+      <div class="tile won"><div class="n">3</div><div class="l">Won</div><div class="rs">Rs. 2,450,000</div></div>
+      <div class="tile lost"><div class="n">2</div><div class="l">Lost</div></div>
+    </div>
+    <div class="card target">
+      <div class="t"><b>Target</b><span><b>19%</b></span></div>
+      <div class="meter"><i style="width:19%"></i></div>
+      <div class="t note"><span>Won Rs. 2,450,000</span><span>of Rs. 12,345,000</span></div>
+    </div>
+    <div class="card"><h3>Won <small>3</small></h3>
+      <table>
+        <tr><td>F-11 Commercial Tower</td><td class="num">1,200,000</td></tr>
+        <tr><td>Bahria Villas Ph 8</td><td class="num">800,000</td></tr>
+        <tr><td>DHA Plaza <span class="muted">· Cash</span></td><td class="num">450,000</td></tr>
+      </table></div>
+    <div class="card"><h3>Quotes given <small>6</small></h3>
+      <table>
+        <tr><td>Gulberg Heights</td><td class="num">1,500,000</td></tr>
+        <tr><td>Blue Area Office</td><td class="num">900,000</td></tr>
+        <tr><td class="muted">+ 4 more</td><td></td></tr>
+      </table></div>
+    <div class="card"><h3>Lost <small>2</small></h3>
+      <table>
+        <tr><td>G-13 Market</td><td class="num muted">Price Too High</td></tr>
+        <tr><td>Saddar Shops</td><td class="num muted">Site Delayed</td></tr>
+      </table></div>
+    <div class="now">Now · 20 Nov</div>
+    <div class="card"><table>
+        <tr><td>Hot sites</td><td class="num"><b>6</b> · Rs. 3,200,000</td></tr>
+        <tr><td>Follow-ups next 7 days</td><td class="num"><b>9</b></td></tr>
+        <tr><td class="late">Late</td><td class="num late"><b>3</b></td></tr>
+        <tr><td class="cold">Going cold</td><td class="num cold"><b>2</b></td></tr>
+    </table></div>
+    <div class="btns"><span class="wa">Share on WhatsApp</span><span>Copy</span></div>
+  </div>
+</div>
+</div>
+
+<div>
+<div class="cap">B · Admin: team table (screen)</div>
+<div class="phone">
+  <div class="bar"><b>Admin</b><div class="muted" style="font-size:13px">Team · November so far · 1–20 Nov</div></div>
+  <div class="tabs"><span>This week</span><span>Last week</span><span class="on">This month</span><span>Last month</span></div>
+  <div class="wrap">
+    <div class="tiles">
+      <div class="tile"><div class="n">41</div><div class="l">New sites</div></div>
+      <div class="tile"><div class="n">17</div><div class="l">Quotes</div><div class="rs">Rs. 9.8M</div></div>
+      <div class="tile won"><div class="n">9</div><div class="l">Won</div><div class="rs">Rs. 6,100,000</div></div>
+    </div>
+    <div class="card target">
+      <div class="t"><b>Team target</b><b>21%</b></div>
+      <div class="meter"><i style="width:21%"></i></div>
+      <div class="t note"><span>Won Rs. 6,100,000</span><span>of Rs. 29,000,000</span></div>
+      <div class="note" style="margin-top:6px">House / office target Rs. 8,000,000 · not in the diary</div>
+    </div>
+    <div class="card"><h3>Salesmen <small>tap a name</small></h3>
+      <table class="tbl">
+        <tr><th>Name</th><th class="num">Worked</th><th class="num">Quotes</th><th class="num">Won Rs.</th><th class="num">%</th></tr>
+        <tr class="reg"><td>North</td><td class="num">52</td><td class="num">10</td><td class="num">4.2M</td><td class="num">19</td></tr>
+        <tr><td>RIA</td><td class="num">31</td><td class="num">6</td><td class="num">2.45M</td><td class="num">19</td></tr>
+        <tr><td>AUR</td><td class="num">15</td><td class="num">3</td><td class="num">1.5M</td><td class="num">21</td></tr>
+        <tr><td>WAK</td><td class="num">6</td><td class="num">1</td><td class="num">0.25M</td><td class="num">31</td></tr>
+        <tr class="reg"><td>Center</td><td class="num">28</td><td class="num">5</td><td class="num">1.6M</td><td class="num">25</td></tr>
+        <tr><td>SH</td><td class="num">18</td><td class="num">3</td><td class="num">1.2M</td><td class="num">22</td></tr>
+        <tr><td>SJ</td><td class="num">6</td><td class="num">1</td><td class="num">0.2M</td><td class="num">40</td></tr>
+        <tr><td>SM</td><td class="num muted">—</td><td class="num muted">—</td><td class="num muted">—</td><td class="num muted">0</td></tr>
+        <tr class="reg"><td>South</td><td class="num">11</td><td class="num">2</td><td class="num">0.3M</td><td class="num">20</td></tr>
+        <tr><td>IB</td><td class="num">11</td><td class="num">2</td><td class="num">0.3M</td><td class="num">20</td></tr>
+        <tr class="tot"><td>Team</td><td class="num">91</td><td class="num">17</td><td class="num">6.1M</td><td class="num">21</td></tr>
+      </table></div>
+    <div class="card"><h3>Lost reasons <small>11</small></h3>
+      <table>
+        <tr><td>Price Too High</td><td class="num"><b>6</b></td></tr>
+        <tr><td>Site Delayed</td><td class="num"><b>3</b></td></tr>
+        <tr><td>Credit Terms</td><td class="num"><b>2</b></td></tr>
+      </table></div>
+    <div class="btns"><span class="wa">Share on WhatsApp</span><span>Copy</span></div>
+  </div>
+</div>
+</div>
+
+<div>
+<div class="cap">C · WhatsApp message (two styles)</div>
+<div class="phone">
+  <div class="wa-head">Mitchell Sales Team</div>
+  <div class="wa-bg">
+<div class="bubble"><b>RIA · November so far (1–20 Nov)</b>
+<span class="mono">New sites       9
+Sites worked   31
+Samples         4
+Quotes          6   3,850,000
+Won             3   2,450,000
+Lost            2
+Target  19% of 12,345,000</span>
+<i>Rs. logged, not invoiced</i>
+
+<b>Won</b>
+- F-11 Commercial Tower · Rs. 1,200,000
+- Bahria Villas Ph 8 · Rs. 800,000
+- DHA Plaza · Rs. 450,000 Cash
+
+<b>Lost</b>
+- G-13 Market · Price Too High<span class="tm">10:42</span></div>
+<div style="height:10px"></div>
+<div class="bubble"><b>RIA · November so far (1–20 Nov)</b>
+<b>New</b> 9 · <b>Worked</b> 31 · <b>Samples</b> 4
+<b>Quotes</b> 6 · Rs. 3,850,000
+<b>Won</b> 3 · Rs. 2,450,000 · <b>Lost</b> 2
+<b>Target</b> 19% of Rs. 12,345,000
+<i>Rs. logged, not invoiced</i><span class="tm">10:42</span></div>
+  </div>
+</div>
+</div>
+</div>
+</body></html>

@@ -24,8 +24,10 @@ Read before any product or UI work:
 
 ## Status
 
-Phases 0–7 are **done and live** (specs 001–008, deployment version 10). Next: a speed pass on the
-salesman's page, then launch (phase 8). Current state, next step and IDs: `docs/plans/handoff.md`.
+Phases 0–7 are **done and live** (specs 001–008). Weekly and monthly summaries (spec 009) are
+**live** with their new layout (spec 010: tables, lined-up WhatsApp numbers, pages served without
+comments) as deployment version 13 (2026-11-05), checked live by the agent; the owner's phone check
+is next. Then the rest of the speed pass (spec 011), then launch (phase 8). Current state, next step and IDs: `docs/plans/handoff.md`.
 
 ## Commands
 
@@ -37,7 +39,7 @@ Node 22 or newer. All checks run locally with no Google account.
 | `npm test` | All tests: `node --test "tests/**/*.test.js"`. |
 | `npm run typecheck` | `tsc -p .`: type-checks `src/` (plain JS with JSDoc). |
 | `npm run check` | Type check, then tests. **Must pass before every commit.** |
-| `npm run check:browser` | Drives the owner's Links window and the salesman's page in Chromium (the page runs against the real server code and fake sheets). Needs Playwright; skips if it isn't installed. Run it when any `.html` changes. |
+| `npm run check:browser` | Drives the owner's Links window, the salesman's page, the admin's screen and both summary screens in Chromium (the pages run against the real server code and fake sheets). Needs Playwright; skips if it isn't installed. Run it when any `.html` changes. |
 | `npm run guide` | Rebuilds the salesmen's PDF user guide (`docs/guide/`) from fresh screenshots on fake data. Needs Playwright. Rerun when the salesman's page looks different. |
 | `npx clasp push --force` | Sends `src/` to Apps Script. Always `--force`: without it, in a non-interactive shell clasp **silently skips** the push. Git is the source of truth. |
 | `npx clasp show-file-status` | Lists the files a push would send (should be `appsscript.json`, the `.js` files and the `.html` files in `src/`). |
@@ -46,7 +48,7 @@ Node 22 or newer. All checks run locally with no Google account.
 
 Code rules that tests enforce (the tests are the source of truth; keep this list short):
 - **Public functions** (any page can call them, with any arguments) are an allow-list in
-  `tests/menu.test.js` (18). Helpers end in `_`. Every `menu…` / `owner…` function (run from the
+  `tests/menu.test.js` (20). Helpers end in `_`. Every `menu…` / `owner…` function (run from the
   sheet) starts with the signed-in-owner check; every `rep…` function with `requireRep_(k)` inside
   `forSalesman_`, and returns only that salesman's data (ADR-0004); every `adminPage…` function
   (the owner's screen, opened by link) with `requireAdminLink_(k)` inside `forAdminPage_`
@@ -56,7 +58,10 @@ Code rules that tests enforce (the tests are the source of truth; keep this list
 - **Every typed or picked text written to a sheet goes through `asText_` / `textify_`** (no
   formulas); an existing row gets only its changed cells written.
 - A salesman call opens Sales Diary once and a save reads each tab once, inside the lock
-  (`tests/speed.test.js`); replies carry only the changed card.
+  (`tests/speed.test.js`); replies carry only the changed card. `Activity` is never read whole
+  (bottom-up blocks, `activitySince_`). Pages are served through `servedHtml_` (comments and
+  indentation removed, no build step); the served salesman's page stays ≤ 75,000 bytes and the
+  admin's has its own pin (`tests/served.test.js`).
 - Link codes never go into git, logs or errors, and onto no page except the owner's Links
   window and the code holder's own page.
 - **Words on screen say "Admin", never "owner"** (owner P7-7). In code and docs "owner" is fine;

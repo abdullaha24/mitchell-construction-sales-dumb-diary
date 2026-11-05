@@ -109,15 +109,26 @@ const SALESMEN_KEY = 'salesmen';
 const SALESMEN_KEEP_MS = 24 * 60 * 60 * 1000;
 
 /**
- * The targets worth keeping (spec 006): each current salesman's for this month and next month
- * (Pakistan time), so the 1st of a month rolls over without a refresh. Nothing else.
+ * The months the kept copy holds (spec 009): last month (for the Last month summary), this month
+ * and next month (so the 1st of a month rolls over without a refresh), Pakistan time.
+ * @param {Date} now
+ * @returns {string[]} `yyyy-MM` months
+ */
+function keptMonths_(now) {
+  const month = currentMonthKey_(now);
+  return [previousMonthKey_(month), month, nextMonthKey_(month)];
+}
+
+/**
+ * The targets worth keeping (specs 006, 009): each current salesman's for last month, this month
+ * and next month (keptMonths_). Nothing else.
  * @param {Salesman[]} salesmen
  * @param {TargetAmounts} repTargets
  * @param {Date} now
  * @returns {TargetAmounts}
  */
 function targetsToKeep_(salesmen, repTargets, now) {
-  const months = [currentMonthKey_(now), nextMonthKey_(currentMonthKey_(now))];
+  const months = keptMonths_(now);
   /** @type {TargetAmounts} */
   const keep = {};
   for (const s of salesmen) {
@@ -130,8 +141,8 @@ function targetsToKeep_(salesmen, repTargets, now) {
 }
 
 /**
- * The region and house / office targets worth keeping (spec 008): North, Center, South and
- * UNASSIGNED, this month and next month. Kept apart from the salesmen's, so a code can never be
+ * The region and house / office targets worth keeping (specs 008, 009): North, Center, South and
+ * UNASSIGNED, for the same three months. Kept apart from the salesmen's, so a code can never be
  * mistaken for a region.
  * @param {TargetAmounts} regionTargets
  * @param {Date} now
@@ -153,6 +164,7 @@ function regionTargetsToKeep_(regionTargets, now) {
 function keepSalesmen_(salesmen, repTargets, now, regionTargets = {}) {
   PropertiesService.getScriptProperties().setProperty(SALESMEN_KEY, JSON.stringify({
     at: now.getTime(),
+    months: keptMonths_(now),
     salesmen: salesmen.map((s) => ({ rep: s.rep, region: s.region })),
     targets: targetsToKeep_(salesmen, repTargets, now),
     regionTargets: regionTargetsToKeep_(regionTargets, now),
@@ -174,8 +186,9 @@ function refreshSalesmen_(now) {
 /**
  * The salesmen list and kept targets for salesman calls (specs 005, 006, owner P4b-3): the kept
  * copy if it is less than a day old, so a save doesn't open the Meta-Data sheet; otherwise read
- * and kept again. A copy kept before targets were (no `targets`, or no `regionTargets`: spec 008)
- * is read again too.
+ * and kept again. A copy kept before targets were (no `targets`, or no `regionTargets`: spec 008),
+ * or whose `months` don't hold last month and this month (spec 009: none before it), is read
+ * again too.
  * @param {Date} now
  * @returns {KeptSalesmen | Failure}
  */
@@ -185,8 +198,10 @@ function knownSalesmen_(now) {
     try {
       const kept = JSON.parse(stored);
       const age = now.getTime() - kept.at;
+      const month = currentMonthKey_(now);
       if (Array.isArray(kept.salesmen) && kept.targets && typeof kept.targets === 'object' &&
-          kept.regionTargets && typeof kept.regionTargets === 'object' &&
+          kept.regionTargets && typeof kept.regionTargets === 'object' && Array.isArray(kept.months) &&
+          kept.months.includes(previousMonthKey_(month)) && kept.months.includes(month) &&
           age >= 0 && age < SALESMEN_KEEP_MS) {
         return { ok: true, salesmen: kept.salesmen, repTargets: kept.targets, regionTargets: kept.regionTargets, problems: [] };
       }

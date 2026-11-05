@@ -29,6 +29,9 @@
   .feed .when { font-size: 14px; font-weight: 600; }
   .feed .what { font-size: 14px; margin-top: 2px; }
   .back { margin-bottom: 10px; }
+  /* Spec 010: on his summary, each salesman's row of the team table opens that salesman's own. */
+  .sumt .tap { cursor: pointer; }
+  .sumt .tap td:first-child { color: var(--blue); font-weight: 600; }
 </style>
 <script>
   // ---- The admin's screen (spec 008). Called from App.html when data.admin is set. ----
@@ -75,7 +78,31 @@
       if (!document.hidden && Date.now() - A.loadedAt >= A_REFRESH_MS) adminRefresh(true);
     });
   }
+  // ---- Summary (spec 009): his reply holds the team and each salesman's own; tapping a salesman's
+  // line shows that one (no trip), Back returns to the team where he was. ----
+  var A_SUM = { rep: '', y: 0 };
+  function aSumView() {
+    var r = sum.got[sum.p];
+    return r && A_SUM.rep ? r.salesmen.filter(function (x) { return x.rep === A_SUM.rep; })[0] : r;
+  }
+  function aSumTap(row, rep) {
+    row.className += ' tap';
+    row.setAttribute('role', 'button');
+    row.tabIndex = 0; // reachable without a finger too: Enter or Space opens it
+    row.addEventListener('click', function () { A_SUM.y = window.scrollY; A_SUM.rep = rep; renderSum(); window.scrollTo(0, 0); });
+    row.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); row.click(); }
+    });
+  }
+  function aSumBack() {
+    if (!A_SUM.rep) return false;
+    A_SUM.rep = '';
+    renderSum();
+    window.scrollTo(0, A_SUM.y);
+    return true;
+  }
   function adminShowOnly(name) {
+    if (name === 'summary') A_SUM.rep = ''; // Summary always opens on the team
     $('adminTabs').hidden = name !== 'list';
     $('refresh').hidden = name !== 'list';
     $('editDetails').hidden = true;
@@ -120,13 +147,20 @@
     return merged;
   }
   // His own save shows at once on Today as "You" (it never counts as a salesman's work, P7-2).
+  // Rs. shows on a stage change, and on an Update only when he changed it (spec 009, S9-13), as
+  // the history row says.
   function adminSaved(entry, r) {
     if (entry.fn !== 'adminPageUpdateSite' || !r.site) return;
     var s = r.site;
     var note = String(entry.input.note || '').trim();
+    var moved = entry.fromStage !== s.stage;
+    var was = entry.state && entry.state.shown;
+    var changed = entry.input.touched ? has(entry.input.touched, 'money')
+      : !was || was.value !== (s.value || null) || was.terms !== (s.terms || '');
+    var money = has(rules().valueStages, s.stage) && (moved || changed);
     data.feed.unshift({ time: aClock(), by: 'admin', site: s.id, name: s.name,
-      action: entry.fromStage !== s.stage ? 'stage_change' : 'update', from: entry.fromStage, to: s.stage,
-      value: has(rules().valueStages, s.stage) ? s.value : null, terms: has(rules().valueStages, s.stage) ? s.terms : '',
+      action: moved ? 'stage_change' : 'update', from: entry.fromStage, to: s.stage,
+      value: money ? s.value : null, terms: money ? s.terms : '',
       lostReason: s.lostReason, note: note ? 'Admin: ' + note : '', followUp: s.followUp });
   }
 

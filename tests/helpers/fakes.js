@@ -434,27 +434,29 @@ function makeCacheService() {
  */
 function makeHtmlService() {
   const read = (name) => fs.readFileSync(path.join(SRC_DIR, `${name}.html`), 'utf8');
+  // Supports printing a value escaped (<?= name ?>), as Google does, and as it is (<?!= name ?>,
+  // spec 008: the admin's part of the page). getRawContent gives the source as written (spec 010).
+  function makeTemplate(source, name) {
+    const template = {
+      getRawContent: () => source,
+      evaluate() {
+        const scriptlet = /<\?(!?)=\s*([A-Za-z_$][\w$]*)\s*\?>/g;
+        const leftover = source.replace(scriptlet, '');
+        if (/<\?/.test(leftover)) throw new Error(`fake template: unsupported scriptlet in ${name}`);
+        return makeHtmlOutput(source.replace(scriptlet, (_, raw, key) => {
+          if (!Object.prototype.hasOwnProperty.call(template, key)) {
+            throw new Error(`ReferenceError: "${key}" is not defined.`);
+          }
+          return raw ? String(template[key]) : escapeHtml(template[key]);
+        }));
+      },
+    };
+    return template;
+  }
   return {
     createHtmlOutputFromFile: (name) => makeHtmlOutput(read(name)),
-    createTemplateFromFile(name) {
-      const source = read(name);
-      const template = {
-        // Supports printing a value escaped (<?= name ?>), as Google does, and as it is
-        // (<?!= name ?>, spec 008: the admin's part of the page).
-        evaluate() {
-          const scriptlet = /<\?(!?)=\s*([A-Za-z_$][\w$]*)\s*\?>/g;
-          const leftover = source.replace(scriptlet, '');
-          if (/<\?/.test(leftover)) throw new Error(`fake template: unsupported scriptlet in ${name}`);
-          return makeHtmlOutput(source.replace(scriptlet, (_, raw, key) => {
-            if (!Object.prototype.hasOwnProperty.call(template, key)) {
-              throw new Error(`ReferenceError: "${key}" is not defined.`);
-            }
-            return raw ? String(template[key]) : escapeHtml(template[key]);
-          }));
-        },
-      };
-      return template;
-    },
+    createTemplateFromFile: (name) => makeTemplate(read(name), name),
+    createTemplate: (html) => makeTemplate(String(html), 'a template'),
   };
 }
 

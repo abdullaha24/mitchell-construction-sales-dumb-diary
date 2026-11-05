@@ -97,3 +97,4 @@ Stored in the `Lists` tab so the owner can rename or reorder them. **Never hard-
 | **Admin screen** (docs: owner screen) | The admin's view (spec 008), four tabs: **Today** (who worked today), **Team** (each salesman and region against target), **Late & cold**, **This month** (won / lost and lost reasons). He can Update any site from it. |
 | **Admin link** (docs: owner link) | The admin's private link to his screen. Same kind of secret link as a salesman's (ADR-0006, ADR-0010). |
 | **Site card** | One site in a list: name, last note, call and WhatsApp buttons, snooze. |
+| **Summary** | A salesman's (or the team's) week or month in plain words, for the Friday meeting and the monthly review (spec 009). Opened with the **Summary** button; **This week · Last week · This month · Last month**; shared on WhatsApp. A **week** runs **Saturday to Friday** (owner S9-4). |

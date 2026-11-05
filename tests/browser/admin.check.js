@@ -367,6 +367,24 @@ let browser;
   assert.deepEqual([followDay(sitesRow('S000002')), sitesRow('S000002').last_note], [followDay(rias3), 'Admin: third'],
     "RIA's latest follow-up stays");
 
+  // ---- Spec 009 (S9-13): his own instant Today line shows Rs. on an Update only when he changed
+  // it, as the history row does. ----
+  const quoteUpdate = async (value, note) => {
+    await tab('team');
+    await page.locator('.card.team[data-rep="RIA"] .chip:has-text("Rate Quoted")').click();
+    await card('Late Quote').click();
+    if (value) await page.fill('#u-value', value);
+    await page.fill('#u-note', note);
+    await page.click('#save');
+    await settled();
+    await tab('today');
+    return (await texts('#sites .feed .what'))[0];
+  };
+  assert.match(await quoteUpdate('', 'same price'), /^Update( · follow up \d+ \w+)?$/, 'unchanged Rs.: not shown');
+  assert.deepEqual([lastActivity().action, lastActivity().value_rs], ['update', '']);
+  assert.match(await quoteUpdate('330,000', 'new price'), /^Update · Rs\. 330,000 Credit/, 'changed Rs.: shown');
+  assert.deepEqual([lastActivity().action, lastActivity().value_rs], ['update', 330000]);
+
   // ---- Refresh: no signal keeps what he has; with signal it reloads. ----
   await page.evaluate(() => { window.__offline = true; });
   await page.click('#refresh');

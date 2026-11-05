@@ -106,3 +106,38 @@ Owner, session 4 (phase 7):
 | P7-5 | Spec 008: does the owner's Update reset going cold? | **No.** Only the salesman's own Update writes `worked_at`. |
 | P7-6 | Spec 008: make / cancel links from the phone in phase 7 (P2-2)? | **No.** Links stay in Sales Diary → Links on a computer; in an emergency he unticks `active` in the Sheets app. |
 | P7-7 | (Owner's instruction with the approval) | **Say "Admin" / "Administrator" everywhere a person sees it**, not "owner": the admin screen, the salesman's card ("Admin: …"), the `Activity` value for his changes (`admin`), the Links window, Check setup and menu texts. "Owner" stays only as a docs word. The `Links.role` value `owner` is kept (live data). |
+
+Owner, session 5 (2026-11-05): weekly and monthly summaries ([spec 009](../specs/009-summaries.md))
+
+| # | Question | Answer |
+| --- | --- | --- |
+| S9-1 | The phase 7 TEST rows? | **Keep them until the summaries are tested live**, then delete with his OK. |
+| S9-2 | Order of work? | **Summaries, then the speed pass, then launch** (agent's recommendation). |
+| S9-3 | How does a salesman use his summary at the Friday meeting? | **On screen, plus one tap to share it as a WhatsApp message** (agent added a Copy button as a fallback). |
+| S9-4 | Which days is a week? | **Saturday to Friday**: the week ends on meeting day and includes everything logged up to the tap. |
+| S9-5 | Which summary buttons? | **This week · Last week · This month · Last month** (a monthly review held on the 2nd needs Last month). |
+| S9-6 | Rs. in a salesman's own summary (Q12c, P5-2 said target only)? | **Rs. won and quoted; the month view also shows won against his target with %, "logged, not invoiced".** Only inside his summary: his main page stays target-only. |
+| S9-7 | What goes in a summary? | **All four:** headline numbers; named sites (won, quotes given, lost with reason); coming up (hot sites, follow-ups due); late and going cold. |
+| S9-8 | The admin's summaries? | **All four:** team and region totals (month against targets, plus house / office); salesmen side by side; tap a salesman for his own summary; team lost reasons. |
+| S9-9 | Show "logged something on X days"? | **On the admin's view only**, never on the salesman's own summary. |
+| S9-10 | Where does the button go? | **A Summary button at the top of both pages**; the existing tabs stay as they are. |
+| S9-11 | Save summaries in the sheet? | **No.** Nothing new saved; the history can always rebuild a summary, and the WhatsApp message is the written copy. |
+| S9-12 | What counts as "sites worked"? | **Sites he added or saved an Update on**, each once; snoozes and Edit details don't count (as going cold, P6-2). |
+
+Owner, session 5, after the adversarial review of spec 009 (2026-11-05):
+
+| # | Question | Answer |
+| --- | --- | --- |
+| S9-13 | A revised price on a site already at Rate Quoted: another "quote given"? (The history saves the Rs. on every Update at that stage, changed or not.) | **Not counted.** A quote counts when a site moves to Rate Quoted. **From this version on, an Update row saves Rs. only when the price changed**, so re-quotes can be counted later. The admin's Today feed then shows Rs. on an Update only when it changed. |
+| S9-14 | Wins and losses in a past week / month (a site won 29 Oct, lost 3 Nov)? | **As the period ended:** a finished week or month never changes after it's shared (won in October, lost in November). This week / This month stay exactly as the Team tab counts them (P7-1). |
+| S9-15 | "Coming up" and "Late & going cold" (always today's state) in a shared Last week / Last month message? | **Left out of past messages.** On screen they show under every button, headed "Now, 5 Nov". |
+| S9-16 | Spec 009: a Won or Lost site moved back to Rate Quoted: a new "quote given"? | **Yes, it counts as a new quote given** (owner, 2026-11-05). |
+
+Owner, session 5: summary layout ([spec 010](../specs/010-summary-tables.md), 2026-11-05)
+
+| # | Question | Answer |
+| --- | --- | --- |
+| S10-1 | The summary screens (he disliked the text-with-dots layout; a mockup after research)? | **Mockups A and B as shown:** six number tiles, a target bar, two-column tables (salesman); one team table with region subtotals and a Team row (admin). |
+| S10-2 | WhatsApp message style? | **Numbers lined up in a monospace block**, names as a list; checked on his phone, fall back to bold labels if it doesn't line up. |
+| S10-3 | Make room on the salesman's page (at its size limit)? | **Strip comments first**: removed when the page is sent to phones (first step of the speed pass). |
+| S10-4 | Rs. in the team table and team WhatsApp table? | **Millions everywhere** (*2.45M*). The salesman's own tiles and tables keep full figures. |
