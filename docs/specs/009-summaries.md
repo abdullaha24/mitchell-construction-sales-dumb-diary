@@ -1,6 +1,7 @@
 # 009: Weekly and monthly summaries (one tap, share on WhatsApp)
 
-- **Status:** In progress (approved by the owner 2026-11-05; build plan [009](../plans/009-summaries-plan.md))
+- **Status:** In progress: built and checked locally (build plan [009](../plans/009-summaries-plan.md)); the live
+  check with the owner is next
 - **Owner approval:** approved by the owner on 2026-11-05 (session 5), after the interview (S9-1 to
   S9-12) and an adversarial review (S9-13 to S9-15)
 - **Related:** roadmap phase 7b (before the speed pass and launch, owner S9-2) ·
@@ -234,59 +235,59 @@ lines added up (a site worked by two people, e.g. handed over in the week).
   the script" is updated in the same change.
 
 ## Acceptance criteria
-- [ ] Period tests: this week / last week / this month / last month start and end at the right
+- [x] Period tests: this week / last week / this month / last month start and end at the right
       moment in Pakistan time, including on a Saturday, a Friday at 23:59, a save at Saturday 00:00
       (this week, not last), the 1st of a month, a week crossing two months, and 1 January.
-- [ ] Count tests, for each number: new sites, sites worked (snoozes and Edit details left out,
+- [x] Count tests, for each number: new sites, sites worked (snoozes and Edit details left out,
       one per site), days logged (any save), samples, quotes (Rs. from the latest move in the
       period; a revised price not counted), won and lost (this week / month: the P7-1 rule, equal to
       the Team and This month tabs; last week / month: as the period ended, e.g. won 29 Oct then
       lost 3 Nov = won in October and lost in November, re-priced after the period keeps the
       period's Rs.; won then reopened in the period, won twice, hand-typed stage, admin-moved site,
       handed-over site), lost reasons, a row whose site was deleted by hand.
-- [ ] Admin saves never count as work; their results count for the site's salesman.
-- [ ] Team: All salesmen = North + Center + South = the salesmen's lines (results); regions by
+- [x] Admin saves never count as work; their results count for the site's salesman.
+- [x] Team: All salesmen = North + Center + South = the salesmen's lines (results); regions by
       `Rep_Mapping`; a code not in the salesmen list gets its own line and is in neither; team
       Sites worked counts a site worked by two people once.
-- [ ] Revised prices: an Update at the same stage with an unchanged Rs. writes blank `value_rs` /
+- [x] Revised prices: an Update at the same stage with an unchanged Rs. writes blank `value_rs` /
       `payment_terms` in `Activity`; a changed one writes both; stage changes and new sites as
       before; the admin's Today feed shows Rs. on an Update only when it changed. Existing update,
       interleave and feed tests still pass.
-- [ ] Month targets and %: this month and last month; no target → no %; weeks show no target; team
+- [x] Month targets and %: this month and last month; no target → no %; weeks show no target; team
       target = North + Center + South; house target shown for the admin only.
-- [ ] Coming up matches the Hot Pipeline order; the Late and Going cold **counts** match the Late &
+- [x] Coming up matches the Hot Pipeline order; the Late and Going cold **counts** match the Late &
       cold tab's rules; the 3 named are the biggest Rs. Under Last week / Last month the shared
       text leaves both parts out; the screen shows them headed "Now, <today>".
-- [ ] **Privacy tests:** `repSummary` for RIA, with sites and history of AUR and the admin in the
+- [x] **Privacy tests:** `repSummary` for RIA, with sites and history of AUR and the admin in the
       sheet, contains nothing of AUR's (no site names, no counts, no Rs.) and no team or region
       figures; `repSummary` and `adminPageSummary` refuse a cancelled, junk, salesman-for-admin or
       admin-for-salesman code with "This link doesn't work." and open no sheet for junk; a bad
       `period` gets "Something went wrong. Try again in a minute."
-- [ ] The WhatsApp text: exact wording tests for a salesman's week, a salesman's month (also on the
+- [x] The WhatsApp text: exact wording tests for a salesman's week, a salesman's month (also on the
       1st), a past week and the team month; Rs. formatted `Rs. 1,250,000`; lists capped at 10 with a
       "+ N more" line. On the page, site names, notes and lost reasons are shown as text, never as
       HTML (as everywhere in the app), and the WhatsApp link encodes the whole text.
-- [ ] Speed tests: each call opens Sales Diary once, reads `Sites` once, never reads `Activity`
+- [x] Speed tests: each call opens Sales Diary once, reads `Sites` once, never reads `Activity`
       whole (e.g. 5,000 rows from before last month and 40 from last month: at most one block
       beyond the period plus the header), opens Meta-Data not at all with a fresh kept copy, and
       writes nothing.
-- [ ] The kept copy holds last month's targets and `months`; a spec 008 copy (no `months`) and a
+- [x] The kept copy holds last month's targets and `months`; a spec 008 copy (no `months`) and a
       copy whose months don't include last month are read again at once; the 1st of a month rolls
       over without a refresh.
-- [ ] Browser checks (salesman and admin): Summary opens the screen; the four buttons fetch and show
+- [x] Browser checks (salesman and admin): Summary opens the screen; the four buttons fetch and show
       their summary; no signal shows the message and keeps what was shown; "not sent yet" line;
       Share on WhatsApp is a `wa.me/?text=` link holding the encoded text; Copy falls back to
       "Press and hold" when the clipboard is refused; Back returns to the list at the same place;
       tapping a salesman on the admin's summary shows his summary with the days-logged line; the
       Summary button fits the top line at 360 px on both pages.
-- [ ] Salesman's page: opening the app makes no new trip to Google; `src/App.html` stays at or
+- [x] Salesman's page: opening the app makes no new trip to Google; `src/App.html` stays at or
       under **88,000 bytes** (83,042 today), pinned by a test, so the speed pass starts from a
       known size.
 - [ ] Live check with the TEST rows (owner S9-1): RIA's This week and This month match the sheet
       read through the connector; the admin's month numbers match the Team and This month tabs; on
       the owner's phone **inside Google's frame**, Share on WhatsApp opens WhatsApp with the text and
       Copy copies it (or shows "Press and hold").
-- [ ] Docs updated: glossary (Summary), data model (kept copy, `Activity` update rows), open
+- [x] Docs updated: glossary (Summary), data model (kept copy, `Activity` update rows), open
       questions (S9-1 to S9-15),
       AGENTS.md (20 public functions), roadmap, handoff.
 

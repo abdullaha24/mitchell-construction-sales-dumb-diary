@@ -1,6 +1,6 @@
 # Handoff: start here
 
-> Updated 2026-11-05, session 5 (owner interview for weekly / monthly summaries; spec 009 Draft). **Every session: read this first, and update it before
+> Updated 2026-11-05, session 5 (spec 009 summaries approved and built locally; live check next). **Every session: read this first, and update it before
 > you finish.** Then read `AGENTS.md` (rules, commands) if you haven't.
 
 ## Where we are
@@ -21,8 +21,8 @@
 - Sheet menu (computer): **Sales Diary → Check setup / Links / Refresh salesmen & targets**.
   Everything is in **Sales Diary**; **Meta-Data** is only ever read.
 
-Specs 001–008 **Done**; plans 001–008 ticked; ADR-0009 and ADR-0010 Accepted. Tests: 322 unit
-(incl. the random test, ~20 s) + 7 browser checks.
+Specs 001–008 **Done**, 009 built (not live); plans 001–008 ticked, 009 to step 6; ADR-0009 and ADR-0010 Accepted. Tests: 362 unit
+(incl. the random test, ~20 s) + 8 browser checks.
 
 ### Live state (2026-11-04, end of session 4)
 - **TEST rows still in the sheet, kept at the owner's request while he looks at his admin screen**:
@@ -39,25 +39,16 @@ Specs 001–008 **Done**; plans 001–008 ticked; ADR-0009 and ADR-0010 Accepted
 
 ## Next: summaries (spec 009), then a speed pass, then launch (phase 8)
 Owner's order (S9-2): **summaries → speed pass → launch.**
-0. **Summaries ([spec 009](../specs/009-summaries.md), Draft, session 5).** The owner was
-   interviewed (answers S9-1 to S9-12 in `open-questions.md`): a **Summary** button at the top of
-   the salesman's page and the admin's; **This week · Last week · This month · Last month**; a week
-   is **Saturday to Friday**; shown on screen, **Share on WhatsApp** + Copy; Rs. won and quoted, the
-   month against target (inside the summary only; his main page stays target-only); admin: team /
-   region totals, salesmen side by side, each salesman's summary, lost reasons, "logged on X days"
-   (admin only); nothing saved in the sheet. An **adversarial review** (separate reviewer agent) then
-   found 13 issues; all are fixed in the spec, and the three business ones were answered by the
-   owner: S9-13 (revised prices not counted; from now on an Update row saves Rs. only when it
-   changed: the one write change), S9-14 (past weeks / months counted **as the period ended**),
-   S9-15 ("Now" parts left out of past periods' shared text). Other fixes: Copy fallback chain inside
-   Google's frame, `wa.me/?text=` link form, team / region / "not in the salesmen list" totals, a
-   `months` marker on the kept copy (else Last month shows "No target" for a day), period end bound,
-   `App.html` ≤ 88,000 bytes. **Waiting for the owner to approve the spec.** Then build it the session 4 way (builder + reviewer subagents), with
-   two new public functions (`repSummary`, `adminPageSummary`: 18 → 20) and last month's targets in
-   the kept copy (data-model change in the same commit). Test live against the TEST rows (S9-1).
-   Build notes from the interview: the page sits inside a Google frame, so the WhatsApp button
-   should be a `https://wa.me/?text=…` link (like the card's WhatsApp button), not the phone's
-   share sheet; check Copy works inside that frame on a real phone.
+0. **Summaries ([spec 009](../specs/009-summaries.md)): approved 2026-11-05, built and checked
+   locally (plan [009](009-summaries-plan.md), steps 1–6 ticked), not yet live.** Owner answers
+   S9-1 to S9-15 in `open-questions.md`. Built: `src/summary.js` (`repSummary`, `adminPageSummary`:
+   public functions 18 → 20; the lines and the WhatsApp text are built on the server), the Summary
+   screen in `App.html` (87,935 bytes, pinned ≤ 88,000) for both pages, last month's targets and a
+   `months` marker in the kept copy, and S9-13 (an `update` row records Rs. only when it changed).
+   **Next:** an independent review, then live (push, `update-deployment`, owner tests on his phone
+   inside Google's frame: Share on WhatsApp and Copy; compare RIA's This week / This month and the
+   admin's month with the sheet, using the TEST rows, S9-1). Choices made where the spec was silent
+   are listed in the builder's report and in the plan (step 6).
 1. **Speed pass (recommended before launch; owner's top priority is speed on cheap phones):**
    measure where the salesman's open time goes (server time vs page size vs page script), then
    shrink what the salesman's page downloads and runs at open (e.g. strip comments / whitespace
@@ -135,7 +126,7 @@ matches; `printf '%s\n' '<address>' > "$S/clasp-in"`; delete the log.
   server, and make things feel instant on the phone.
 
 ## Questions for the owner
-Waiting on him: (1) **approve spec 009** (summaries; reviewed, S9-1 to S9-15 answered);
+Waiting on him: (1) **test the summaries live** on his phone (spec 009, built and checked locally);
 (2) **"delete"** the phase 7 TEST rows, but only **after** the summaries are tested live (S9-1).
 The speed pass is agreed (S9-2): it follows the summaries. Ask the owner's way: **one question at a time** (several only when he's brisk and
 they're independent), tappable options (`AskUserQuestion`), recommended option first and marked

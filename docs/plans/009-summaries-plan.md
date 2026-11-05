@@ -55,9 +55,29 @@
   `Admin.html`). 5 page mutations each failed the check (no "As of", no "Press and hold", Back
   losing his place, no "not sent yet" line, an unencoded WhatsApp link).
 
-## [ ] Step 6: Docs, local acceptance
+## [x] Step 6: Docs, local acceptance
 - Data model (kept copy, `Activity` update rows), AGENTS.md (20 public functions), src/README,
   tests/README, roadmap, handoff, spec criteria ticked (not the live ones).
+- Done: 362 tests (322 before) and 8 browser checks pass.
+- Choices made where the spec was silent (for the reviewer and the owner):
+  - Headings: a Saturday's This week is "This week so far · Sat 7 Nov" (one day, like the 1st of
+    a month); This month keeps "so far" on its last day too (the spec lists only the 1st).
+  - The note line reads "(Rs. logged, not invoiced)" on screen too, the same text as the message.
+  - Rs. is left out next to a count of 0 ("Quotes given 0", "Won 0 · Lost 0", "Hot sites 0").
+  - In the text, the "Now, 5 Nov" heading sits right above "Coming up" (no blank line).
+  - The admin's view of a salesman puts "Logged on 5 days" under the first Numbers line; it is in
+    that view's shared text too.
+  - Late & going cold names a site that is both late and cold with both ("2 days late · no update
+    for 15 days"); a late site with no date says "no follow-up date".
+  - Ties: named lists by Rs., then name; Late & going cold by Rs., then follow-up, then newest.
+  - "Not in the salesmen list": only codes with something in the period; same line form, no %.
+  - Team lost reasons count every lost site in the period, as the This month tab does (a former
+    salesman's too); the block is left out when nothing was lost.
+  - Side by side in a month with no target: no "% of target" part.
+  - A finished period's Won Rs. falls back to the site's current Rs. only if no row in the period
+    carried one (never for rows the app wrote).
+  - Opening Summary always starts on This week, fetched fresh; the admin keeps looking at the same
+    salesman when he switches period.
 
 ## [ ] Step 7: Live (coordinator, with the owner)
 - Push, update the deployment, live checks against the TEST rows (S9-1), Copy / WhatsApp inside

@@ -1,6 +1,8 @@
 # Data model (Google Sheets)
 
-> Status: **v0.7** (2026-11-04). v0.7: `Activity.rep` can be `admin`, region and house targets kept
+> Status: **v0.8** (2026-11-05). v0.8: an `Activity` `update` row carries `value_rs` /
+> `payment_terms` only when they changed; the kept copy also holds last month, with a `months` part
+> (spec 009, owner S9-13). v0.7: `Activity.rep` can be `admin`, region and house targets kept
 > (spec 008, ADR-0010). v0.6: `worked_at`, `note_at` and the `snooze` action (spec 007, ADR-0009). v0.5: targets kept with the salesmen list (spec 006). v0.3 came from the owner interview and session 2 answers; v0.4
 > aligns the Meta-Data reading notes with [spec 001](../specs/001-foundations.md) as built. The tabs and headers act as the app's database schema. **Any change
 > here must be made in the same change as the code.**
@@ -115,11 +117,11 @@ One row per change. **Never edited or deleted by the app.**
 | `timestamp` | | Server time. |
 | `rep` | RIA | Who made the change: a salesman's code, or **`admin`** for an Update the owner made from his admin screen (spec 008, ADR-0010; the site's salesman is in `Sites.rep`). Admin rows never count as a salesman's work. |
 | `site_id` | `S000123` | |
-| `action` | stage_change | `created` (new site; since spec 005 with the stage it started at and its value, terms, reason and note), `stage_change` (with `from_stage` / `to_stage`), `update` (same stage: value, note or follow-up), `details` (Edit details: `note` lists what changed, with the old → new number), `snooze` (spec 007: the follow-up pushed from the card; `next_followup` = the new date, other detail columns blank; not counted as work). |
+| `action` | stage_change | `created` (new site; since spec 005 with the stage it started at and its value, terms, reason and note), `stage_change` (with `from_stage` / `to_stage`), `update` (same stage: value, note or follow-up; since spec 009 its `value_rs` / `payment_terms` are filled **only when the Rs. or Cash / Credit changed**, so a revised price can be told from a plain note (owner S9-13); rows saved before keep the value either way), `details` (Edit details: `note` lists what changed, with the old → new number), `snooze` (spec 007: the follow-up pushed from the card; `next_followup` = the new date, other detail columns blank; not counted as work). |
 | `from_stage` | Sample / Trial | Blank if not a stage change. |
 | `to_stage` | Rate Quoted | |
-| `value_rs` | 450000 | If given. |
-| `payment_terms` | Credit | If given. |
+| `value_rs` | 450000 | On `created` and `stage_change` rows at Rate Quoted / Won (Order); on an `update` row only when it changed (spec 009). |
+| `payment_terms` | Credit | With `value_rs`. |
 | `lost_reason` | | If given. |
 | `note` | Quoted WP-100 @ Rs. 1,450 | |
 | `next_followup` | 2026-11-06 | If changed. |
@@ -150,7 +152,7 @@ Starting contents (filled in by phase 1 setup, only when a list has no rows yet)
 
 | Store | Key | Holds |
 | --- | --- | --- |
-| Script Properties | `salesmen` | The salesmen list from `Rep_Mapping` (codes and regions only), **each current salesman's `Rep-Targets` amount for this month and next month** (as `RIA\|yyyy-MM`: whole Rs., spec 006, so the 1st of a month rolls over without a refresh), **the `Targets` amounts for North, Center, South and `UNASSIGNED`** for the same two months, in their own `regionTargets` part (spec 008, admin screen only), and when it was read. Used for 24 hours, then read again (a copy without targets or `regionTargets`, from before spec 006 / 008, is read again at once); **Sales Diary → Refresh salesmen & targets**, Check setup and the Links window refresh it at once (specs 005, 006). Script Properties can only be seen by the script's owner. A salesman's page receives only his own target for this month; region and house targets reach only the admin screen. |
+| Script Properties | `salesmen` | The salesmen list from `Rep_Mapping` (codes and regions only), **each current salesman's `Rep-Targets` amount for last month, this month and next month** (as `RIA\|yyyy-MM`: whole Rs.; next month so the 1st of a month rolls over without a refresh, spec 006; last month for the Last month summary, spec 009), **the `Targets` amounts for North, Center, South and `UNASSIGNED`** for the same three months, in their own `regionTargets` part (spec 008, admin only), **`months`: the three months it holds** (spec 009), and when it was read. Used for 24 hours, then read again (a copy without targets or `regionTargets`, from before spec 006 / 008, or whose `months` are missing or don't hold last month and this month, from before spec 009, is read again at once); **Sales Diary → Refresh salesmen & targets**, Check setup and the Links window refresh it at once (specs 005, 006). Script Properties can only be seen by the script's owner. A salesman's page receives only his own target for this month (his summary: his own for the summary's month); region and house targets reach only the admin. |
 | Script cache | `save:<rep>:<saveId>` | What a save did, for 6 hours, so a repeat after a lost reply isn't saved twice (specs 003–005). The admin's saves use `save:admin:<saveId>` (spec 008). |
 
 ## Not modelled yet
