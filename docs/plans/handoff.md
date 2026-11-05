@@ -160,6 +160,9 @@ IDs aren't secret (each needs the owner's Google account):
 - **Git: one branch, `main`** (owner, 2026-11-05). It holds the live code (version 13) and the
   user guides. All older branches (`claude/laughing-fermi-ec4tlp`, `claude/vigilant-volta-yye9pn`,
   `claude/clever-hopper-ain3c5`, `ccr-f2566cb7-aaz6y0`, `ccr-18f7110f-to6vgz`) were checked to be
-  fully inside `main` (full history, not a shallow clone) and deleted. If a session has to work on
+  fully inside `main` (full history, not a shallow clone). **The owner deletes them on GitHub and
+  makes `main` the default branch** (a cloud session's git proxy refuses branch deletion with 403,
+  and no tool here can change the default branch). If any of them still exist, they hold nothing
+  that `main` lacks: check with `git merge-base --is-ancestor`, then ignore them. If a session has to work on
   its own branch, merge it into `main` before the session ends and delete it, so `main` stays the
   only branch. No PRs (PR #1 was merged long ago).
