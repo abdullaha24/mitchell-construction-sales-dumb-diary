@@ -15,6 +15,14 @@
 const ACTIVITY_BLOCK = 500;
 
 /**
+ * How far out of time order `Activity` rows can land (spec 009). A save takes its time just
+ * before it waits for the lock (LOCK_WAIT_MS, 10 s) and is added at the bottom after one save's
+ * work inside it: seconds, far under this margin. So a row lands at most this long after its own
+ * time.
+ */
+const ACTIVITY_SKEW_MS = 5 * 60 * 1000;
+
+/**
  * Runs an admin function so that only our own plain messages reach his page.
  * @template T
  * @param {() => T} work
@@ -64,10 +72,13 @@ function monthActivity_(diary, now) {
 
 /**
  * The `Activity` rows from `start` on, oldest first, read **from the bottom up** in blocks of
- * ACTIVITY_BLOCK rows, stopping at the first block that reaches a row from before `start`: the
- * app only ever adds rows at the bottom, so they are in time order, and the tab (which only
- * grows) is never read whole (specs 008, 009). Which rows count is decided by each row's own
- * time, never by a block edge. `by` is a salesman's code, or ADMIN_ACTOR.
+ * ACTIVITY_BLOCK rows, so the tab (which only grows) is never read whole (specs 008, 009). Which
+ * rows count is decided by each row's own time, never by a block edge. Rows are added only at the
+ * bottom, but can land a few seconds out of time order (ACTIVITY_SKEW_MS), so the read stops after
+ * the block holding a row from more than ACTIVITY_SKEW_MS before `start`. Every row higher up the
+ * sheet than that one was added before it, so its time is at most that row's time plus the margin:
+ * still before `start`. A row just before `start` (inside the margin) is skipped, not a stop.
+ * `by` is a salesman's code, or ADMIN_ACTOR.
  * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} diary
  * @param {number} start ms
  * @returns {MonthMove[]}
@@ -91,7 +102,7 @@ function activitySince_(diary, start) {
       const when = line[c.timestamp];
       if (!isDate_(when) || isNaN(when.getTime())) continue;
       if (when.getTime() < start) {
-        older = true;
+        if (when.getTime() < start - ACTIVITY_SKEW_MS) older = true;
         continue;
       }
       const value = parseRs_(typeof line[c.value_rs] === 'number' ? line[c.value_rs] : text_(line[c.value_rs]));

@@ -1,7 +1,7 @@
 # Build plan 009: Weekly and monthly summaries
 
 > For [spec 009](../specs/009-summaries.md) (**Approved** 2026-11-05, session 5, answers S9-1 to
-> S9-15). One commit per step, `npm run check` and `npm run check:browser` green each time. On
+> S9-16). One commit per step, `npm run check` and `npm run check:browser` green each time. On
 > screen the owner is **Admin** (P7-7).
 
 ## [x] Step 1: This plan
@@ -58,7 +58,7 @@
 ## [x] Step 6: Docs, local acceptance
 - Data model (kept copy, `Activity` update rows), AGENTS.md (20 public functions), src/README,
   tests/README, roadmap, handoff, spec criteria ticked (not the live ones).
-- Done: 362 tests (322 before) and 8 browser checks pass.
+- Done: 362 tests (322 before) and 8 browser checks pass (364 after review fix round 1).
 - Choices made where the spec was silent (for the reviewer and the owner):
   - Headings: a Saturday's This week is "This week so far · Sat 7 Nov" (one day, like the 1st of
     a month); This month keeps "so far" on its last day too (the spec lists only the 1st).
@@ -71,13 +71,27 @@
     for 15 days"); a late site with no date says "no follow-up date".
   - Ties: named lists by Rs., then name; Late & going cold by Rs., then follow-up, then newest.
   - "Not in the salesmen list": only codes with something in the period; same line form, no %.
-  - Team lost reasons count every lost site in the period, as the This month tab does (a former
-    salesman's too); the block is left out when nothing was lost.
+  - Team lost reasons count the current salesmen's lost sites only, so their "Lost N" equals All
+    salesmen's (review fix); a former code's loss is on his own line. Left out when nothing was lost.
   - Side by side in a month with no target: no "% of target" part.
   - A finished period's Won Rs. falls back to the site's current Rs. only if no row in the period
     carried one (never for rows the app wrote).
   - Opening Summary always starts on This week, fetched fresh; the admin keeps looking at the same
     salesman when he switches period.
+  - Decided by the owner, not a builder choice: a Won or Lost site moved back to Rate Quoted counts
+    as a new quote given (**S9-16**; pinned by a test).
+- [x] Review fix round 1 (independent reviewer: no blockers or majors; six minors, all fixed, each
+  with a check that failed before the fix):
+  1. `activitySince_` could stop at a block whose top row was timed just before the start but
+     landed after a row of the period (saves take their time before the lock): rows inside a
+     5-minute margin (`ACTIVITY_SKEW_MS`) before the start are skipped but no longer stop the read.
+     Also the admin screen's `monthActivity_`. Test at a block edge.
+  2. Team "Lost reasons" counts only the current salesmen's lost sites, so its Lost N equals All
+     salesmen's.
+  3. The "not sent yet" line updates when the save queue changes while the summary is open.
+  4. Handoff: refresh salesmen & targets right after going live.
+  5. `App.html` trimmed to 87,465 bytes (the admin-only summary code moved to `Admin.html`).
+  6. Spec wording: the period check comes right after the link check; the block-edge margin.
 
 ## [ ] Step 7: Live (coordinator, with the owner)
 - Push, update the deployment, live checks against the TEST rows (S9-1), Copy / WhatsApp inside

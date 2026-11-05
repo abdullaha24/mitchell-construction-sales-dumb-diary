@@ -415,8 +415,9 @@ function sideLine_(rep, n, target) {
 
 /**
  * The facts of a period: `Sites` read once, `Activity` from the period's start only (bottom up),
- * Meta-Data through the kept copy. Throws "Something went wrong" for an unknown period before
- * anything is read.
+ * Meta-Data through the kept copy. An unknown period throws "Something went wrong" before any of
+ * this is read (the link check, which comes first, has already opened Sales Diary and read
+ * `Links`).
  * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} diary
  * @param {any} periodKey
  * @param {Date} now
@@ -487,9 +488,11 @@ function teamSummaryFor_(diary, periodKey, now) {
   if (former.length) {
     blocks.push({ h: 'Not in the salesmen list', lines: former.map((rep) => sideLine_(rep, summaryNumbers_(facts, new Set([rep])), null)) });
   }
+  // The current salesmen's lost sites, so "Lost N" here equals All salesmen's; a former code's
+  // loss shows on his own line under "Not in the salesmen list".
   /** @type {Map<string, number>} */
   const reasons = new Map();
-  for (const r of facts.results) if (r.lost) reasons.set(r.lost.reason || 'Other', (reasons.get(r.lost.reason || 'Other') || 0) + 1);
+  for (const r of all.results) if (r.lost) reasons.set(r.lost.reason || 'Other', (reasons.get(r.lost.reason || 'Other') || 0) + 1);
   if (reasons.size) {
     const list = [...reasons].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
     const total = list.reduce((sum, x) => sum + x[1], 0);

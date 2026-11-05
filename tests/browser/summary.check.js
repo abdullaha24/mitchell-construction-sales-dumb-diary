@@ -271,6 +271,20 @@ let browser;
     assert.equal(await page.evaluate(() => window.scrollY), scrolled, 'the same place');
     assert.equal(await page.isVisible('#summary'), true);
 
+    // ---- A save still on its way: the line shows, and goes once Google confirms it (no tap). ----
+    await page.click('#tab-chase');
+    await page.click('#sites .card:has(.name:text-is("Lead 2"))');
+    await page.fill('#u-note', 'on its way');
+    await page.evaluate(() => { window.__delay = 1500; });
+    await page.click('#save');
+    await page.evaluate(() => { window.__delay = 0; }); // the summary comes back first
+    await page.click('#summary');
+    await h.shown();
+    assert.equal(await page.textContent('#sumUnsent'), '1 save not sent yet is not in this summary.');
+    assert.equal(await page.isVisible('#sumUnsent'), true);
+    await page.waitForSelector('#sumUnsent', { state: 'hidden', timeout: 5000 });
+    await page.click('#sumBack');
+
     // ---- A save not sent yet: the summary says it isn't in it. ----
     await page.click('#tab-chase');
     await page.click('#sites .card:has(.name:text-is("Lead 1"))');

@@ -13,7 +13,7 @@
       header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 16px; }
       header h1 { font-size: 20px; margin: 0; }
       header > div { min-width: 0; }
-      #newSite { flex: none; white-space: nowrap; }
+      #newSite, #summary { flex: none; white-space: nowrap; }
       .target { font-size: 13px; color: var(--soft); margin-top: 1px; }
       .nowrap { white-space: nowrap; }
       .tabs { display: flex; max-width: 640px; margin: 0 auto; }
@@ -112,7 +112,7 @@
       .sheet-choices .big small { display: block; font-size: 13px; font-weight: 400; opacity: .9; margin-top: 2px; }
       .sheet .plain { width: 100%; }
       #snoozeProblem { margin: -4px 0 12px; }
-      #summary { flex: none; min-height: 44px; padding: 6px 12px; font-size: 15px; }
+      #summary { padding: 8px 12px; }
       #sumTabs { margin: 10px 0; }
       .sum-l { font-size: 15px; overflow-wrap: anywhere; }
       #sumCopy { width: 100%; height: 50vh; font: inherit; }
@@ -242,15 +242,15 @@
     </main>
 
     <main id="sumView" hidden>
-      <button class="plain" id="sumBack" type="button">‹ Back</button>
+      <button class="plain" id="sumBack">‹ Back</button>
       <nav class="tabs" id="sumTabs"></nav>
       <div id="sumMsg" class="note" hidden></div>
-      <button class="plain" id="sumRetry" type="button" hidden>Try again</button>
+      <button class="plain" id="sumRetry" hidden>Try again</button>
       <div id="sumUnsent" class="note warn" hidden></div>
       <div id="sumBody" class="site-head" hidden></div>
       <div id="sumShare" class="btnrow" hidden>
         <a id="sumWa" class="wa" target="_blank" rel="noopener">Share on WhatsApp</a>
-        <button id="sumCopyBtn" type="button">Copy</button>
+        <button id="sumCopyBtn">Copy</button>
       </div>
       <div id="sumHold" class="note" hidden>Press and hold the text, then tap Copy.</div>
       <textarea id="sumCopy" readonly hidden></textarea>
@@ -428,7 +428,7 @@
       var SLOW_MS = (window.__timing && window.__timing.slow) || 30000;      // then "Still sending…"
       var GIVE_UP_MS = (window.__timing && window.__timing.giveUp) || 120000; // then "not saved" and the next goes
       var retrying = null;      // the failed entry the open form / update is bound to
-      function saveQueue() { store(QUEUE_KEY, queue); }
+      function saveQueue() { store(QUEUE_KEY, queue); sumUnsent(); }
       function readable(error) {
         var message = (error && error.message) || String(error || '');
         if ((typeof navigator !== 'undefined' && navigator.onLine === false) ||
@@ -1536,31 +1536,32 @@
         renderList();
         $('search').focus();
       });
-      // ---- Summary (spec 009): built on the server, shown here as text, fetched only when asked ----
-      var sum = { p: '', got: {}, busy: {}, bad: {}, rep: '', y: 0 };
-      function sumView() { // the admin's reply also holds each salesman's own
-        var r = sum.got[sum.p];
-        return r && sum.rep ? r.salesmen.filter(function (x) { return x.rep === sum.rep; })[0] : r;
-      }
+      // ---- Summary (spec 009): built on the server, shown as text, fetched only when asked ----
+      var sum = { p: '', got: {}, busy: {}, bad: {} };
+      function sumView() { return ADMIN ? aSumView() : sum.got[sum.p]; }
       function getSum(p) {
-        sum.p = p; sum.busy[p] = true; sum.bad[p] = '';
-        function done(r, bad) { sum.busy[p] = false; if (r) sum.got[p] = r; sum.bad[p] = bad; renderSum(); }
+        function done(r, bad) { sum.busy[p] = 0; if (r) sum.got[p] = r; sum.bad[p] = bad; renderSum(); }
+        sum.p = p; sum.busy[p] = 1; sum.bad[p] = '';
         google.script.run.withSuccessHandler(function (r) {
-          done(r && r.ok && r, r && r.ok ? '' : 'Something went wrong. Try again in a minute.');
+          if (r && r.ok) done(r, ''); else done(0, 'Something went wrong. Try again.');
         }).withFailureHandler(function (e) {
-          var m = readable(e);
-          done(null, /no signal/.test(m) ? "Couldn't get the summary: no signal. Try again." : m);
+          e = readable(e);
+          done(0, /no signal/.test(e) ? "Couldn't get the summary: no signal. Try again." : e);
         })[ADMIN ? 'adminPageSummary' : 'repSummary'](k, p);
         renderSum();
       }
-      function renderSum() {
-        var v = sumView(), bad = sum.bad[sum.p], box = $('sumBody'), n = queue.length;
-        [].forEach.call($('sumTabs').children, function (b) { b.setAttribute('aria-selected', String(b.value === sum.p)); });
-        $('sumMsg').textContent = sum.busy[sum.p] ? 'Getting your summary…' : bad;
-        $('sumMsg').hidden = !$('sumMsg').textContent;
-        $('sumRetry').hidden = !bad || sum.busy[sum.p];
-        $('sumUnsent').textContent = n + (n === 1 ? ' save not sent yet is' : ' saves not sent yet are') + ' not in this summary.';
+      function sumUnsent() { // also when the queue changes
+        var n = queue.length;
+        $('sumUnsent').textContent = n + (n > 1 ? ' saves not sent yet are' : ' save not sent yet is') + ' not in this summary.';
         $('sumUnsent').hidden = !n;
+      }
+      function renderSum() {
+        var v = sumView(), bad = sum.bad[sum.p], box = $('sumBody'), m = $('sumMsg');
+        [].forEach.call($('sumTabs').children, function (b) { b.setAttribute('aria-selected', b.value === sum.p); });
+        m.textContent = sum.busy[sum.p] ? 'Getting your summary…' : bad;
+        m.hidden = !m.textContent;
+        $('sumRetry').hidden = !bad || sum.busy[sum.p];
+        sumUnsent();
         box.textContent = '';
         box.hidden = $('sumShare').hidden = !v;
         $('sumHold').hidden = $('sumCopy').hidden = true;
@@ -1569,36 +1570,30 @@
         if (bad) box.appendChild(el('div', 'As of ' + sum.got[sum.p].at, 'note'));
         v.blocks.forEach(function (b) {
           if (b.h) box.appendChild(el('div', b.h, 'label'));
-          b.lines.forEach(function (line, i) {
-            var rep = b.reps && b.reps[i], row = box.appendChild(el(rep ? 'button' : 'div', line, 'sum-l'));
-            if (rep) row.onclick = function () { sum.y = window.scrollY; sum.rep = rep; renderSum(); window.scrollTo(0, 0); };
-          });
+          b.lines.forEach(function (line, i) { box.appendChild(ADMIN ? aSumLine(line, b.reps && b.reps[i]) : el('div', line, 'sum-l')); });
         });
         $('sumWa').href = 'https://wa.me/?text=' + encodeURIComponent(v.text);
       }
-      // Inside Google's frame: the clipboard, else select-and-copy, else he copies it by hand.
+      // In Google's frame: the clipboard, else select-and-copy, else he copies it by hand.
       function copySum() {
-        var text = sumView().text, t = $('sumCopy');
+        var text = sumView().text, t = $('sumCopy'), ok;
         function byHand() {
           t.value = text; t.hidden = false; t.focus(); t.select();
-          var ok = false;
           try { ok = document.execCommand('copy'); } catch (e) { /* refused */ }
-          if (ok) { t.hidden = true; toast('Copied'); } else { t.setSelectionRange(0, text.length); $('sumHold').hidden = false; }
+          t.hidden = $('sumHold').hidden = ok;
+          if (ok) toast('Copied'); else t.setSelectionRange(0, text.length);
         }
         try { navigator.clipboard.writeText(text).then(function () { toast('Copied'); }, byHand); } catch (e) { byHand(); }
       }
-      $('summary').onclick = function () { sum.rep = ''; showOnly('summary'); getSum('this-week'); };
       ['This week', 'Last week', 'This month', 'Last month'].forEach(function (name) {
         var b = $('sumTabs').appendChild(el('button', name, 'tab'));
-        b.type = 'button'; b.value = name.toLowerCase().replace(' ', '-');
+        b.value = name.toLowerCase().replace(' ', '-');
         b.onclick = function () { getSum(b.value); };
       });
+      $('summary').onclick = function () { showOnly('summary'); getSum('this-week'); };
       $('sumRetry').onclick = function () { getSum(sum.p); };
       $('sumCopyBtn').onclick = copySum;
-      $('sumBack').onclick = function () {
-        if (!sum.rep) return showList(true);
-        sum.rep = ''; renderSum(); window.scrollTo(0, sum.y);
-      };
+      $('sumBack').onclick = function () { if (!ADMIN || !aSumBack()) showList(true); };
 
       // A new day while the app was left open: redraw for today when he comes back to it.
       function newDayCheck() { if (screen === 'list' && renderedDay && todayKey() !== renderedDay) renderList(); }

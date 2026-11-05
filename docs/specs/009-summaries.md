@@ -3,11 +3,11 @@
 - **Status:** In progress: built and checked locally (build plan [009](../plans/009-summaries-plan.md)); the live
   check with the owner is next
 - **Owner approval:** approved by the owner on 2026-11-05 (session 5), after the interview (S9-1 to
-  S9-12) and an adversarial review (S9-13 to S9-15)
+  S9-12) and an adversarial review (S9-13 to S9-16)
 - **Related:** roadmap phase 7b (before the speed pass and launch, owner S9-2) ·
   [vision](../product/vision.md) · ADR-0004 (a salesman gets only his own data) · ADR-0006 /
   ADR-0010 (admin link) · [glossary](../product/glossary.md) → Summary · owner answers Q12c, P5-1,
-  P5-2, P6-2, P7-1, P7-2, **S9-1 to S9-15** · builds on [spec 006](006-focus-tabs.md),
+  P5-2, P6-2, P7-1, P7-2, **S9-1 to S9-16** · builds on [spec 006](006-focus-tabs.md),
   [spec 007](007-card-helpers-areas.md), [spec 008](008-owner-screen.md)
 
 ## Why
@@ -164,7 +164,8 @@ lines added up (a site worked by two people, e.g. handed over in the week).
 - **Quotes given** = different sites **moved to** Rate Quoted in the period (`created` at that
   stage, or `stage_change` to it). Rs. = the value on the latest such row in the period (every such
   row carries one: a value is required at Rate Quoted). A **revised price** on a site already at
-  Rate Quoted is **not** another quote (owner S9-13).
+  Rate Quoted is **not** another quote (owner S9-13). A Won or Lost site moved back to Rate
+  Quoted counts as a new quote given (owner S9-16).
 - **Won / Lost in a period:**
   - **This week / This month** (still running): exactly spec 008's rule (P7-1), so the numbers
     always match the Team and This month tabs: the site's stage **now** is Won (Order) / Lost /
@@ -201,7 +202,9 @@ lines added up (a site worked by two people, e.g. handed over in the week).
 ### Server
 - **`repSummary(k, period)`** (new public function): `requireRep_(k)` inside `forSalesman_`;
   `period` must be one of `this-week`, `last-week`, `this-month`, `last-month` (anything else: the
-  usual *"Something went wrong. Try again in a minute."*). Reply: his summary (the numbers, named
+  usual *"Something went wrong. Try again in a minute."*, checked right after the link check, so
+  `Sites`, `Activity` and the kept copy are not read for it; the link check itself has opened
+  Sales Diary and read `Links`). Reply: his summary (the numbers, named
   sites, coming up, late & going cold) and the ready-made WhatsApp text. Only his own data. His
   month target comes from the kept copy, read by this function itself (the link check gives this
   month's only), and only his own amount is returned.
@@ -217,7 +220,11 @@ lines added up (a site worked by two people, e.g. handed over in the week).
   ~3,000 a month, about 13 reads of 500), never the whole tab. A larger block may be used if it
   measures faster. Meta-Data through the kept copy only. **No writes at all**, no lock.
 - Saves take Google's time just before the lock, so two saves can land a few seconds out of order
-  in `Activity`. Harmless: a period boundary is never decided by a block edge alone.
+  in `Activity`. Which rows count is decided by each row's own time, never by a block edge, and the
+  read stops only after a block holding a row from **more than 5 minutes** before the period's start
+  (a row lands at most the lock wait plus one save's work after its time, far under 5 minutes): a
+  row just before the start is skipped but never stops the read, so an earlier-timed row landing
+  last at a block's top can't hide a row of the period.
 - **Public functions:** allow-list in `tests/menu.test.js` 18 → **20**.
 
 ## Data
@@ -281,14 +288,14 @@ lines added up (a site worked by two people, e.g. handed over in the week).
       tapping a salesman on the admin's summary shows his summary with the days-logged line; the
       Summary button fits the top line at 360 px on both pages.
 - [x] Salesman's page: opening the app makes no new trip to Google; `src/App.html` stays at or
-      under **88,000 bytes** (83,042 today), pinned by a test, so the speed pass starts from a
+      under **88,000 bytes** (83,042 before this spec, 87,465 built), pinned by a test, so the speed pass starts from a
       known size.
 - [ ] Live check with the TEST rows (owner S9-1): RIA's This week and This month match the sheet
       read through the connector; the admin's month numbers match the Team and This month tabs; on
       the owner's phone **inside Google's frame**, Share on WhatsApp opens WhatsApp with the text and
       Copy copies it (or shows "Press and hold").
 - [x] Docs updated: glossary (Summary), data model (kept copy, `Activity` update rows), open
-      questions (S9-1 to S9-15),
+      questions (S9-1 to S9-16),
       AGENTS.md (20 public functions), roadmap, handoff.
 
 ## Out of scope
@@ -305,4 +312,5 @@ lines added up (a site worked by two people, e.g. handed over in the week).
 ## Open questions
 _None._ Answered after the adversarial review (2026-11-05): S9-13 revised prices (not counted;
 changed values recorded from now), S9-14 past periods (as the period ended), S9-15 "Now" parts (left
-out of past periods' shared text). See [open questions](../product/open-questions.md).
+out of past periods' shared text); and after the build review, S9-16 (a Won or Lost site moved back
+to Rate Quoted is a new quote given). See [open questions](../product/open-questions.md).

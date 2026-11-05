@@ -21,7 +21,7 @@
 - Sheet menu (computer): **Sales Diary → Check setup / Links / Refresh salesmen & targets**.
   Everything is in **Sales Diary**; **Meta-Data** is only ever read.
 
-Specs 001–008 **Done**, 009 built (not live); plans 001–008 ticked, 009 to step 6; ADR-0009 and ADR-0010 Accepted. Tests: 362 unit
+Specs 001–008 **Done**, 009 built (not live); plans 001–008 ticked, 009 to step 6; ADR-0009 and ADR-0010 Accepted. Tests: 364 unit
 (incl. the random test, ~20 s) + 8 browser checks.
 
 ### Live state (2026-11-04, end of session 4)
@@ -41,11 +41,15 @@ Specs 001–008 **Done**, 009 built (not live); plans 001–008 ticked, 009 to s
 Owner's order (S9-2): **summaries → speed pass → launch.**
 0. **Summaries ([spec 009](../specs/009-summaries.md)): approved 2026-11-05, built and checked
    locally (plan [009](009-summaries-plan.md), steps 1–6 ticked), not yet live.** Owner answers
-   S9-1 to S9-15 in `open-questions.md`. Built: `src/summary.js` (`repSummary`, `adminPageSummary`:
+   S9-1 to S9-16 in `open-questions.md`. Built: `src/summary.js` (`repSummary`, `adminPageSummary`:
    public functions 18 → 20; the lines and the WhatsApp text are built on the server), the Summary
-   screen in `App.html` (87,935 bytes, pinned ≤ 88,000) for both pages, last month's targets and a
+   screen in `App.html` (87,465 bytes, pinned ≤ 88,000) for both pages, last month's targets and a
    `months` marker in the kept copy, and S9-13 (an `update` row records Rs. only when it changed).
-   **Next:** an independent review, then live (push, `update-deployment`, owner tests on his phone
+   **Next:** live (push, `update-deployment`; **right after `update-deployment`, run Sales Diary →
+   Refresh salesmen & targets in the sheet**, so the kept copy, now with `months`, is rebuilt under
+   the owner's eyes rather than on a salesman's first tap: an old copy without `months` is read
+   again on first use, and if Meta-Data were unreachable then, salesmen would see "Something went
+   wrong"; then the owner tests on his phone
    inside Google's frame: Share on WhatsApp and Copy; compare RIA's This week / This month and the
    admin's month with the sheet, using the TEST rows, S9-1). Choices made where the spec was silent
    are listed in the builder's report and in the plan (step 6).

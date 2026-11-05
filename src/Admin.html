@@ -78,7 +78,30 @@
       if (!document.hidden && Date.now() - A.loadedAt >= A_REFRESH_MS) adminRefresh(true);
     });
   }
+  // ---- Summary (spec 009): his reply holds the team and each salesman's own; tapping a salesman's
+  // line shows that one (no trip), Back returns to the team where he was. ----
+  var A_SUM = { rep: '', y: 0 };
+  function aSumView() {
+    var r = sum.got[sum.p];
+    return r && A_SUM.rep ? r.salesmen.filter(function (x) { return x.rep === A_SUM.rep; })[0] : r;
+  }
+  function aSumLine(line, rep) {
+    var row = el(rep ? 'button' : 'div', line, 'sum-l');
+    if (rep) {
+      row.type = 'button';
+      row.addEventListener('click', function () { A_SUM.y = window.scrollY; A_SUM.rep = rep; renderSum(); window.scrollTo(0, 0); });
+    }
+    return row;
+  }
+  function aSumBack() {
+    if (!A_SUM.rep) return false;
+    A_SUM.rep = '';
+    renderSum();
+    window.scrollTo(0, A_SUM.y);
+    return true;
+  }
   function adminShowOnly(name) {
+    if (name === 'summary') A_SUM.rep = ''; // Summary always opens on the team
     $('adminTabs').hidden = name !== 'list';
     $('refresh').hidden = name !== 'list';
     $('editDetails').hidden = true;

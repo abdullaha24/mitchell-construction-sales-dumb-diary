@@ -349,6 +349,24 @@ test('quotes: Rs. from the latest move to Rate Quoted in the period; a revised p
   assert.deepEqual(lines(ria(w, 'this-week'), 'Quotes given'), ['• Requoted · Rs. 400,000']);
 });
 
+test('a Won or Lost site moved back to Rate Quoted is a new quote given (owner S9-16)', () => {
+  activityId = 0;
+  const w = world({
+    sites: [
+      site('S000001', 'RIA', 'Back From Won', { stage: RQ, value_rs: 210000, payment_terms: 'Cash' }),
+      site('S000002', 'RIA', 'Back From Lost', { stage: RQ, value_rs: 90000, payment_terms: 'Cash' }),
+    ],
+    activity: [
+      act(pk(2026, 10, 10), 'RIA', 'S000001', 'stage_change', { from_stage: RQ, to_stage: WON, value_rs: 200000, payment_terms: 'Cash' }),
+      act(pk(2026, 10, 10), 'RIA', 'S000002', 'stage_change', { from_stage: RQ, to_stage: LOST, lost_reason: 'Price Too High' }),
+      act(pk(2026, 11, 2), 'RIA', 'S000001', 'stage_change', { from_stage: WON, to_stage: RQ, value_rs: 210000, payment_terms: 'Cash' }),
+      act(pk(2026, 11, 3), 'RIA', 'S000002', 'stage_change', { from_stage: LOST, to_stage: RQ, value_rs: 90000, payment_terms: 'Cash' }),
+    ],
+  });
+  const n = numbers(w, ['RIA'], 'this-week');
+  assert.deepEqual([n.quotes, n.quoteRs, n.quoteNames], [2, 300000, ['Back From Lost', 'Back From Won']]);
+});
+
 test('won / lost this week and this month: spec 008\'s rule (P7-1), equal to the Team and This month tabs', () => {
   const w = summaryWorld();
   const screen = plain(w.s.adminDataFor_(w.diary, [], NOW));
@@ -515,8 +533,16 @@ test('lost reasons: most first, then by name; a lost site with no reason is Othe
       activity.push(act(pk(2026, 11, 2), 'SH', id, 'stage_change', { from_stage: RQ, to_stage: LOST, lost_reason: reason }));
     }
   });
+  // A former salesman's lost site and a lost site with no salesman: in no team total.
+  sites.push(site('S000090', 'MUB', 'Former Lost', { stage: LOST, lost_reason: 'Credit Terms', next_followup: '' }));
+  sites.push(site('S000091', '', 'Nobody Lost', { stage: LOST, lost_reason: 'Credit Terms', next_followup: '' }));
+  activity.push(act(pk(2026, 11, 2), 'MUB', 'S000090', 'stage_change', { from_stage: RQ, to_stage: LOST, lost_reason: 'Credit Terms' }));
+  activity.push(act(pk(2026, 11, 2), 'admin', 'S000091', 'stage_change', { from_stage: RQ, to_stage: LOST, lost_reason: 'Credit Terms' }));
   const t = team(world({ sites, activity }), 'this-week');
   assert.deepEqual(lines(t, 'Lost reasons'), ['Lost 6: Price Too High 3 · Competitor Approved 1 · Other 1 · Site Delayed 1']);
+  assert.equal(lines(t, 'All salesmen')[2], 'Won 0 · Lost 6', 'the same Lost count as All salesmen');
+  assert.deepEqual(lines(t, 'Not in the salesmen list'), ['MUB · worked 1 · quotes 0 · won 0 · lost 1 · logged on 1 day'],
+    'the former code\'s loss is on his own line');
 });
 
 // ------------------------------------------------------------------------------ Targets, %
@@ -918,6 +944,27 @@ test('speed: a long period is read in blocks from the bottom until it reaches a 
   const moves = w.s.activitySince_(w.diary, w.s.summaryPeriod_('last-month', now).start);
   assert.equal(moves.length, 1240);
   assert.equal(sheet._rowsRead - before, 1501, 'the header and 3 blocks of 500');
+});
+
+test('a row a few seconds out of time order at a block edge never hides a row of the period (skew margin)', () => {
+  // Saves take Google's time before waiting for the lock, so a save timed Fri 23:59:59 can land
+  // after one timed Sat 00:00:01. Here it lands as the top row of the bottom block of 500.
+  activityId = 0;
+  const activity = [];
+  for (let i = 0; i < 100; i++) activity.push(act(pk(2026, 9, 1), 'RIA', 'S000002', 'update', { note: 'long ago' }));
+  activity.push(act(new Date(pk(2026, 10, 31, 0, 0).getTime() + 1000), 'RIA', 'S000001',
+    'stage_change', { from_stage: LEAD, to_stage: RQ, value_rs: 250000, payment_terms: 'Cash' }));
+  activity.push(act(new Date(pk(2026, 10, 31, 0, 0).getTime() - 1000), 'RIA', 'S000002', 'update', { note: 'Friday 23:59:59, landed late' }));
+  for (let i = 0; i < 499; i++) activity.push(act(pk(2026, 11, 2), 'RIA', 'S000002', 'update', { note: 'this week' }));
+  const w = world({ sites: [site('S000001', 'RIA', 'Saturday Quote', { stage: RQ, value_rs: 250000, payment_terms: 'Cash' }),
+    site('S000002', 'RIA', 'Busy Lead')], activity });
+  const sheet = w.diary.getSheetByName('Activity');
+  assert.equal(sheet.getLastRow(), 602);
+  const before = sheet._rowsRead;
+  assert.deepEqual(lines(ria(w, 'this-week'), 'Quotes given'), ['• Saturday Quote · Rs. 250,000'], 'the Sat 00:00:01 quote is counted');
+  assert.equal(sheet._rowsRead - before, 1 + 500 + 101, 'one more block, read because the stop row was inside the margin');
+  const n = numbers(w, ['RIA'], 'last-week');
+  assert.deepEqual([n.worked, n.quotes], [1, 0], 'the Friday row counts last week, never this week');
 });
 
 test("the salesman's page stays at or under 88,000 bytes (spec 009: the speed pass starts from a known size)", () => {
