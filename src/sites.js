@@ -428,7 +428,8 @@ function replyCard_(saver, row) {
  * only the cells that change, plus one `Activity` row. A salesman reaches only his own sites; the
  * admin any site (spec 008): his row says `admin` in `Activity`, his note starts "Admin: ", and
  * he never resets going cold (`worked_at`, owner P7-5). Only what he touched is written; a clash
- * with someone else's change refuses the save (mergeTouched_), with the site as it is now.
+ * with someone else's change refuses the save (mergeTouched_), with the site as it is now. An
+ * `update` row carries Rs. and Cash / Credit only when they changed (spec 009, S9-13).
  * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} diary
  * @param {Saver} saver
  * @param {any} siteId
@@ -467,7 +468,8 @@ function saveUpdate_(diary, saver, siteId, input, now, saveId) {
     /** @type {Object<string, any>} */
     const cells = admin ? { updated_at: now } : { updated_at: now, worked_at: now };
     if (update.stage !== before.stage) cells.stage = update.stage;
-    if (valueStage && (update.value !== before.value || update.terms !== before.terms)) {
+    const moneyChanged = valueStage && (update.value !== before.value || update.terms !== before.terms);
+    if (moneyChanged) {
       cells.value_rs = update.value;
       cells.payment_terms = update.terms;
     }
@@ -481,14 +483,17 @@ function saveUpdate_(diary, saver, siteId, input, now, saveId) {
     setCells_(sites, row._row, textify_(cells), ['contact_phone']);
 
     const stageChanged = update.stage !== before.stage;
+    // A stage change carries the Rs. at that stage; an `update` (same stage) only a changed Rs. or
+    // Cash / Credit, so a revised price can be told from a plain note (spec 009, owner S9-13).
+    const money = valueStage && (stageChanged || moneyChanged);
     appendRows_(activity.sheet, [rowFor_(activity.columns, {
       activity_id: nextId_(activity.rows.map((r) => r.activity_id), 'A', 7),
       timestamp: now, rep: asText_(admin ? ADMIN_ACTOR : rep), site_id: siteId,
       action: stageChanged ? 'stage_change' : 'update',
       from_stage: stageChanged ? asText_(before.stage) : '',
       to_stage: stageChanged ? asText_(update.stage) : '',
-      value_rs: valueStage && update.value !== null ? update.value : '',
-      payment_terms: valueStage ? asText_(update.terms) : '',
+      value_rs: money && update.value !== null ? update.value : '',
+      payment_terms: money ? asText_(update.terms) : '',
       lost_reason: asText_(update.lostReason),
       note: asText_([note, update.phone ? `Phone added ${update.phone}` : ''].filter(Boolean).join(' · ')),
       next_followup: followUp,

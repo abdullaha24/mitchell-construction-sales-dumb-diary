@@ -19,11 +19,14 @@
   now expects last month too; `speed.test.js` "used for up to 24 hours" stores `months` in its copy
   (and checks a copy without it is read again).
 
-## [ ] Step 3: Revised prices are recorded only when they change (S9-13)
+## [x] Step 3: Revised prices are recorded only when they change (S9-13)
 - `saveUpdate_`: an `update` row (same stage) carries `value_rs` / `payment_terms` only when the
   Rs. or Cash / Credit changed; `stage_change` and `created` rows as before.
 - `Admin.html`: the admin's own instant Today line shows Rs. on an Update only when he changed it.
 - Tests: unchanged Rs. → blank; changed → both; stage change / new site unchanged; the feed.
+- Done: `tests/summary.test.js` (3 tests) and an added section in `tests/browser/admin.check.js`
+  (his instant line); each caught its mutation (writing the value on every update row; showing
+  Rs. on every instant Update line). No existing test needed a change.
 
 ## [ ] Step 4: Server summaries
 - `admin.js`: `activitySince_` (the bottom-up block read, from any moment); `monthActivity_` uses it.

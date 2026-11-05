@@ -120,13 +120,20 @@
     return merged;
   }
   // His own save shows at once on Today as "You" (it never counts as a salesman's work, P7-2).
+  // Rs. shows on a stage change, and on an Update only when he changed it (spec 009, S9-13), as
+  // the history row says.
   function adminSaved(entry, r) {
     if (entry.fn !== 'adminPageUpdateSite' || !r.site) return;
     var s = r.site;
     var note = String(entry.input.note || '').trim();
+    var moved = entry.fromStage !== s.stage;
+    var was = entry.state && entry.state.shown;
+    var changed = entry.input.touched ? has(entry.input.touched, 'money')
+      : !was || was.value !== (s.value || null) || was.terms !== (s.terms || '');
+    var money = has(rules().valueStages, s.stage) && (moved || changed);
     data.feed.unshift({ time: aClock(), by: 'admin', site: s.id, name: s.name,
-      action: entry.fromStage !== s.stage ? 'stage_change' : 'update', from: entry.fromStage, to: s.stage,
-      value: has(rules().valueStages, s.stage) ? s.value : null, terms: has(rules().valueStages, s.stage) ? s.terms : '',
+      action: moved ? 'stage_change' : 'update', from: entry.fromStage, to: s.stage,
+      value: money ? s.value : null, terms: money ? s.terms : '',
       lostReason: s.lostReason, note: note ? 'Admin: ' + note : '', followUp: s.followUp });
   }
 

@@ -132,3 +132,47 @@ test('the 1st of a month rolls over without a refresh: the copy already holds th
   assert.equal(w.s.previousMonthKey_('2027-01'), '2026-12');
   assert.equal(w.s.previousMonthKey_('2026-10'), '2026-09');
 });
+
+// ------------------------------------------- Revised prices recorded only when changed (S9-13)
+
+const lastActivity = (w) => {
+  const values = w.diary.getSheetByName('Activity').getDataRange().getValues();
+  return Object.fromEntries(ACTIVITY.map((h, i) => [h, values[values.length - 1][i]]));
+};
+const quoted = () => [site('S000001', 'RIA', 'Quoted Site', { stage: RQ, value_rs: 300000, payment_terms: 'Credit' })];
+
+test('an Update at the same stage with the Rs. unchanged writes no value or terms in Activity', () => {
+  for (const [who, save] of [
+    ['salesman', (w, input) => w.s.repUpdateSite(RIA, 'S000001', input)],
+    ['admin', (w, input) => w.s.adminPageUpdateSite(ADMIN, 'S000001', input)],
+  ]) {
+    const w = world({ sites: quoted() });
+    const r = plain(save(w, { stage: RQ, value: '300,000', terms: 'Credit', followUp: '3days', note: 'called' }));
+    assert.equal(r.ok, true, r.message);
+    const a = lastActivity(w);
+    assert.deepEqual([a.action, a.value_rs, a.payment_terms, a.note.replace('Admin: ', '')], ['update', '', '', 'called'], who);
+  }
+});
+
+test('an Update that changes the Rs. or Cash / Credit writes both; stage changes and new sites as before', () => {
+  const w = world({ sites: quoted() });
+  w.s.repUpdateSite(RIA, 'S000001', { stage: RQ, value: '320000', terms: 'Credit', followUp: '3days' });
+  assert.deepEqual([lastActivity(w).action, lastActivity(w).value_rs, lastActivity(w).payment_terms], ['update', 320000, 'Credit']);
+  w.s.repUpdateSite(RIA, 'S000001', { stage: RQ, value: '320000', terms: 'Cash', followUp: '3days' });
+  assert.deepEqual([lastActivity(w).value_rs, lastActivity(w).payment_terms], [320000, 'Cash'], 'terms only: both');
+  w.s.adminPageUpdateSite(ADMIN, 'S000001', { stage: RQ, value: '330000', terms: 'Cash', followUp: '3days' });
+  assert.deepEqual([lastActivity(w).rep, lastActivity(w).value_rs, lastActivity(w).payment_terms], ['admin', 330000, 'Cash']);
+  w.s.repUpdateSite(RIA, 'S000001', { stage: WON, value: '330000', terms: 'Cash' });
+  assert.deepEqual([lastActivity(w).action, lastActivity(w).value_rs, lastActivity(w).payment_terms], ['stage_change', 330000, 'Cash'],
+    'a stage change carries the Rs. even when it is the same');
+  w.s.repAddSite(RIA, { name: 'New Quote', buyerType: 'Dealer', phone: '0300 7654321', stage: RQ, value: '90000', terms: 'Cash', followUp: 'tomorrow' });
+  assert.deepEqual([lastActivity(w).action, lastActivity(w).value_rs, lastActivity(w).payment_terms], ['created', 90000, 'Cash']);
+});
+
+test("the admin's Today feed shows Rs. on an Update only when it changed", () => {
+  const w = world({ sites: quoted() });
+  w.s.repUpdateSite(RIA, 'S000001', { stage: RQ, value: '300000', terms: 'Credit', followUp: '3days', note: 'same price' });
+  w.s.repUpdateSite(RIA, 'S000001', { stage: RQ, value: '280000', terms: 'Credit', followUp: '3days', note: 'new price' });
+  const feed = plain(w.s.adminPageLoad(ADMIN)).feed;
+  assert.deepEqual(feed.map((f) => [f.note, f.value, f.terms]), [['new price', 280000, 'Credit'], ['same price', null, '']]);
+});
