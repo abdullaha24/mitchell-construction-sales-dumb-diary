@@ -88,7 +88,11 @@
   function aSumTap(row, rep) {
     row.className += ' tap';
     row.setAttribute('role', 'button');
+    row.tabIndex = 0; // reachable without a finger too: Enter or Space opens it
     row.addEventListener('click', function () { A_SUM.y = window.scrollY; A_SUM.rep = rep; renderSum(); window.scrollTo(0, 0); });
+    row.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); row.click(); }
+    });
   }
   function aSumBack() {
     if (!A_SUM.rep) return false;

@@ -22,7 +22,7 @@
   Everything is in **Sales Diary**; **Meta-Data** is only ever read.
 
 Specs 001–008 **Done**, 009 live (owner's phone check left), 010 built locally (not live); plans 001–008 ticked, 009 to
-step 6, 010 to step 5; ADR-0009 and ADR-0010 Accepted. Tests: 375 unit (incl. the random test, ~20 s) + 8 browser checks.
+step 6, 010 to step 5; ADR-0009 and ADR-0010 Accepted. Tests: 382 unit (incl. the random test, ~20 s) + 8 browser checks.
 
 ### Live state (2026-11-04, end of session 4)
 - **TEST rows still in the sheet, kept at the owner's request while he looks at his admin screen**:
@@ -68,8 +68,8 @@ Owner's order (S9-2): **summaries → speed pass → launch.**
    S10-4, mockup `docs/specs/010-mockup.html`), built and checked locally (plan
    [010](010-summary-tables-plan.md), steps 1–5 ticked), not yet live.** Pages are now served
    through `servedHtml_` (comments and indentation removed when Google sends the page; no build
-   step): salesman's page **69,735 bytes served** (source 92,316; it was 87,826 source / served
-   whole before), admin's 90,436 (pins 75,000 and 92,300, `tests/served.test.js`). The summary is
+   step): salesman's page **69,833 bytes served** (source 92,420; it was 87,826 source / served
+   whole before), admin's 90,739 (pins 75,000 and 92,300, `tests/served.test.js`). The summary is
    six tiles, a target bar, two-column tables and a NOW table; the admin gets one team table (Won
    in millions) with tappable salesman rows; WhatsApp numbers in a monospace block (≤ 30
    characters a line). **Next:** independent review, then live (push, `update-deployment`, agent

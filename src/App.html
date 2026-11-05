@@ -147,6 +147,7 @@
       .sumt .cold { color: var(--orange); }
       .sumt .b .num { font-weight: 700; }
       .sumt .w .num { white-space: normal; width: 50%; } /* a late / cold reason may wrap; Rs. never does */
+      .sumt .w td:first-child { color: var(--ink); } /* a named site: only its reason is red / amber */
       .nowcap { font-size: 12px; font-weight: 700; color: var(--soft); text-transform: uppercase; letter-spacing: .04em; margin: 14px 2px 6px; }
       #sumWa { background: #1fa855; border-color: #1fa855; color: #fff; }
       #sumCopy { width: 100%; height: 50vh; font: inherit; }
@@ -519,7 +520,7 @@
         if (ADMIN && r.site) r.site = adminMerge(r.site);
         // Older failed saves of the same site are replaced by this newer one. An Update also
         // replaces a failed snooze: it set the follow-up itself (spec 007). An Update replaces only
-        // the saves its form was opened over (`carries`: their changes went with it, spec 008).
+        // the saves its form was opened over ('carries': their changes went with it, spec 008).
         for (var i = queue.length - 1; i >= 0; i--) {
           var q = queue[i];
           var replaced = q.fn === entry.fn || (entry.fn === 'repUpdateSite' && q.fn === 'repSnoozeSite');
@@ -791,7 +792,7 @@
         var saveId = newSaveId();
         var card = clone(s);
         card.followUp = followKey(choice);
-        // `before`: the site as it was, so a snooze he drops can be undone on the phone.
+        // 'before': the site as it was, so a snooze he drops can be undone on the phone.
         enqueue({ id: saveId, fn: 'repSnoozeSite', siteId: s.id, input: { followUp: choice, saveId: saveId }, card: card,
           state: { followUp: choice }, before: replaces && replaces.before ? replaces.before : clone(s) }, replaces);
         toast('Snoozed to ' + shortDay(card.followUp));
@@ -1144,8 +1145,8 @@
             : u.followUp === 'date' ? u.date || '' : addDays(today, days || 1),
         };
       }
-      // What he changes (`touched`, sent with the save): each thing the form would save differently
-      // from what Google had when it opened (`seen`), including what his own unconfirmed saves of
+      // What he changes ('touched', sent with the save): each thing the form would save differently
+      // from what Google had when it opened ('seen'), including what his own unconfirmed saves of
       // the site changed (the form shows them). Only what the new stage uses. Google writes only these.
       function touchedOf(u, today) {
         var r = rules();
@@ -1167,7 +1168,7 @@
       }
       // ---- END update rules ----
       // What Google last confirmed for each site (page load, Refresh, a save's reply or refusal):
-      // never a card still saving or not saved. An Update form records it when it opens (`seen`),
+      // never a card still saving or not saved. An Update form records it when it opens ('seen'),
       // so a form opened over his own unconfirmed save carries that save's changes as his.
       var confirmed = {};
       var superseded = {}; // saves whose changes a later confirmed save carried (their late replies are ignored)
@@ -1485,7 +1486,7 @@
         retrying = retryEntry || null;
         var draft = retryEntry ? clone(retryEntry.state) : fetchStored(updKey(id));
         upd = draft ? Object.assign(emptyUpdate(s), draft) : emptyUpdate(s);
-        // A form kept from before spec 008 has no `seen`: it saves as it always did.
+        // A form kept from before spec 008 has no 'seen': it saves as it always did.
         if (draft && !draft.seen) upd.seen = null;
         if (!upd.saveId) upd.saveId = newSaveId();
         $('u-phoneNote').hidden = true;

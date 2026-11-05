@@ -271,15 +271,31 @@ function millions_(amount) {
 const MONO_WIDTH = 30;
 
 /**
- * A monospace line: label, count right-aligned at column 16, Rs. right-aligned at column 30 (an
- * amount up to 13 characters, Rs. 9,999,999,999, keeps a space before it).
+ * A monospace line: label, count right-aligned at column 16, Rs. right-aligned at column 30. Always
+ * at least one space between them and never more than MONO_WIDTH characters: in the extreme (a
+ * 4-digit count with a 13-character amount) the label is shortened.
  * @param {string} label
  * @param {number} count
  * @param {number} [amount]
  */
 function monoRow_(label, count, amount) {
-  const left = label.padEnd(13) + String(count).padStart(3);
-  return amount === undefined ? left : left + rsDigits_(amount).padStart(MONO_WIDTH - left.length);
+  const n = String(count);
+  const rs = amount === undefined ? '' : rsDigits_(amount);
+  const room = MONO_WIDTH - n.length - 1 - (rs ? rs.length + 1 : 0);
+  const name = label.slice(0, Math.max(1, room));
+  const left = name + ' '.repeat(Math.max(1, 16 - name.length - n.length)) + n;
+  return rs ? left + ' '.repeat(Math.max(1, MONO_WIDTH - left.length - rs.length)) + rs : left;
+}
+
+/**
+ * Text from the sheet (a site name, a reason, a code) made safe for the WhatsApp text (spec 010):
+ * WhatsApp formats from anywhere in a message, so a name with three backticks or a star would turn
+ * the rest into monospace or bold. A backtick becomes ', and *, _ and ~ become look-alikes it doesn't
+ * read as formatting (∗ ˍ ∼). The screen always shows names exactly as they are.
+ * @param {string} text
+ */
+function waSafe_(text) {
+  return text.replace(/`/g, "'").replace(/\*/g, '∗').replace(/_/g, 'ˍ').replace(/~/g, '∼');
 }
 
 /**
@@ -288,7 +304,9 @@ function monoRow_(label, count, amount) {
  * @param {string[]} cells
  */
 function monoCols_(cells) {
-  let line = cells[0];
+  // The name is cut short if it would reach the first number column (a long code no longer in the
+  // salesmen list), so the line stays within MONO_WIDTH.
+  let line = waSafe_(cells[0]).slice(0, Math.max(1, 10 - cells[1].length));
   [11, 18, 25, MONO_WIDTH].forEach((edge, i) => {
     const cell = cells[i + 1];
     line += ' '.repeat(Math.max(1, edge - line.length - cell.length)) + cell;
@@ -358,7 +376,7 @@ function targetPart_(h, month, target, wonRs) {
 function targetMono_(month, target, wonRs) {
   const pct = pctOf_(wonRs, target);
   return pct === null || !target ? `No target for ${MONTH_NAMES[Number(month.slice(5)) - 1]}`
-    : `Target ${`${pct}%`.padStart(4)} of ${rsDigits_(target)}`;
+    : `Target ${(pct > 999 ? '>999%' : `${pct}%`).padStart(4)} of ${rsDigits_(target)}`;
 }
 
 /**
@@ -456,7 +474,7 @@ function nowPart_(sites, today, named) {
     const right = (/** @type {SummarySite} */ s) => (shownRs_(s) ? formatRs_(shownRs_(s)) : s.stage);
     part.tables.push({ h: 'Hot sites', n: String(hot.length),
       rows: top.map((s) => ({ c: [siteName_(s), right(s)], ...(shownRs_(s) ? {} : { k: 'm' }) })) });
-    part.lists.push({ h: 'Hot sites', list: top.map((s) => `- ${siteName_(s)} · ${right(s)}`) });
+    part.lists.push({ h: 'Hot sites', list: top.map((s) => `- ${waSafe_(siteName_(s))} · ${right(s)}`) });
   }
   // The biggest late or going cold: name | "5 days late" (red) / "no update for 9 days" (amber).
   const behind = open.filter((s) => isLate(s) || coldFor(s)).sort(order).slice(0, SUMMARY_LATE_MAX);
@@ -467,7 +485,7 @@ function nowPart_(sites, today, named) {
     ].join(' · ');
     part.tables.push({ h: 'Late & going cold', n: `Late ${late} · Cold ${cold}`,
       rows: behind.map((s) => ({ c: [siteName_(s), why(s)], k: `${isLate(s) ? 'late' : 'cold'} w` })) });
-    part.lists.push({ h: 'Late & going cold', list: behind.map((s) => `- ${siteName_(s)} · ${why(s)}`) });
+    part.lists.push({ h: 'Late & going cold', list: behind.map((s) => `- ${waSafe_(siteName_(s))} · ${why(s)}`) });
   }
   return part;
 }
@@ -514,16 +532,16 @@ function salesmanSummary_(rep, facts, period, target, title, withDays) {
       const won = /** @type {{ value: number, terms: string }} */ (r.won);
       const name = siteName_(r.site);
       return { value: won.value, name, ...(won.terms ? { s: `· ${won.terms}` } : {}), r: formatRs_(won.value),
-        text: `${name} · ${formatRs_(won.value)}${won.terms ? ` ${won.terms}` : ''}` };
+        text: `${waSafe_(name)} · ${formatRs_(won.value)}${won.terms ? ` ${won.terms}` : ''}` };
     })),
     siteTable_('Quotes given', n.results.filter((r) => r.quote !== null).map((r) => {
       const name = siteName_(r.site);
-      return { value: r.quote || 0, name, r: formatRs_(r.quote || 0), text: `${name} · ${formatRs_(r.quote || 0)}` };
+      return { value: r.quote || 0, name, r: formatRs_(r.quote || 0), text: `${waSafe_(name)} · ${formatRs_(r.quote || 0)}` };
     })),
     siteTable_('Lost', n.results.filter((r) => r.lost).map((r) => {
       const lost = /** @type {{ value: number, reason: string }} */ (r.lost);
       const name = siteName_(r.site);
-      return { value: lost.value, name, r: lost.reason, m: true, text: name + (lost.reason ? ` · ${lost.reason}` : '') };
+      return { value: lost.value, name, r: lost.reason, m: true, text: waSafe_(name + (lost.reason ? ` · ${lost.reason}` : '')) };
     })),
   ];
   const now = nowPart_(facts.sites.filter((s) => s.rep === rep), period.today, true);
@@ -536,7 +554,7 @@ function salesmanSummary_(rep, facts, period, target, title, withDays) {
     ...(period.month ? { target: targetPart_('Target', period.month, target, n.wonRs) } : {}),
     tables: parts.filter((p) => p.table.rows.length).map((p) => p.table),
     now: { cap: now.cap, rows: now.rows, tables: now.tables },
-    text: summaryText_(`${rep} · ${period.name} (${period.days})`, [mono], ['Rs. logged, not invoiced'],
+    text: summaryText_(`${waSafe_(rep)} · ${period.name} (${period.days})`, [mono], ['Rs. logged, not invoiced'],
       parts.map((p) => ({ h: p.table.h, list: p.list })), now, period.running),
   };
 }
@@ -662,7 +680,7 @@ function teamSummaryFor_(diary, periodKey, now) {
     tables, now: { cap: nowPart.cap, rows: nowPart.rows },
     text: summaryText_(`Team · ${period.name} (${period.days})`, [mono, table],
       ['Rs. logged, not invoiced'].concat(month ? ['House / office sales are not in the diary'] : []),
-      [{ h: `Lost reasons (${all.lost})`, list: reasonList.map(([reason, count]) => `- ${reason} · ${count}`) }], nowPart, period.running),
+      [{ h: `Lost reasons (${all.lost})`, list: reasonList.map(([reason, count]) => `- ${waSafe_(reason)} · ${count}`) }], nowPart, period.running),
     salesmen: salesmen.map((s) => ({ rep: s.rep, ...salesmanSummary_(s.rep, facts, period, repTarget(s.rep), `${s.rep} · ${period.name}`, true) })),
   };
 }

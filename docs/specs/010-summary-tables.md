@@ -62,7 +62,8 @@ Same Summary button and behaviour as spec 009. The team summary:
    - a **bold, shaded row per region** (North, Center, South) above its salesmen, with the region's
      totals (and its % of the region target in months);
    - a **Team** row at the bottom (green shading, bold);
-   - a salesman with nothing in the period shows **—** in grey;
+   - a salesman with nothing in the period shows **—** in grey; in a month, if he has a target, the
+     % column keeps **0** (0% of target is information: *"— — — 0"*); a week shows all **—**;
    - codes **not in the salesmen list** come last, under a grey row *"Not in the salesmen list"*;
    - numbers right-aligned, same width digits, so columns line up;
    - **tapping a salesman's row** opens his summary exactly as he sees it, plus *"Logged on N days"*
@@ -98,6 +99,10 @@ _Rs. logged, not invoiced_
   with short columns, Won in millions (*2.45M*, S10-4), inside one block, then lost reasons as a
   list.
 - Past periods still leave out the Now parts (S9-15).
+- Names, reasons and codes from the sheet can't switch on WhatsApp formatting in the message: a
+  backtick becomes `'`, and `*`, `_`, `~` become look-alikes WhatsApp doesn't read as formatting
+  (`∗` `ˍ` `∼`). The screen shows them exactly as typed. A name too long for the team table is cut
+  short there, and every monospace line keeps a space between columns.
 - **Checked on the owner's phone before this spec is closed**: if the block does not line up there,
   the text falls back to bold labels (mockup C bottom), with no other change.
 
@@ -109,6 +114,11 @@ _Rs. logged, not invoiced_
 - It removes only: HTML comments; lines inside `<script>` / `<style>` whose text starts with `//`
   or is a `/* … */` comment; leading spaces and tabs. It never touches text inside quotes on a code
   line, the data the page carries, or `<pre>` / `<textarea>` content.
+- Conservative by design (review fix): an HTML comment is removed only outside a tag (never inside a
+  quoted attribute value); a script or style line is removed only when it is wholly a comment and no
+  comment is open where it starts; once a kept line leaves a comment open, nothing more is removed
+  from that element; an element with a backtick anywhere, or a line ending in a backslash, is sent
+  exactly as written.
 - The size pin moves from the source file to **what is served**: the salesman's served page must be
   **at most 75,000 bytes** (today's source is 87,826 with comments), pinned by a test; the source file
   is no longer pinned. The admin's served page gets its own pin (at most its served size + 2 KB).

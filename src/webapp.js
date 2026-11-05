@@ -122,14 +122,16 @@ function servedHtml_(html) {
 
 /**
  * Markup between scripts and styles: HTML comments (unless one holds a scriptlet) and indentation
- * removed. Its first line goes on from the element before it, so it is left as it is. A line break
- * at either end is kept, so elements on either side stay apart as they were (a line break shows as
- * a space between inline elements).
+ * removed. A comment is only ever removed outside a tag: a tag is skipped whole, quoted attribute
+ * values included, so `data-x="<!-- -->"` stays. Its first line goes on from the element before
+ * it, so it is left as it is. A line break at either end is kept, so elements on either side stay
+ * apart as they were (a line break shows as a space between inline elements).
  * @param {string} text
  * @param {boolean} atStart the very start of the page
  */
 function servedMarkup_(text, atStart) {
-  const bare = text.replace(/<!--[\s\S]*?-->/g, (comment) => (comment.includes('<?') ? comment : ''));
+  const pieces = /<!--[\s\S]*?-->|<[A-Za-z!/?][^>"']*(?:(?:"[^"]*"|'[^']*')[^>"']*)*>/g;
+  const bare = text.replace(pieces, (piece) => (piece.startsWith('<!--') && !piece.includes('<?') ? '' : piece));
   const lines = bare.split('\n').map((line, i) => (i === 0 && !atStart ? line : line.trimStart()));
   const body = lines.filter((line) => line !== '').join('\n');
   if (lines.length < 2) return body;
@@ -137,35 +139,58 @@ function servedMarkup_(text, atStart) {
 }
 
 /**
+ * Whether a block comment is still open after this line, if one was open before it. A plain scan
+ * for the comment markers: a marker inside a string or a regex can only make it answer "open"
+ * when it isn't, which only makes servedCode_ remove less.
+ * @param {boolean} open
+ * @param {string} line
+ */
+function commentOpenAfter_(open, line) {
+  for (let at = 0; ;) {
+    const next = line.indexOf(open ? '*/' : '/*', at);
+    if (next < 0) return open;
+    open = !open;
+    at = next + 2;
+  }
+}
+
+/**
  * One `<script>` or `<style>` element (its tags included): comment-only lines and indentation
- * removed (servedHtml_).
+ * removed (servedHtml_). Conservative: a line is removed only when no comment is open where it
+ * starts, and only when it is wholly a comment: a `//` line (script), one whole `/* … *\/`, or a
+ * comment over several lines whose first line opens it and whose last line ends it with nothing
+ * after. Once a kept line leaves a comment open, nothing more is removed from that element. An
+ * element with a backtick anywhere (a template literal) or a line ending in a backslash (a string
+ * going on to the next line) is left exactly as it is.
  * @param {string} element
  * @param {boolean} script
  */
 function servedCode_(element, script) {
   const lines = element.split('\n');
-  const comment = (/** @type {string} */ line) => /^\s*(\/\/|\/\*)/.test(line);
-  if (script && lines.some((line) => !comment(line) && (line.includes('`') || /\\\s*$/.test(line)))) return element;
-  /** A comment-only line from `/*` to its closing star-slash at the end of a line (and nothing after). */
-  const closes = (/** @type {string} */ bare) => bare.indexOf('*/') === bare.length - 2 && bare.length >= 2;
+  if (lines.some((line) => line.includes('`') || /\\\s*$/.test(line))) return element;
+  /** One whole comment: opens at the start, closes at the end, nothing else closes in between. */
+  const whole = (/** @type {string} */ bare) => bare.startsWith('/*') && bare.length >= 4 && bare.indexOf('*/', 2) === bare.length - 2;
   /** @type {string[]} */
   const kept = [];
+  let open = false; // a comment opened on a kept line and not closed yet
+  let careful = false; // after that: remove nothing more
   for (let i = 0; i < lines.length; i++) {
     const bare = i === 0 ? lines[i] : lines[i].trimStart();
-    if (i > 0 && !bare.includes('<?')) {
-      if (script && bare.startsWith('//')) continue;
-      if (bare.startsWith('/*')) {
-        if (bare.indexOf('*/', 2) >= 0 ? closes(bare) : false) continue;
+    if (i > 0 && !careful && !open && !bare.includes('<?')) {
+      if ((script && bare.startsWith('//')) || whole(bare)) continue;
+      if (bare.startsWith('/*') && bare.indexOf('*/', 2) < 0) {
         let end = i + 1;
-        while (bare.indexOf('*/', 2) < 0 && end < lines.length && !lines[end].includes('*/')) end++;
-        if (bare.indexOf('*/', 2) < 0 && end < lines.length && closes(lines[end].trim()) &&
-            !lines.slice(i, end + 1).some((line) => line.includes('<?'))) {
+        while (end < lines.length && !lines[end].includes('*/')) end++;
+        const last = end < lines.length ? lines[end].trim() : '';
+        if (last && last.indexOf('*/') === last.length - 2 && !lines.slice(i, end + 1).some((line) => line.includes('<?'))) {
           i = end;
           continue;
         }
       }
     }
     if (bare !== '') kept.push(bare);
+    open = commentOpenAfter_(open, bare);
+    if (open && i > 0) careful = true;
   }
   return kept.join('\n');
 }

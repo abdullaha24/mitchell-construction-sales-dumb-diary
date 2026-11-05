@@ -76,6 +76,43 @@ test('a script with a template literal or a continued string is left exactly as 
   }
 });
 
+/** Runs a page's script (source or served) and returns what it left in x, y and z. */
+function runScript(html) {
+  const body = /<script>([\s\S]*?)<\/script>/.exec(html)[1];
+  const context = vm.createContext({});
+  try { vm.runInContext(`${body}\n;globalThis.out = [typeof x === 'undefined' ? null : x, typeof y === 'undefined' ? null : y,
+    typeof z === 'undefined' ? null : z];`, context); } catch (e) { return `threw ${e.name}`; }
+  return JSON.stringify(context.out);
+}
+
+test('adversarial scripts: whatever the comments, the served script does what the source does', () => {
+  const cases = [
+    // A second comment opened on a line: the lines after it are inside it until its */.
+    '<script>\n  /* a */ /* b\n  /* c\n  */\n  var x = 1;\n</script>',
+    '<script>\n  var y = 2; /* b\n  // still inside */\n  var z = 3;\n</script>',
+    '<script>\n  /* a */ var x = 1; /* b\n  /* c */\n  var y = 2;\n</script>',
+    '<script>\n  var x = "/*";\n  // note\n  var y = 2;\n</script>',
+    '<script>\n  var x = /a\\/*b/.source;\n  /* note */\n  var y = 2;\n</script>',
+    '<script>\n  /* one */ /* two */\n  var x = 1;\n</script>',
+  ];
+  for (const source of cases) {
+    assert.equal(runScript(served(source)), runScript(source), source);
+    assert.ok(!runScript(source).startsWith('threw'), `the case itself runs: ${source}`);
+  }
+});
+
+test('a backtick anywhere in a script (even in a comment) keeps the script exactly as written', () => {
+  for (const source of ['<script>\n  // a `note`\n  var x = 1;\n</script>', '<script>\n  var x = `a\n  // b\n  `;\n</script>']) {
+    assert.equal(served(source), source);
+  }
+});
+
+test('an HTML comment inside a quoted attribute value is not a comment, and stays', () => {
+  assert.equal(served('<div data-x="<!-- no -->" title=\'<!-- no -->\'>t</div><!-- yes -->\n<p>x</p>'),
+    '<div data-x="<!-- no -->" title=\'<!-- no -->\'>t</div>\n<p>x</p>');
+  assert.equal(served('<!DOCTYPE html>\n<!-- c -->\n<html>'), '<!DOCTYPE html>\n<html>');
+});
+
 test('styles: /* */ comments and indentation go; a // line in CSS is not a comment, so it stays', () => {
   assert.equal(served('<style>\n  /* note */\n  .a { color: red; }\n  /* two\n     lines */\n  // odd\n</style>'),
     '<style>\n.a { color: red; }\n// odd\n</style>');

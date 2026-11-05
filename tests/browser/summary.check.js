@@ -283,7 +283,10 @@ let browser;
     const lateRow = page.locator('#sumBody .sumt tr.late.w');
     assert.equal(await lateRow.locator('td').first().textContent(), 'Late Plaza');
     assert.equal(await lateRow.locator('td.num').textContent(), '3 days late · no update for 10 days');
-    assert.equal(await lateRow.evaluate((r) => getComputedStyle(r).color), 'rgb(180, 35, 24)', 'late in red');
+    assert.equal(await lateRow.locator('td.num').evaluate((c) => getComputedStyle(c).color), 'rgb(180, 35, 24)', 'the reason in red');
+    assert.equal(await lateRow.locator('td').first().evaluate((c) => getComputedStyle(c).color), 'rgb(31, 41, 51)', 'the name in plain ink');
+    assert.equal(await page.locator('#sumBody .sumt tr.late:not(.w) td').first().evaluate((c) => getComputedStyle(c).color),
+      'rgb(180, 35, 24)', 'the NOW Late row: label and number red, as in the mockup');
     assert.ok(mine.text.includes('\n*Late & going cold*\n- Late Plaza · 3 days late · no update for 10 days'), 'and in the WhatsApp text');
     assert.ok(await page.$eval('#sumBody td.extra', (td) => td.getBoundingClientRect().width > td.closest('table').getBoundingClientRect().width - 1),
       '"+ 2 more" spans the table');
@@ -441,7 +444,9 @@ let browser;
     // ---- Tapping a salesman: exactly his summary plus "Logged on", instantly, even with no signal. ----
     await page.evaluate(() => { window.__offline = true; window.scrollTo(0, 300); });
     const calls = (await h.calls()).length;
-    await page.locator('#sumBody tr.tap').first().click();
+    assert.deepEqual(await page.$$eval('#sumBody tr.tap', (rows) => rows.map((r) => r.tabIndex)), [0, 0, 0], 'focusable');
+    await page.locator('#sumBody tr.tap').first().focus();
+    await page.keyboard.press('Enter');
     const his = all.salesmen.find((x) => x.rep === 'RIA');
     assert.deepEqual(await h.screenLines(), expectedLines(his));
     assert.equal(his.title, `RIA · ${world.s.repSummary(RIA, 'this-week').title}`);

@@ -937,6 +937,61 @@ test('WhatsApp text: monospace lines at most 30 characters, numbers and Rs. line
   assert.ok(team(w, 'this-month').text.includes('\nNorth    10      0 10000M 999+\n'), 'a huge % keeps its column');
 });
 
+test('WhatsApp text: extremes stay within 30 characters with a space between columns (long former code, 4-digit counts)', () => {
+  activityId = 0;
+  const sites = [];
+  const activity = [];
+  for (let i = 1; i <= 1000; i++) {
+    const id = `S${String(i).padStart(6, '0')}`;
+    sites.push(site(id, 'RIA', `Q${i}`, { stage: RQ, value_rs: 1000000, payment_terms: 'Cash' }));
+    activity.push(act(pk(2026, 11, 2), 'RIA', id, 'created', { to_stage: RQ, value_rs: 1000000, payment_terms: 'Cash' }));
+  }
+  sites.push(site('S009001', 'MUHAMMAD-ALI', 'Former Long Code', { stage: WON, value_rs: 2450000, payment_terms: 'Cash', next_followup: '' }));
+  activity.push(act(pk(2026, 11, 2), 'MUHAMMAD-ALI', 'S009001', 'stage_change', { from_stage: RQ, to_stage: WON, value_rs: 2450000, payment_terms: 'Cash' }));
+  const w = world({ sites, activity });
+  const texts = ['this-week', 'this-month'].flatMap((p) => [ria(w, p).text, team(w, p).text]);
+  for (const text of texts) {
+    for (const line of monoLines(text)) {
+      assert.ok(line.length <= 30, `${line.length}: ${line}`);
+      assert.ok(!/\d{4}\d|[a-z]\d|\d[A-Za-z]/.test(line.replace(/\d+(?:\.\d+)?M\b/g, 'm').replace(/<0\.01M/, 'm')) || /^Due in/.test(line),
+        `columns apart: ${line}`);
+    }
+  }
+  assert.ok(ria(w, 'this-week').text.includes('\nQuotes      1000 1,000,000,000\n'), 'a 4-digit count and a 13-character amount');
+  assert.ok(ria(w, 'this-week').text.includes('\nSites worked 1000\n'));
+  assert.ok(team(w, 'this-week').text.includes('\nMUHAMMAD- 1      0  2.45M    0\n'), 'the long code is cut short');
+  assert.equal(w.s.targetMono_('2026-11', 1000000000, 99999999999), 'Target >999% of 1,000,000,000', 'a huge % keeps the line short');
+  assert.equal(w.s.targetMono_('2026-11', 1000, 190), 'Target  19% of 1,000');
+  assert.equal(w.s.monoRow_('Due in 7 days', 100), 'Due in 7 days 100', 'a 13-letter label keeps its space');
+});
+
+test('WhatsApp text: names can\'t switch on WhatsApp formatting (backticks, *, _, ~); the screen shows them as they are', () => {
+  activityId = 0;
+  const name = 'Tower ```x``` *Big* _new_ ~old~';
+  const w = world({
+    sites: [site('S000001', 'RIA', name, { stage: WON, value_rs: 100000, payment_terms: 'Cash', next_followup: '' }),
+      site('S000002', 'RIA', '`Odd`', { stage: LOST, lost_reason: '*Too* dear', next_followup: '' })],
+    activity: [act(pk(2026, 11, 2), 'RIA', 'S000001', 'stage_change', { from_stage: RQ, to_stage: WON, value_rs: 100000, payment_terms: 'Cash' }),
+      act(pk(2026, 11, 2), 'RIA', 'S000002', 'stage_change', { from_stage: RQ, to_stage: LOST, lost_reason: '*Too* dear' })],
+  });
+  const mine = ria(w, 'this-week');
+  assert.ok(mine.text.includes("\n- Tower '''x''' ∗Big∗ ˍnewˍ ∼old∼ · Rs. 100,000 Cash\n"));
+  assert.ok(mine.text.includes("\n- 'Odd' · ∗Too∗ dear"));
+  assert.equal(mine.text.split('\n').filter((l) => l === '```').length % 2, 0);
+  assert.ok(!mine.text.split('\n').some((l) => l !== '```' && l.includes('`')), 'no backtick outside the fences');
+  assert.equal(lines(mine, 'Won')[0], `${name} · Cash | Rs. 100,000`, 'the screen: exactly as typed');
+  assert.ok(team(w, 'this-week').text.includes('- ∗Too∗ dear · 1'));
+});
+
+test('team table: a salesman with nothing logged shows —, and in a month 0 for % when he has a target', () => {
+  const tabs = metaDataTabs();
+  tabs['Rep-Targets'] = tabs['Rep-Targets'].filter((r) => !(r[0] === 'IB' && r[1] instanceof Date && r[1].getTime() === pk(2026, 11, 1, 0).getTime()));
+  const w = world({ metaTabs: tabs, sites: summarySites(), activity: summaryActivity() });
+  assert.equal(teamRow(team(w, 'this-month'), 'WAK'), 'WAK | — | — | — | 0', 'a target, nothing logged: 0% is information');
+  assert.equal(teamRow(team(w, 'this-month'), 'IB'), 'IB | — | — | — | —', 'no target');
+  assert.equal(teamRow(team(w, 'this-week'), 'WAK'), 'WAK | — | — | — | —', 'a week: all —');
+});
+
 test('WhatsApp text: the team table columns end at characters 11, 18, 25 and 30', () => {
   for (const period of ['this-week', 'this-month']) {
     const lines = monoLines(team(summaryWorld(), period).text).filter((l) => /^(Name|North|Center|South|Team|RIA|AUR|WAK|SH|SJ|SM|IB|MUB) /.test(l) &&

@@ -76,4 +76,20 @@
   The team's NOW stays counts only. Unit and browser tests added (each failed with the tables left
   out).
 
+- [x] Review fix round 1 (independent reviewer of 48d84b0..5b11bfb: no blockers or majors; six
+  minors, each fixed with a test that failed on the old code):
+  1. WhatsApp columns: a long former code is cut short in the team table; `monoRow_` keeps a space
+     between label, count and Rs. and stays ≤ 30 (the label is shortened only in the extreme); the
+     target line shows >999%.
+  2. WhatsApp-safe names (`waSafe_`): backtick → ', and * _ ~ → look-alikes; screen unchanged.
+  3. (Coordinator decision) a salesman with a target and nothing logged keeps 0 in a month's %
+     column ("— — — 0"); a week shows all —. Spec sentence updated; test added.
+  4. `servedCode_`: removes a comment line only when no comment is open where it starts, stops
+     removing once a kept line leaves one open; a backtick anywhere keeps the element as written
+     (App.html's comments now quote names with ' instead of backticks). Adversarial tests run
+     source and served scripts and compare.
+  5. HTML comments are removed only outside tags (never inside a quoted attribute value).
+  6. Named late / cold rows colour only the reason; the NOW Late / Going cold rows keep label and
+     number coloured (mockup); tappable team rows are focusable (tabindex 0, Enter / Space).
+
 ## [ ] Step 6: Live (coordinator)
