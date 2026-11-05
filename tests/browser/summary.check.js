@@ -161,10 +161,38 @@ let browser;
       assert.ok(a.x >= 0 && a.x + a.width <= 360 && b.x + b.width <= 360, `inside 360 px: ${JSON.stringify([a, b])}`);
       assert.ok(Math.abs((a.y + a.height / 2) - (b.y + b.height / 2)) < 4, `one line: ${JSON.stringify([a, b])}`);
       assert.ok(a.x + a.width <= b.x, 'side by side');
+      const who = await page.locator('#who').boundingBox();
+      assert.ok(Math.abs((a.y + a.height / 2) - (who.y + who.height / 2)) < 6, `in the top row, beside the name: ${JSON.stringify([a, who])}`);
+    },
+    /** Each line under the name (his target; the admin's Updated and month lines) is one line at 360 px. */
+    oneLineUnderName: async () => {
+      const boxes = await page.$$eval('#target', ([t]) => (t.querySelector('div') ? [...t.querySelectorAll(':scope > div')] : [t]).map((e) => ({
+        text: e.textContent, height: e.getBoundingClientRect().height, line: parseFloat(getComputedStyle(e).lineHeight) })));
+      assert.ok(boxes.length >= 1);
+      for (const b of boxes) assert.ok(b.height <= 1.5 * b.line, `one line: ${JSON.stringify(b)}`);
+    },
+    /** "Rs." and its amount are never split across two lines on the summary screen. */
+    rsTogether: async () => {
+      const splits = await page.evaluate(() => {
+        const out = [];
+        const walk = document.createTreeWalker(document.querySelector('#sumBody'), NodeFilter.SHOW_TEXT);
+        for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+          for (const m of n.data.matchAll(/Rs\.\s\d/g)) {
+            const r = document.createRange();
+            r.setStart(n, m.index);
+            r.setEnd(n, m.index + m[0].length);
+            const tops = new Set([...r.getClientRects()].filter((x) => x.width > 0).map((x) => Math.round(x.top)));
+            if (tops.size > 1) out.push(n.data);
+          }
+        }
+        return out;
+      });
+      assert.deepEqual(splits, [], 'Rs. and its amount stay together');
     },
   });
+  const nbsp = (line) => line.replace(/Rs\. /g, 'Rs.\u00a0'); // the page keeps "Rs. 400,000" together
   const expectedLines = (view, asOf) => [view.title].concat(asOf ? [asOf] : [],
-    ...view.blocks.map((b) => (b.h ? [b.h] : []).concat(b.lines)));
+    ...view.blocks.map((b) => (b.h ? [b.h] : []).concat(b.lines.map(nbsp))));
 
   // ================================================================ The salesman's page (RIA)
   {
@@ -173,6 +201,7 @@ let browser;
     await page.waitForSelector('#who');
     assert.deepEqual(await h.calls(), [], 'opening the app makes no trip to Google (its data comes with the page)');
     await h.fitsTopLine('#newSite');
+    await h.oneLineUnderName();
     await h.noSideways('his list');
     if (shots) await page.screenshot({ path: path.join(shots, 'summary-top-ria.png') });
 
@@ -193,9 +222,11 @@ let browser;
     assert.equal(await page.getAttribute('#sumTabs .tab:nth-child(1)', 'aria-selected'), 'true');
     await h.shown();
     await page.evaluate(() => { window.__delay = 0; });
+    await h.rsTogether();
     let mine = world.s.repSummary(RIA, 'this-week');
     assert.deepEqual(await h.screenLines(), expectedLines(mine), 'the server\'s summary, line by line');
-    assert.ok((await h.screenLines()).includes('• Won <b>Tower</b> · Rs. 450,000 Cash'), 'a site name shows as text');
+    assert.ok((await h.screenLines()).includes('• Won <b>Tower</b> · Rs.\u00a0450,000 Cash'), 'a site name shows as text');
+    await h.rsTogether();
     assert.equal(await page.locator('#sumBody b').count(), 0, '...never as HTML');
     assert.ok(!(await h.screenLines()).some((l) => /AUR|777/.test(l)), 'nothing of anyone else');
     // Share on WhatsApp: a plain link with the whole text, in a new tab.
@@ -308,6 +339,7 @@ let browser;
     await page.waitForSelector('#adminTabs');
     assert.deepEqual(await h.calls(), [], 'opening makes no summary trip');
     await h.fitsTopLine('#refresh');
+    await h.oneLineUnderName();
     await h.noSideways('admin top');
     if (shots) await page.screenshot({ path: path.join(shots, 'summary-top-admin.png') });
     await page.click('#atab-team');
@@ -321,7 +353,8 @@ let browser;
     assert.ok(all.title.startsWith('Team · This week'));
     assert.equal(await page.getAttribute('#sumWa', 'href'), `https://wa.me/?text=${encodeURIComponent(all.text)}`);
     assert.ok(!/owner/i.test(await page.evaluate(() => document.body.innerText)), 'the word on screen is Admin');
-    assert.deepEqual(await h.texts('#sumBody button.sum-l'), [...all.blocks.find((b) => b.h === 'Salesmen').lines], 'each salesman can be tapped');
+    assert.deepEqual(await h.texts('#sumBody button.sum-l'), [...all.blocks.find((b) => b.h === 'Salesmen').lines].map(nbsp), 'each salesman can be tapped');
+    await h.rsTogether();
     await h.noSideways('team summary');
     if (shots) await page.screenshot({ path: path.join(shots, 'summary-team.png'), fullPage: true });
 

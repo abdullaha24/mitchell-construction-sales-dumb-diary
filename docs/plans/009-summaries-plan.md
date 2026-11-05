@@ -93,6 +93,13 @@
   5. `App.html` trimmed to 87,465 bytes (the admin-only summary code moved to `Admin.html`).
   6. Spec wording: the period check comes right after the link check; the block-edge margin.
 
+- [x] Live fix round (version 11 tested live by the coordinator; numbers matched the sheet): on the
+  summary screen "Rs." and its amount never split across lines (page only: a no-break space; the
+  WhatsApp text is unchanged); the top bar is a grid, the name and buttons on row 1 and the lines
+  under the name on row 2 across the full width, so his target and the admin's "Updated" and month
+  lines each fit one line at 360 px. `summary.check.js` checks both (each failed on the old code).
+  `App.html` 87,826 bytes.
+
 ## [ ] Step 7: Live (coordinator, with the owner)
 - Push, update the deployment, live checks against the TEST rows (S9-1), Copy / WhatsApp inside
   Google's frame on his phone.

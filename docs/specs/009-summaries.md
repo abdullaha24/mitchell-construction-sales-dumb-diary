@@ -288,7 +288,7 @@ lines added up (a site worked by two people, e.g. handed over in the week).
       tapping a salesman on the admin's summary shows his summary with the days-logged line; the
       Summary button fits the top line at 360 px on both pages.
 - [x] Salesman's page: opening the app makes no new trip to Google; `src/App.html` stays at or
-      under **88,000 bytes** (83,042 before this spec, 87,465 built), pinned by a test, so the speed pass starts from a
+      under **88,000 bytes** (83,042 before this spec, 87,826 built), pinned by a test, so the speed pass starts from a
       known size.
 - [ ] Live check with the TEST rows (owner S9-1): RIA's This week and This month match the sheet
       read through the connector; the admin's month numbers match the Team and This month tabs; on

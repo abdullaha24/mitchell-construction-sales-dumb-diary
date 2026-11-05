@@ -43,7 +43,7 @@ Owner's order (S9-2): **summaries → speed pass → launch.**
    locally (plan [009](009-summaries-plan.md), steps 1–6 ticked), not yet live.** Owner answers
    S9-1 to S9-16 in `open-questions.md`. Built: `src/summary.js` (`repSummary`, `adminPageSummary`:
    public functions 18 → 20; the lines and the WhatsApp text are built on the server), the Summary
-   screen in `App.html` (87,465 bytes, pinned ≤ 88,000) for both pages, last month's targets and a
+   screen in `App.html` (87,826 bytes after the live layout fixes, pinned ≤ 88,000) for both pages, last month's targets and a
    `months` marker in the kept copy, and S9-13 (an `update` row records Rs. only when it changed).
    **Next:** live (push, `update-deployment`; **right after `update-deployment`, run Sales Diary →
    Refresh salesmen & targets in the sheet**, so the kept copy, now with `months`, is rebuilt under
