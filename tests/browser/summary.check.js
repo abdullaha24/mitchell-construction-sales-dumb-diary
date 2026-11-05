@@ -467,7 +467,7 @@ let browser;
   }
 
   await browser.close();
-  console.log('PASS: the summaries behave as spec 009 says.');
+  console.log('PASS: the summaries behave as specs 009 and 010 say.');
 })().catch(async (error) => {
   console.error('FAIL:', error.message);
   if (browser) await browser.close();

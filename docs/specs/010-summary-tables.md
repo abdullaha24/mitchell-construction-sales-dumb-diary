@@ -1,6 +1,7 @@
 # 010: Summary tables (neat layout) and a smaller page download
 
-- **Status:** In progress (build plan [010](../plans/010-summary-tables-plan.md))
+- **Status:** In progress: built and checked locally (build plan
+  [010](../plans/010-summary-tables-plan.md)); live checks next
 - **Owner approval:** approved by the owner on 2026-11-05 (session 5), after choosing the direction
   from a mockup (S10-1 to S10-3) and the Rs. format (S10-4)
 - **Related:** [spec 009](009-summaries.md) (the summaries: what is counted stays exactly the same)
@@ -129,24 +130,24 @@ _Rs. logged, not invoiced_
   check on the owner's phone.
 
 ## Acceptance criteria
-- [ ] Unit tests: the summary parts (tiles, target, tables, now, team table with region and Team
+- [x] Unit tests: the summary parts (tiles, target, tables, now, team table with region and Team
       rows, "not in the salesmen list" rows) carry exactly spec 009's numbers (the existing count
       tests keep passing); exact WhatsApp text tests for a salesman's week, month, past week and the
       team month, with every monospace line ≤ 30 characters and the columns aligned.
-- [ ] `servedHtml_` tests: removes HTML comments, `//` comment lines, `/* */` comments and
+- [x] `servedHtml_` tests: removes HTML comments, `//` comment lines, `/* */` comments and
       indentation; keeps `'https://…'` strings, `//` inside quotes, regex literals, `<pre>` /
       `<textarea>` text and the page data unchanged; the served salesman page ≤ 75,000 bytes and the
       admin's within its pin.
-- [ ] Browser checks (both pages, at 360 px): six tiles, target bar (month) and none (week), the
+- [x] Browser checks (both pages, at 360 px): six tiles, target bar (month) and none (week), the
       tables and their "+ N more", Rs. right-aligned and never wrapped, the team table's columns
       line up and fit with no sideways scroll, tapping a salesman's row and Back, WhatsApp link holds
       the new text, Copy; every existing browser check still passes on the served (stripped) page.
-- [ ] No regressions: all existing tests pass (counts, privacy, speed, interleave, queue).
+- [x] No regressions: all existing tests pass (counts, privacy, speed, interleave, queue).
 - [ ] Live (agent): deployed with `update-deployment` at the same address; the agent checks both
       pages in Chromium against the sheet as for spec 009; the salesman's page open time is no
       slower than version 12.
 - [ ] Live (owner's phone): the WhatsApp message's monospace block lines up; if not, the fallback.
-- [ ] Docs: spec 009 points here for layout; data model unchanged; AGENTS.md (served-size pin),
+- [x] Docs: spec 009 points here for layout; data model unchanged; AGENTS.md (served-size pin),
       src/README.md, tests/README.md, roadmap, handoff (speed pass is now spec 011).
 
 ## Out of scope

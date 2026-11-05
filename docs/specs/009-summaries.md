@@ -5,6 +5,8 @@
   the last open item
 - **Owner approval:** approved by the owner on 2026-11-05 (session 5), after the interview (S9-1 to
   S9-12) and an adversarial review (S9-13 to S9-16)
+- **Layout:** how the summary looks on screen and in WhatsApp is now [spec 010](010-summary-tables.md)
+  (tiles, target bar, tables); what is counted stays as this spec says.
 - **Related:** roadmap phase 7b (before the speed pass and launch, owner S9-2) ·
   [vision](../product/vision.md) · ADR-0004 (a salesman gets only his own data) · ADR-0006 /
   ADR-0010 (admin link) · [glossary](../product/glossary.md) → Summary · owner answers Q12c, P5-1,

@@ -1,6 +1,6 @@
 # Handoff: start here
 
-> Updated 2026-11-05, session 5 (spec 009 summaries approved and built locally; live check next). **Every session: read this first, and update it before
+> Updated 2026-11-05, session 5 (spec 009 live as version 12; spec 010 summary tables built and checked locally, not live). **Every session: read this first, and update it before
 > you finish.** Then read `AGENTS.md` (rules, commands) if you haven't.
 
 ## Where we are
@@ -21,8 +21,8 @@
 - Sheet menu (computer): **Sales Diary → Check setup / Links / Refresh salesmen & targets**.
   Everything is in **Sales Diary**; **Meta-Data** is only ever read.
 
-Specs 001–008 **Done**, 009 built (not live); plans 001–008 ticked, 009 to step 6; ADR-0009 and ADR-0010 Accepted. Tests: 364 unit
-(incl. the random test, ~20 s) + 8 browser checks.
+Specs 001–008 **Done**, 009 live (owner's phone check left), 010 built locally (not live); plans 001–008 ticked, 009 to
+step 6, 010 to step 5; ADR-0009 and ADR-0010 Accepted. Tests: 375 unit (incl. the random test, ~20 s) + 8 browser checks.
 
 ### Live state (2026-11-04, end of session 4)
 - **TEST rows still in the sheet, kept at the owner's request while he looks at his admin screen**:
@@ -64,12 +64,25 @@ Owner's order (S9-2): **summaries → speed pass → launch.**
    `activitySince_`, which also protects the admin screen's This month; team lost reasons from
    current salesmen only; live "not sent yet" line; go-live refresh step; App.html trim; spec
    wording), then re-reviewed the fixes: **nothing remains.** 364 unit tests + 8 browser checks.
+0b. **Summary tables ([spec 010](../specs/010-summary-tables.md)): approved 2026-11-05 (S10-1 to
+   S10-4, mockup `docs/specs/010-mockup.html`), built and checked locally (plan
+   [010](010-summary-tables-plan.md), steps 1–5 ticked), not yet live.** Pages are now served
+   through `servedHtml_` (comments and indentation removed when Google sends the page; no build
+   step): salesman's page **69,574 bytes served** (source 92,149; it was 87,826 source / served
+   whole before), admin's 90,275 (pins 75,000 and 92,300, `tests/served.test.js`). The summary is
+   six tiles, a target bar, two-column tables and a NOW table; the admin gets one team table (Won
+   in millions) with tappable salesman rows; WhatsApp numbers in a monospace block (≤ 30
+   characters a line). **Next:** independent review, then live (push, `update-deployment`, agent
+   checks both pages in Chromium against the sheet and that the salesman's page opens no slower
+   than version 12), then the **owner's phone**: does the WhatsApp monospace block line up? If
+   not, the text falls back to bold labels (mockup C bottom), no other change.
 1. **Speed pass (recommended before launch; owner's top priority is speed on cheap phones):**
    measure where the salesman's open time goes (server time vs page size vs page script), then
    shrink what the salesman's page downloads and runs at open (e.g. strip comments / whitespace
    from the served HTML at push time, defer code only needed on Update/forms, check the page data
-   size). Target: back to ≤ ~3.9 s warm, with a check that pins the served page size. Spec it
-   briefly (now **spec 010**, after summaries) and get the owner's OK as usual.
+   size). Target: back to ≤ ~3.9 s warm. Its first step (comments stripped when served, a
+   served-size pin) is done in spec 010; the rest is **spec 011**: spec it briefly and get the
+   owner's OK as usual.
 2. **Phase 8, launch** (roadmap): links for all 7 salesmen, a short how-to (WhatsApp-friendly,
    plain words), cancel the RIA / SJ test links, empty TEST data, watch the first week.
 
@@ -143,7 +156,8 @@ matches; `printf '%s\n' '<address>' > "$S/clasp-in"`; delete the log.
 ## Questions for the owner
 Waiting on him: (1) **tap Summary on his phone** (spec 009, live as version 12, checked live by the
 agent): Share on WhatsApp should open the WhatsApp app with the text, and Copy should say "Copied";
-then close spec 009 (Done) and start the speed pass (spec 010);
+then close spec 009 (Done); then spec 010 goes live and he checks its WhatsApp message lines up;
+then the speed pass (spec 011);
 (2) **"delete"** the phase 7 TEST rows, but only **after** the summaries are tested live (S9-1).
 The speed pass is agreed (S9-2): it follows the summaries. Ask the owner's way: **one question at a time** (several only when he's brisk and
 they're independent), tappable options (`AskUserQuestion`), recommended option first and marked

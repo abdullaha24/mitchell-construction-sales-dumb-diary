@@ -46,8 +46,28 @@
   Copy the same height. Found and fixed: the "+ N more" cell took the page's old `.more` style.
   Served sizes: salesman 69,574 bytes, admin 90,275 (pin 92,300).
 
-## [ ] Step 5: Docs, local acceptance
+## [x] Step 5: Docs, local acceptance
 - Spec 009 points to spec 010 for layout; AGENTS.md (served-size pin), src/README, tests/README,
   roadmap (speed pass now spec 011), handoff; spec criteria ticked (not the live ones).
+- Done. 375 unit tests and 8 browser checks pass. Choices where the spec was silent:
+  - The NOW part is the four-row table only, on screen and in WhatsApp: spec 009's named top 5 hot
+    sites and 3 biggest late / cold sites are not shown any more (spec 010 and mockup A show
+    counts only; nothing counted changed).
+  - Salesman's tables show "Rs. 450,000" in the right column (spec text) where the mockup shows
+    the bare number; the admin's tiles keep full Rs. (S10-4 names only the team table and the
+    team WhatsApp table for millions).
+  - Team table: a salesman with nothing shows — in Worked, Quotes and Won, and in the last column
+    0 (month with a target), — (no target, or a week); a former code's % is —; a % over 999 shows
+    999+. Region rows' worked count each site once (as Team). "Not in the salesmen list" codes are
+    listed after the Team row and can't be tapped.
+  - Heading: "November so far" with "1–20 Nov · Rs. logged, not invoiced" under it; Last month
+    "October" / "1–31 Oct · …". The admin's view of a salesman adds "Logged on N days" under it,
+    and "Days logged" in that view's WhatsApp block.
+  - WhatsApp: label 13 characters, count ending at column 16, Rs. at 30 (amounts up to 13
+    characters); NOW in its own block with "Due in 7 days" (the screen's "Follow-ups next 7 days"
+    is too long for 30); team text: the numbers block (full Rs., target, house target), notes in
+    italics, the team table (Name / Worked / Quotes / Won / % or Lost, millions, "Not in list"),
+    lost reasons as a list ("- Price Too High · 6").
+  - The admin's served-size pin is 92,300 bytes (90,275 served + about 2 KB).
 
 ## [ ] Step 6: Live (coordinator)
