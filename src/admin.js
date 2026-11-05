@@ -45,7 +45,7 @@ function requireAdminLink_(k) {
 }
 
 /**
- * One `Activity` row of this month, tidied.
+ * One `Activity` row (of this month, or of a summary's period), tidied.
  * @typedef {{
  *   when: Date, by: string, site: string, action: string, from: string, to: string,
  *   value: number | null, terms: string, lostReason: string, note: string, followUp: string,
@@ -53,15 +53,26 @@ function requireAdminLink_(k) {
  */
 
 /**
- * This month's `Activity` rows (Pakistan time), oldest first, read **from the bottom up** in
- * blocks of ACTIVITY_BLOCK rows, stopping at the first block that reaches a row from before this
- * month: the app only ever adds rows at the bottom, so they are in time order, and the tab (which
- * only grows) is never read whole when the page opens. `by` is a salesman's code, or ADMIN_ACTOR.
+ * This month's `Activity` rows (Pakistan time), oldest first (activitySince_).
  * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} diary
  * @param {Date} now
  * @returns {MonthMove[]}
  */
 function monthActivity_(diary, now) {
+  return activitySince_(diary, dayStart_(`${currentMonthKey_(now)}-01`).getTime());
+}
+
+/**
+ * The `Activity` rows from `start` on, oldest first, read **from the bottom up** in blocks of
+ * ACTIVITY_BLOCK rows, stopping at the first block that reaches a row from before `start`: the
+ * app only ever adds rows at the bottom, so they are in time order, and the tab (which only
+ * grows) is never read whole (specs 008, 009). Which rows count is decided by each row's own
+ * time, never by a block edge. `by` is a salesman's code, or ADMIN_ACTOR.
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} diary
+ * @param {number} start ms
+ * @returns {MonthMove[]}
+ */
+function activitySince_(diary, start) {
   const tabName = DIARY_TABS.activity;
   const sheet = diary.getSheetByName(tabName);
   if (!sheet) throw new Error(`The Sales Diary sheet has no '${tabName}' tab. Run Check setup.`);
@@ -69,7 +80,6 @@ function monthActivity_(diary, now) {
   const found = findColumns_(sheet.getRange(1, 1, 1, width).getValues(), DIARY_HEADERS[tabName], tabName);
   if (!found.ok) throw new Error(found.message);
   const c = found.columns;
-  const start = dayStart_(`${currentMonthKey_(now)}-01`).getTime();
   /** @type {MonthMove[]} */
   const moves = [];
   for (let bottom = sheet.getLastRow(); bottom >= 2;) {

@@ -28,7 +28,7 @@
   (his instant line); each caught its mutation (writing the value on every update row; showing
   Rs. on every instant Update line). No existing test needed a change.
 
-## [ ] Step 4: Server summaries
+## [x] Step 4: Server summaries
 - `admin.js`: `activitySince_` (the bottom-up block read, from any moment); `monthActivity_` uses it.
 - New `summary.js`: periods (Saturday to Friday weeks, months, Pakistan time, end = next period's
   start), the period's facts in one pass over `Sites` and `Activity` (work by `Activity.rep`, results
@@ -38,6 +38,11 @@
 - Tests (`tests/summary.test.js`): periods, every count, both won / lost rules, team totals,
   targets and %, the Now parts, privacy and refusals, exact WhatsApp wording, speed (opens, reads,
   blocks, no writes).
+- Done: 34 more tests in `tests/summary.test.js`. 15 mutations of the server each failed a test
+  (no period end bound, the admin counted as work, P7-1 for past periods and "as ended" for
+  running ones, Now parts not his own, a snooze as work, a deleted site as a result, Now parts in
+  a past text, no block stop, results not by salesman, former codes dropped, first instead of
+  latest quote Rs., an update counted as a move).
 
 ## [ ] Step 5: The pages
 - `App.html`: a **Summary** button in the top line, the summary screen (four buttons, loading,

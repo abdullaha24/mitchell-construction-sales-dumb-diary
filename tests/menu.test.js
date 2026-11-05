@@ -60,16 +60,16 @@ function world(options = {}) {
 
 // ----------------------------------------------------------------------------------- Safety
 
-test('the only public functions are the 18 specs 002 to 008 list', () => {
+test('the only public functions are the 20 specs 002 to 009 list', () => {
   const { src } = world();
   const publicFunctions = Object.keys(src.sandbox)
     .filter((name) => !src.globalNamesBefore.has(name))
     .filter((name) => typeof src.sandbox[name] === 'function' && !name.endsWith('_'));
   assert.deepEqual(publicFunctions.sort(), [
-    'adminPageLoad', 'adminPageSaveStatus', 'adminPageUpdateSite',
+    'adminPageLoad', 'adminPageSaveStatus', 'adminPageSummary', 'adminPageUpdateSite',
     'doGet', 'menuCheckSetup', 'menuLinks', 'menuRefreshSalesmen', 'onOpen',
     'ownerCancelLink', 'ownerListLinks', 'ownerNewLink',
-    'repAddSite', 'repCheckPhone', 'repEditSite', 'repLoad', 'repSaveStatus', 'repSnoozeSite', 'repUpdateSite',
+    'repAddSite', 'repCheckPhone', 'repEditSite', 'repLoad', 'repSaveStatus', 'repSnoozeSite', 'repSummary', 'repUpdateSite',
   ]);
 });
 
