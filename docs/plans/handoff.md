@@ -1,10 +1,10 @@
 # Handoff: start here
 
-> Updated 2026-11-05, session 5 (spec 009 live as version 12; spec 010 summary tables built and checked locally, not live). **Every session: read this first, and update it before
+> Updated 2026-11-05, session 5 (specs 009 and 010 live as version 13; owner's phone check next). **Every session: read this first, and update it before
 > you finish.** Then read `AGENTS.md` (rules, commands) if you haven't.
 
 ## Where we are
-**Phases 0–7 are done and live; spec 009 (summaries) is live too** (deployment version 12, 2026-11-05).
+**Phases 0–7 are done and live; specs 009 (summaries) and 010 (summary tables) are live too** (deployment version 13, 2026-11-05).
 - **Salesman** (his private link): Today's Chase / Hot Pipeline / All My Parties (search, area
   filter), his own monthly target, cards with Call / WhatsApp, last-spoken line, going cold,
   Snooze; add / Update / Edit details; instant saves with a queue (failed saves orange).
@@ -21,7 +21,7 @@
 - Sheet menu (computer): **Sales Diary → Check setup / Links / Refresh salesmen & targets**.
   Everything is in **Sales Diary**; **Meta-Data** is only ever read.
 
-Specs 001–008 **Done**, 009 live (owner's phone check left), 010 built locally (not live); plans 001–008 ticked, 009 to
+Specs 001–008 **Done**, 009 and 010 live (owner's phone check left); plans 001–008 ticked, 009 to
 step 6, 010 to step 5; ADR-0009 and ADR-0010 Accepted. Tests: 382 unit (incl. the random test, ~20 s) + 8 browser checks.
 
 ### Live state (2026-11-04, end of session 4)
@@ -66,16 +66,19 @@ Owner's order (S9-2): **summaries → speed pass → launch.**
    wording), then re-reviewed the fixes: **nothing remains.** 364 unit tests + 8 browser checks.
 0b. **Summary tables ([spec 010](../specs/010-summary-tables.md)): approved 2026-11-05 (S10-1 to
    S10-4, mockup `docs/specs/010-mockup.html`), built and checked locally (plan
-   [010](010-summary-tables-plan.md), steps 1–5 ticked), not yet live.** Pages are now served
+   [010](010-summary-tables-plan.md), steps 1–5 ticked), **live as version 13**.** Pages are now served
    through `servedHtml_` (comments and indentation removed when Google sends the page; no build
    step): salesman's page **69,833 bytes served** (source 92,420; it was 87,826 source / served
    whole before), admin's 90,739 (pins 75,000 and 92,300, `tests/served.test.js`). The summary is
    six tiles, a target bar, two-column tables and a NOW table; the admin gets one team table (Won
    in millions) with tappable salesman rows; WhatsApp numbers in a monospace block (≤ 30
-   characters a line). **Next:** independent review, then live (push, `update-deployment`, agent
-   checks both pages in Chromium against the sheet and that the salesman's page opens no slower
-   than version 12), then the **owner's phone**: does the WhatsApp monospace block line up? If
-   not, the text falls back to bold labels (mockup C bottom), no other change.
+   characters a line). Reviewed cold (no blockers / majors; 6 minors fixed in `3cd2697`; the
+   salesman's named Hot sites / Late & going cold restored in `962ed45`, S9-7), re-reviewed clean
+   (Chromium DOM diff: the served page shows exactly what the source page shows). Live as
+   **version 13**, checked live by the agent (every number, % and screen; open 4.1–4.2 s). Note
+   for the owner: the named Late & going cold rows show the reason, not the site's Rs. **Left:** the
+   **owner's phone**: does the WhatsApp monospace block line up? If not, the text falls back to
+   bold labels (mockup C bottom), no other change.
 1. **Speed pass (recommended before launch; owner's top priority is speed on cheap phones):**
    measure where the salesman's open time goes (server time vs page size vs page script), then
    shrink what the salesman's page downloads and runs at open (e.g. strip comments / whitespace
@@ -154,10 +157,10 @@ matches; `printf '%s\n' '<address>' > "$S/clasp-in"`; delete the log.
   server, and make things feel instant on the phone.
 
 ## Questions for the owner
-Waiting on him: (1) **tap Summary on his phone** (spec 009, live as version 12, checked live by the
-agent): Share on WhatsApp should open the WhatsApp app with the text, and Copy should say "Copied";
-then close spec 009 (Done); then spec 010 goes live and he checks its WhatsApp message lines up;
-then the speed pass (spec 011);
+Waiting on him: (1) **tap Summary on his phone** (specs 009 + 010, live as version 13, checked live
+by the agent): Share on WhatsApp should open the WhatsApp app with the text, the numbers block should
+line up in WhatsApp, and Copy should say "Copied"; then close specs 009 and 010 (Done); then the
+speed pass (spec 011);
 (2) **"delete"** the phase 7 TEST rows, but only **after** the summaries are tested live (S9-1).
 The speed pass is agreed (S9-2): it follows the summaries. Ask the owner's way: **one question at a time** (several only when he's brisk and
 they're independent), tappable options (`AskUserQuestion`), recommended option first and marked
@@ -170,7 +173,7 @@ IDs aren't secret (each needs the owner's Google account):
 - **Sales Diary** sheet: `1tuyVPDB33x1Vw8JQYashM4PRQSjGjQq8MBs7l4cJn5Y`. **Never share it**
   (it holds link codes).
 - **Apps Script** (bound to Sales Diary): script ID in `.clasp.json`.
-- **Web app** (same address since phase 1, now version 12): deployment
+- **Web app** (same address since phase 1, now version 13): deployment
   `AKfycbwmWhxLQfpkQRfFIfdv9tZD4CvZfeWEB__YiXnGTSk7-6mlZVZUvLEp2aJDwey0HXaF`,
   https://script.google.com/macros/s/AKfycbwmWhxLQfpkQRfFIfdv9tZD4CvZfeWEB__YiXnGTSk7-6mlZVZUvLEp2aJDwey0HXaF/exec
 - Owner's Google account: the one that owns both sheets.

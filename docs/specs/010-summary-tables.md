@@ -1,7 +1,8 @@
 # 010: Summary tables (neat layout) and a smaller page download
 
-- **Status:** In progress: built and checked locally (build plan
-  [010](../plans/010-summary-tables-plan.md)); live checks next
+- **Status:** In progress: **live as deployment version 13** (2026-11-05), reviewed cold and
+  re-reviewed clean, checked live by the agent (build plan
+  [010](../plans/010-summary-tables-plan.md)); the owner's phone check is the last open item
 - **Owner approval:** approved by the owner on 2026-11-05 (session 5), after choosing the direction
   from a mockup (S10-1 to S10-3) and the Rs. format (S10-4)
 - **Related:** [spec 009](009-summaries.md) (the summaries: what is counted stays exactly the same)
@@ -160,9 +161,12 @@ _Rs. logged, not invoiced_
       line up and fit with no sideways scroll, tapping a salesman's row and Back, WhatsApp link holds
       the new text, Copy; every existing browser check still passes on the served (stripped) page.
 - [x] No regressions: all existing tests pass (counts, privacy, speed, interleave, queue).
-- [ ] Live (agent): deployed with `update-deployment` at the same address; the agent checks both
-      pages in Chromium against the sheet as for spec 009; the salesman's page open time is no
-      slower than version 12.
+- [x] Live (agent), version 13: both pages driven in Chromium at 360 px inside Google's frame. Every
+      number matches the sheet (RIA: 3 new, 3 worked, 1 quote and 1 won at Rs. 400,000, 1 lost Price
+      Too High, 1 follow-up due) and every % matches Meta-Data (RIA 2%, North 1%, Team 1%, rounded
+      down); no sideways scroll on any of the 8 screens; every monospace line ≤ 30 characters and
+      blocks closed; Copy says "Copied"; tapping RIA's row and Back work; no `//` comment lines in the
+      served page; no page errors. Open time: salesman 4.2 s, admin 4.1 s (version 12: 3.5–5 s).
 - [ ] Live (owner's phone): the WhatsApp message's monospace block lines up; if not, the fallback.
 - [x] Docs: spec 009 points here for layout; data model unchanged; AGENTS.md (served-size pin),
       src/README.md, tests/README.md, roadmap, handoff (speed pass is now spec 011).
