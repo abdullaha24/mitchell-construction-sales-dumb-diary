@@ -423,7 +423,7 @@ function stub() {
   await page.waitForSelector('#adminTabs');
   await page.waitForTimeout(300);
   const abar = await page.locator('#adminTabs').boundingBox();
-  await save('21-admin-button', { x: 0, y: 0, width: 360, height: Math.ceil(abar.y + abar.height) }, [[1, '#summary', 'tr']]);
+  await save('21-admin-button', { x: 0, y: 0, width: 360, height: Math.ceil(abar.y + abar.height) });
   await page.click('#summary');
   await shown();
   await page.click('#sumTabs .tab:nth-child(3)');
@@ -441,7 +441,7 @@ function stub() {
   info._texts.team = await waText();
   await page.click(`#guide-team tr.tap:has(td:text-is("${REP}"))`);
   await page.waitForSelector('#sumBody .note:has-text("Logged on")');
-  await tall('24-admin-his', [[1, '#sumBody .note:has-text("Logged on")', 'g']], '#sumBack', '#sumBody .goal');
+  await tall('24-admin-his', [[2, '#sumBody .note:has-text("Logged on")', 'g']], '#sumBack', '#sumBody .goal');
 
   fs.writeFileSync(path.join(out, 'shots.json'), JSON.stringify(info, null, 1));
   await browser.close();

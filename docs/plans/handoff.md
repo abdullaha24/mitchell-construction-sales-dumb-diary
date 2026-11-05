@@ -57,8 +57,9 @@ test, ~20 s) + 8 browser checks.
    - `sales-diary-guide.pdf`, 17 A5 pages for the salesmen: the app (12) plus **Summary** (5: the
      button and the 4 buttons, Saturday to Friday; the six tiles and the target bar; the Won /
      Quotes given / Lost tables and NOW; Share on WhatsApp / Copy with the message as WhatsApp shows
-     it; "saves not sent yet", and a finished week or month never changes); "Friday: share This
-     week" on the last page.
+     it; "saves not sent yet", and Last week / Last month stay as they ended, S9-14); "Friday: share
+     This week" on the last page. **If the owner's phone check makes the WhatsApp message fall back
+     to bold labels (spec 010), page 13 ("the numbers line up in a block") must change.**
    - `admin-summary-guide.pdf`, 2 pages for the Admin (owner chose a separate short PDF): his
      Summary, team tiles and target with house / office, the team table (regions, Team, tap a name
      for "Logged on N days", millions, % / Lost) and lost reasons.

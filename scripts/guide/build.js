@@ -142,7 +142,7 @@ function pages(info, dir) {
       <p class="lead">Your <b>Friday report</b> and your <b>monthly review</b>. <b>One tap.</b></p>
       ${pic('15-sum-button', 'bar')}
       <div class="row">${pic('16-sum-week')}
-        ${steps([[1, 'Tap **This week**, **Last week**, **This month** or **Last month**.'],
+        ${steps([[1, 'Tap **Summary**, then **This week**, **Last week**, **This month** or **Last month**.'],
           [2, 'The days it covers. A week is **Saturday to Friday**.'], [3, 'Your numbers (next page).']])}</div>
     </section>`,
 
@@ -161,11 +161,11 @@ function pages(info, dir) {
       <h2><span class="badge">12</span>Your lists</h2>
       <div class="pair">
         <div>${pic('18-sum-tables')}<p class="cap"><span class="n">1</span> <b>Won</b>,
-          <span class="n">2</span> <b>Quotes given</b>, <span class="n">3</span> <b>Lost</b> and why.<br>Biggest Rs. first.</p></div>
+          <span class="n">2</span> <b>Quotes given</b>, <span class="n">3</span> <b>Lost</b> and why.<br>Won and Quotes: biggest Rs. first.</p></div>
         <div>${pic('19-sum-now')}<p class="cap"><span class="n">1</span> <b>NOW</b> = today:
           hot sites, follow-ups in the next 7 days, late, going cold.<br>
-          <span class="n">2</span> Your top <b>hot sites</b>.<br><span class="n">3</span> Your <b>late</b> and <b>going cold</b> sites.<br>
-          <span class="n">4</span> <span class="n">5</span> Next page.</p></div>
+          <span class="n">2</span> Your top <b>hot sites</b>.<br><span class="n">3</span> Your 3 biggest <b>late</b> or <b>going cold</b> sites.<br>
+          <span class="n">4</span> Share on WhatsApp, <span class="n">5</span> Copy (next page).</p></div>
       </div>
     </section>`,
 
@@ -180,8 +180,8 @@ function pages(info, dir) {
     `<section class="page">
       <h2><span class="badge">14</span>Good to know</h2>
       ${pic('20-sum-unsent', 'bar')}
-      ${steps([[1, 'Saves still sending (or orange) are **not in the summary yet**. Wait until they are sent, then tap the button again.']])}
-      <div class="tip">A finished week or month <b>never changes</b>. What you share on Friday still says the same on Monday.</div>
+      ${steps([[1, 'Saves still sending are **not in the summary yet**. Orange? Tap the card and save again (see 9). When all are sent, tap **This week** again.']])}
+      <div class="tip"><b>Last week</b> and <b>Last month</b> stay as they ended: a site won last week stays won there, even if it is lost later.</div>
     </section>`,
 
     `<section class="page">
