@@ -7,9 +7,7 @@ the data model, update those too. The ready-to-ask versions (options and recomme
 
 ## Open
 
-| # | Question | Agent's recommendation |
-| --- | --- | --- |
-| S9-13 | Spec 009: a salesman re-quotes a site already at Rate Quoted (new Rs. value, same stage). Count it as another "quote given"? | **No:** a quote counts when a site moves to Rate Quoted (or is added at it). The history writes the Rs. value on every Update at Rate Quoted, even unchanged, so a new price can't be told from an unchanged one without reading history from before the period. |
+_None right now._ Add new questions here as they come up.
 
 ## Answered
 
@@ -125,3 +123,11 @@ Owner, session 5 (2026-11-05): weekly and monthly summaries ([spec 009](../specs
 | S9-10 | Where does the button go? | **A Summary button at the top of both pages**; the existing tabs stay as they are. |
 | S9-11 | Save summaries in the sheet? | **No.** Nothing new saved; the history can always rebuild a summary, and the WhatsApp message is the written copy. |
 | S9-12 | What counts as "sites worked"? | **Sites he added or saved an Update on**, each once; snoozes and Edit details don't count (as going cold, P6-2). |
+
+Owner, session 5, after the adversarial review of spec 009 (2026-11-05):
+
+| # | Question | Answer |
+| --- | --- | --- |
+| S9-13 | A revised price on a site already at Rate Quoted: another "quote given"? (The history saves the Rs. on every Update at that stage, changed or not.) | **Not counted.** A quote counts when a site moves to Rate Quoted. **From this version on, an Update row saves Rs. only when the price changed**, so re-quotes can be counted later. The admin's Today feed then shows Rs. on an Update only when it changed. |
+| S9-14 | Wins and losses in a past week / month (a site won 29 Oct, lost 3 Nov)? | **As the period ended:** a finished week or month never changes after it's shared (won in October, lost in November). This week / This month stay exactly as the Team tab counts them (P7-1). |
+| S9-15 | "Coming up" and "Late & going cold" (always today's state) in a shared Last week / Last month message? | **Left out of past messages.** On screen they show under every button, headed "Now, 5 Nov". |

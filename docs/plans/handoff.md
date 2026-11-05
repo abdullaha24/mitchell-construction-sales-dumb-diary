@@ -45,8 +45,14 @@ Owner's order (S9-2): **summaries → speed pass → launch.**
    is **Saturday to Friday**; shown on screen, **Share on WhatsApp** + Copy; Rs. won and quoted, the
    month against target (inside the summary only; his main page stays target-only); admin: team /
    region totals, salesmen side by side, each salesman's summary, lost reasons, "logged on X days"
-   (admin only); nothing saved in the sheet. **Waiting for the owner to approve the spec and answer
-   S9-13** (revised quotes). Then build it the session 4 way (builder + reviewer subagents), with
+   (admin only); nothing saved in the sheet. An **adversarial review** (separate reviewer agent) then
+   found 13 issues; all are fixed in the spec, and the three business ones were answered by the
+   owner: S9-13 (revised prices not counted; from now on an Update row saves Rs. only when it
+   changed: the one write change), S9-14 (past weeks / months counted **as the period ended**),
+   S9-15 ("Now" parts left out of past periods' shared text). Other fixes: Copy fallback chain inside
+   Google's frame, `wa.me/?text=` link form, team / region / "not in the salesmen list" totals, a
+   `months` marker on the kept copy (else Last month shows "No target" for a day), period end bound,
+   `App.html` ≤ 88,000 bytes. **Waiting for the owner to approve the spec.** Then build it the session 4 way (builder + reviewer subagents), with
    two new public functions (`repSummary`, `adminPageSummary`: 18 → 20) and last month's targets in
    the kept copy (data-model change in the same commit). Test live against the TEST rows (S9-1).
    Build notes from the interview: the page sits inside a Google frame, so the WhatsApp button
@@ -129,8 +135,7 @@ matches; `printf '%s\n' '<address>' > "$S/clasp-in"`; delete the log.
   server, and make things feel instant on the phone.
 
 ## Questions for the owner
-Waiting on him: (1) **approve spec 009** (summaries) and answer **S9-13** (count a revised price
-on a site already at Rate Quoted as another quote? agent recommends **no**; ask with tappable options);
+Waiting on him: (1) **approve spec 009** (summaries; reviewed, S9-1 to S9-15 answered);
 (2) **"delete"** the phase 7 TEST rows, but only **after** the summaries are tested live (S9-1).
 The speed pass is agreed (S9-2): it follows the summaries. Ask the owner's way: **one question at a time** (several only when he's brisk and
 they're independent), tappable options (`AskUserQuestion`), recommended option first and marked
