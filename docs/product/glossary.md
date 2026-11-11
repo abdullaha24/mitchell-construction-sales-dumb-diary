@@ -12,7 +12,9 @@ Owner: correct anything wrong here; agents should treat this file as the authori
 | **Admin / Administrator** | The company owner as the app shows him (owner, P7-7). **Use this word on every screen and message**, never "owner". Sees everything on the **admin screen**, opened with his private admin link, and can update any site there; his changes are marked `admin` in the history. |
 | **Owner** | The company owner. A **docs-only** word for the Admin (same person); not used on screens. |
 | **Party** | Anyone a salesman sells to: a contractor, a builder, a dealer, a project owner. |
-| **Contact** | The actual person to call at a party or site: site engineer, thekedar, procurement officer. |
+| **Contact** | The actual person to call at a party or site: site engineer, thekedar, procurement officer. A site has one **main contact** (on its card, Call, WhatsApp). |
+| **Earlier contacts** | The people who were a site's main contact before, newest first, each with the day they stopped being main (*"till 11 Nov"*), still callable from the site screen (spec 011). At most 20 per site. |
+| **+ New contact person** | The button in the Update form for when a salesman is handed to a new person: the new one becomes the main contact and the old one moves to Earlier contacts. **Make main** on an earlier contact does the same the other way round. |
 | **Thekedar** | Urdu: contractor or labour contractor on a site. Often the real decision-maker on materials. |
 | **Applicator** | A contractor who applies the product (e.g. a waterproofing applicator). |
 | **Consultant** | Engineer or architect firm that approves which materials a project may use. |
@@ -31,7 +33,7 @@ Owner: correct anything wrong here; agents should treat this file as the authori
 | **Snooze** | Push a due site's follow-up to Tomorrow, 3 days or 1 week from its card, without the Update screen (owner, P6-1). Kept in the history; not counted as work. |
 | **Last-spoken line** | The last note on a site and the day it was written, on its card: *"22 Oct: Quoted WP-100 @ Rs. 1,450, waiting for consultant"*. |
 | **Follow-up buttons** | Tomorrow · 3 days · 1 week · Pick date. |
-| **Duplicate warning** | "Someone in the team already works with this contact." Shown when a contact's phone number is already with another salesman. Reveals nothing else. |
+| **Duplicate warning** | "Someone in the team already works with this contact." Shown when a contact's phone number is already with another salesman (as a main or an earlier contact). Reveals nothing else. |
 
 ## Sales stages
 

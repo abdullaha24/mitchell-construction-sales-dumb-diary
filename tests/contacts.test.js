@@ -388,8 +388,10 @@ test("privacy (ADR-0004): a salesman never receives another salesman's earlier c
     () => w.s.repUpdateSite(RIA, 'S000002', contactOnly({ name: 'X', phone: '923001234567' })),
     () => w.s.repCheckPhone(RIA, '0300 6667777'),
     () => w.s.repEditSite(RIA, 'S000002', details()),
+    ...['this-week', 'last-week', 'this-month', 'last-month'].map((p) => () => w.s.repSummary(RIA, p)),
   ].map((call) => { try { return JSON.stringify(plain(call())); } catch (e) { return e.message; } })) {
     assert.ok(!reply.includes('Hidden Person') && !reply.includes('923006667777'), reply);
+    assert.ok(reply.startsWith('{') || reply === "That site isn't in your list.", reply);
   }
   const admin = plain(w.s.adminPageLoad(ADMIN)).sites.find((x) => x.id === 'S000002');
   assert.deepEqual(admin.earlier, [{ name: 'Hidden Person', phone: '923006667777', till: '2026-08-01' }], 'the admin sees them');
