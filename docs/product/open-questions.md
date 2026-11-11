@@ -141,3 +141,16 @@ Owner, session 5: summary layout ([spec 010](../specs/010-summary-tables.md), 20
 | S10-2 | WhatsApp message style? | **Numbers lined up in a monospace block**, names as a list; checked on his phone, fall back to bold labels if it doesn't line up. |
 | S10-3 | Make room on the salesman's page (at its size limit)? | **Strip comments first**: removed when the page is sent to phones (first step of the speed pass). |
 | S10-4 | Rs. in the team table and team WhatsApp table? | **Millions everywhere** (*2.45M*). The salesman's own tiles and tables keep full figures. |
+
+Owner, session 6: review meeting, Plan tab, logo, contacts ([spec 011](../specs/011-review-meeting-and-contacts.md), 2026-11-11)
+
+| # | Question | Answer |
+| --- | --- | --- |
+| S11-1 | How will he run the weekly sales review? | **Screen share on a call** (salesmen in different cities): the summaries get a wide layout for a laptop, and every number can be tapped to show its sites. |
+| S11-2 | Step from salesman to salesman in the meeting? | **Yes: ‹ Prev / Next ›** in a salesman's summary (agent's recommendation). |
+| S11-3 | Where does "what's planned today" go on the admin screen? | **A separate Plan tab** (Today keeps showing the saves). Agent had recommended putting it on Today. |
+| S11-4 | What does the Plan tab hold? | **Today and Tomorrow, one line per salesman** (due · late · done), tap for his list with ✓ on the done ones (agent's recommendation). |
+| S11-5 | Logo look? | **Mockup B: logo strip + Mitchell teal** buttons and tabs, thin orange line; warning colours unchanged (agent's recommendation). |
+| S11-6 | Recording a new contact person at a site? | **"+ New contact person"** (in Update): the new person becomes the main contact; old ones kept under "Earlier contacts" (Call / WhatsApp / Make main), searchable and in the duplicate check (agent's recommendation). |
+| S11-7 | Restore the two contacts overwritten in week 1 from the history? | **No, leave them.** |
+| S11-8 | Ship in two drops or one? | **All in one go** (agent had recommended two drops). |
