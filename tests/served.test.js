@@ -22,8 +22,9 @@ const RIA = 'a'.repeat(64);
 const ADMIN = 'c'.repeat(64);
 const D = new Date('2026-11-04T05:00:00Z');
 /** The served-size pins (bytes of the page as served, before the page data is filled in). */
-const SALESMAN_PIN = 75000;
-const ADMIN_PIN = 92300; // 90,275 served (spec 010) + about 2 KB
+// Spec 011's budget: the logo (once, in App.html) and the new contact person on both pages.
+const SALESMAN_PIN = 84000;
+const ADMIN_PIN = 104000;
 
 const { s } = (() => {
   const src = loadSrc({ HtmlService: makeHtmlService(), Utilities: makeUtilities() });

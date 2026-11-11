@@ -1,21 +1,26 @@
 'use strict';
 // Spec 008 → "Two people, one site", tried at random. A salesman (RIA) and the admin save Updates
 // to the same site in seeded random orders: each save touches random things (stage, Rs. value +
-// Cash / Credit, lost reason, follow-up, note) and has a random fate (lands; fails before
+// Cash / Credit, lost reason, follow-up, note; since spec 011 a new contact person or Make main,
+// carried by a later form opened over it) and has a random fate (lands; fails before
 // landing; lands but the reply is lost, then is retried unchanged or edited; refused, then retried),
 // with random refreshes and forms left open while the other one saves. The server is the real
 // code; each phone is a small model of App.html's save queue, using App.html's own update rules
-// (the "update rules" block: intendedOf, touchedOf), loaded from the page as they are.
+// (the "update rules" block: intendedOf, touchedOf; and moveMain), loaded from the page as they are.
 //
 // After every save, and at the end, these must hold:
 //  1. A save writes only what its sender touched (no stale value ever written back), and never
 //     over a change someone else made to that same thing after the sender's form opened.
 //  2. A save Google answers "saved" really wrote everything its sender touched; anything else is
 //     visibly not saved (orange) or refused with a message.
-//  3. One Activity row per landed save, never two for one save ID.
+//  3. One update / stage_change row per landed save, never two for one save ID, plus at most one
+//     `contact` row (spec 011); a save whose new contact is already the main one writes no contact row.
 //  4. No save stays orange after a later save that carried its changes landed.
 //  5. A save is never refused unless someone else changed something it touched (to another value)
 //     since its form opened, or moved the stage so that a touched thing is no longer used.
+//  6. Contacts (spec 011): a "saved" new contact is the main one; nobody who was ever the main
+//     contact is lost (each is the main or an earlier contact) or kept twice; the main contact
+//     changes only through a save that carried a contact.
 // (An edited retry gets a new save ID on the real page: any change to an Update form does.)
 // A failure prints the seed: SEED=<n> node --test tests/interleave.test.js runs just that one.
 
@@ -78,9 +83,12 @@ const src = loadSrc({
 const s = src.sandbox;
 const RULES = plain(s.pageRules_());
 const LOST = RULES.lostStage;
-const page = new Function('rules', `${pageFunction('has')}\n${pageFunction('digitsOf')}\n${pageFunction('addDays')}\n${block}\n` +
-  'return { snap: snap, sameSnap: sameSnap, intendedOf: intendedOf, touchedOf: touchedOf, choseFollowUp: choseFollowUp, addDays: addDays };')(() => RULES);
 const TODAY = s.dayKey_(new Date());
+const page = new Function('rules', 'todayKey', [has, digitsOf, addDays, tidyPhone, squash, moveMain].map((f) => pageFunction(f.name)).join('\n') +
+  `\n${block}\n` + 'return { snap: snap, sameSnap: sameSnap, intendedOf: intendedOf, touchedOf: touchedOf, choseFollowUp: choseFollowUp, ' +
+  'addDays: addDays, moveMain: moveMain };')(() => RULES, () => TODAY);
+// Names for pageFunction only (the page's own functions are what runs).
+function has() {} function digitsOf() {} function addDays() {} function tidyPhone() {} function squash() {} function moveMain() {}
 const D = new Date(Date.now() - 20 * 24 * 60 * 60 * 1000);
 
 function freshDiary() {
@@ -89,6 +97,7 @@ function freshDiary() {
   ['Dealer'].forEach((v, i) => lists.push(['buyer_type', v, '', 'owner', true, (i + 1) * 10]));
   const row = SITES.map((h) => ({
     site_id: SITE, rep: 'RIA', region: 'North', site_name: 'F-11 Tower', buyer_type: 'Dealer', contact_phone: '923001234567',
+    contact_name: 'Start', earlier_contacts: '923001110009 · Old · 2026-01-01',
     stage: 'Rate Quoted', value_rs: 300000, payment_terms: 'Credit', next_followup: s.dayStart_(page.addDays(TODAY, 2)),
     last_note: 'start', created_at: D, updated_at: D, worked_at: D,
   })[h] ?? '');
@@ -99,13 +108,17 @@ function freshDiary() {
   return byId[SALES_DIARY_ID];
 }
 
-/** The site's row as it is, plus how many Activity rows there are. */
+/** The site's row as it is, plus the Activity rows' actions. */
 function sheetState(diary) {
   const values = diary.getSheetByName('Sites').getDataRange().getValues()[1];
   const r = Object.fromEntries(SITES.map((h, i) => [h, values[i]]));
   const card = plain(s.cardOf_(r));
-  return { snap: page.snap(card), note: card.note, rows: diary.getSheetByName('Activity').getLastRow() - 1 };
+  const actions = diary.getSheetByName('Activity').getDataRange().getValues().slice(1).map((a) => a[ACTIVITY.indexOf('action')]);
+  return { snap: page.snap(card), note: card.note, rows: actions.length, actions, main: { name: card.contactName, phone: card.phone },
+    earlier: card.earlier || [] };
 }
+const PEOPLE = [['Bilal', '923001110001'], ['Kamran', '923001110002'], ['Asif', '923001110003'], ['Nadeem', ''], ['Zafar', '']];
+const samePerson = (a, b) => (a.phone || b.phone ? a.phone === b.phone : a.name.toLowerCase().replace(/\s+/g, '') === b.name.toLowerCase().replace(/\s+/g, ''));
 
 // ---- A phone: a small model of App.html's save queue (spec 005) with spec 008's rules ----
 let idCounter = 0;
@@ -157,6 +170,17 @@ function makePhone(who) {
     if (u.stage === LOST && !u.lostReason) u.lostReason = 'Price Too High';
     if (u.stage === LOST && u.lostReason === 'Other' && !u.note) u.note = `${who} why ${++p.notes}`;
     if (u.followUp === 'keep' && !(u.shown.followUp && u.shown.followUp >= TODAY)) u.followUp = 'tomorrow';
+    // Spec 011: + New contact person, or Make main on an earlier contact.
+    const earlier = (p.card.earlier || []).filter((e) => e.till);
+    if (earlier.length && rnd.chance(0.15)) {
+      const e = rnd.pick(earlier);
+      u.contact = { name: e.name, phone: e.phone, again: true };
+    } else if (rnd.chance(0.3)) {
+      const [name, phone] = rnd.pick(PEOPLE);
+      u.contact = { name, phone };
+    }
+    // The page's own check: no new contact without a number at a stage that needs one.
+    if (u.contact && !u.contact.phone && RULES.numberStages.includes(u.stage)) u.contact = { name: 'Bilal', phone: '923001110001' };
     u.saveId = newSaveId();
   };
   // Save: what App.html's saveUpdate sends, shown at once, queued (carries = his earlier saves).
@@ -173,6 +197,13 @@ function makePhone(who) {
     if (RULES.valueStages.includes(want.stage)) { card.value = want.value; card.terms = want.terms; }
     if (u.note.trim()) card.note = (isAdmin ? 'Admin: ' : '') + u.note.trim();
     const carries = replaces ? replaces.carries.concat([replaces.id]) : p.queue.map((e) => e.id); // a retry: what it first carried, and itself
+    // A new contact of a save it carries goes again (spec 011), as App.html's saveUpdate does.
+    let c = u.contact;
+    p.queue.forEach((q) => { if (!u.contact && carries.includes(q.id) && q.input.contact) c = q.input.contact; });
+    if (c) {
+      input.contact = { name: c.name.trim(), phone: c.phone.trim(), again: !!c.again };
+      page.moveMain(card, c);
+    }
     if (replaces) p.queue.splice(p.queue.indexOf(replaces), 1);
     const entry = { id: u.saveId, input, card, state: u, status: 'saving', carries, want };
     p.queue.push(entry);
@@ -206,6 +237,10 @@ function makePhone(who) {
   return p;
 }
 
+const sameMain = (a, b) => a.phone === b.phone && a.name.toLowerCase().replace(/\s+/g, '') === b.name.toLowerCase().replace(/\s+/g, '');
+/** Nothing on the site changed (a contact-only save whose person is already the main one). */
+const sameStateBut = (a, b) => page.sameSnap(a.snap, b.snap) && a.note === b.note && JSON.stringify(a.earlier) === JSON.stringify(b.earlier);
+
 // ---- One random sequence ----
 function run(seed) {
   const rnd = random(seed);
@@ -213,6 +248,8 @@ function run(seed) {
   const phones = [makePhone('RIA'), makePhone('admin')];
   phones.forEach((ph) => ph.refresh());
   const rowsBySave = {};
+  const landed = {};
+  const everMain = [sheetState(diary).main, { name: 'Old', phone: '923001110009' }];
   const log = [];
   const fail = (what) => { throw new Error(`seed ${seed}: ${what}\n  ${log.join('\n  ')}`); };
 
@@ -221,19 +258,48 @@ function run(seed) {
     const e = ph.queue.find((q) => q.status === 'saving');
     if (!e) return;
     const fate = only || rnd.pick(['land', 'land', 'land', 'fail', 'lost', 'late']);
-    log.push(`${ph.who} ${e.id} ${fate} touched=${e.input.touched.join(',')} want=${JSON.stringify(e.want)}${e.input.note ? ' note' : ''}`);
+    log.push(`${ph.who} ${e.id} ${fate} touched=${e.input.touched.join(',')} want=${JSON.stringify(e.want)}${e.input.note ? ' note' : ''}` +
+      `${e.input.contact ? ` contact=${JSON.stringify(e.input.contact)}` : ''}`);
     // A carried save that fails anyway is dropped, not shown orange (dropIfCarried).
     const failIt = (message) => { e.status = 'failed'; e.message = message; if (ph.superseded[e.id]) ph.queue.splice(ph.queue.indexOf(e), 1); };
     if (fate === 'fail') { failIt('Not saved: no signal.'); return; }
     const before = sheetState(diary);
-    const repeat = rowsBySave[e.id] === 1; // Google already has this save: it answers as it did then
+    const repeat = !!landed[e.id]; // Google already has this save: it answers as it did then
     const r = ph.call(e.input);
+    if (r.ok) landed[e.id] = true;
     const after = sheetState(diary);
     const added = after.rows - before.rows;
-    rowsBySave[e.id] = (rowsBySave[e.id] || 0) + added;
-    if (rowsBySave[e.id] > 1) fail(`3: two Activity rows for save ${e.id}`);
-    if (r.ok && added === 0 && !repeat) fail(`3: "saved" but no Activity row (${e.id})`);
+    const newRows = after.actions.slice(before.rows);
+    const updRows = newRows.filter((a) => a !== 'contact').length;
+    const contactRows = newRows.length - updRows;
+    const counted = rowsBySave[e.id] || (rowsBySave[e.id] = { upd: 0, contact: 0 });
+    counted.upd += updRows;
+    counted.contact += contactRows;
+    if (counted.upd > 1) fail(`3: two update rows for save ${e.id}`);
+    if (counted.contact > 1) fail(`3: two contact rows for save ${e.id}`);
+    if (contactRows && newRows[newRows.length - 1] !== 'contact') fail('3: the contact row comes after the update row');
+    const contact = e.input.contact;
+    const already = contact && samePerson(contact, before.main);
+    if (contactRows && already) fail(`3: a contact row though ${contact.name} was already the main contact`);
+    if (r.ok && added === 0 && !repeat && !(already && !updRows && sameStateBut(before, after))) {
+      fail(`3: "saved" but no Activity row (${e.id})`);
+    }
     if (!r.ok && added !== 0) fail(`2: refused (${r.message}) but something was written`);
+    // 6. The main contact changes only through a save with a contact; a saved contact is the main one.
+    if (!sameMain(before.main, after.main) && !(r.ok && contact)) fail('6: the main contact changed without a contact change');
+    if (r.ok && contact && !repeat && !samePerson(after.main, { name: contact.name.trim(), phone: s.phoneText_(contact.phone) })) {
+      fail(`6: "saved" but ${contact.name} is not the main contact`);
+    }
+    if (!already && r.ok && contact && !repeat && !contactRows) fail('6: a moved contact without its contact row');
+    everMain.push(after.main);
+    for (const person of everMain) {
+      if (!person.name && !person.phone) continue;
+      if (!samePerson(person, after.main) && !after.earlier.some((x) => samePerson(person, x))) {
+        fail(`6: ${JSON.stringify(person)} was lost (${JSON.stringify(after)})`);
+      }
+    }
+    const phones = after.earlier.map((x) => x.phone).filter(Boolean).concat(after.main.phone ? [after.main.phone] : []);
+    if (new Set(phones).size !== phones.length) fail(`6: a person kept twice ${JSON.stringify(after)}`);
     // 5. Refused only for a real clash.
     if (r.changed) {
       const t = e.input.touched;
@@ -245,7 +311,7 @@ function run(seed) {
         const saw = f === 'money' ? `${e.input.seen.value}|${e.input.seen.terms}` : e.input.seen[f];
         if (!t.includes('stage') && before.snap.stage !== e.input.seen.stage && !usedBy(before.snap.stage, f)) return true;
         return now !== saw && now !== key(e.want, f);
-      });
+      }) || (!!contact && !sameMain(e.input.seen.contact, before.main) && !samePerson(contact, before.main));
       if (!clash) fail('5: refused though nobody else changed what he touched');
     }
     if (r.ok && !repeat) {
@@ -255,7 +321,7 @@ function run(seed) {
       const changed = (f) => (f === 'money' ? before.snap.value !== after.snap.value || before.snap.terms !== after.snap.terms
         : before.snap[f] !== after.snap[f]);
       // 1. Only what he touched is written (a stage change may clear the lost reason / follow-up).
-      if (added === 1) {
+      if (updRows === 1) {
         for (const f of ['stage', 'money', 'lostReason', 'followUp']) {
           if (changed(f) && !t.includes(f) && !(t.includes('stage') && (f === 'lostReason' || f === 'followUp'))) {
             fail(`1: ${f} written but not touched (${JSON.stringify(before.snap)} → ${JSON.stringify(after.snap)})`);
@@ -287,7 +353,7 @@ function run(seed) {
           fail('2: "saved" but his lost reason is not there');
         }
       }
-      if (added === 1 && e.input.note.trim() && after.note !== (ph.who === 'admin' ? 'Admin: ' : '') + e.input.note.trim()) {
+      if (updRows === 1 && e.input.note.trim() && after.note !== (ph.who === 'admin' ? 'Admin: ' : '') + e.input.note.trim()) {
         fail('2: "saved" but his note is not there');
       }
     }
@@ -346,6 +412,24 @@ function run(seed) {
 
 test(`two people, one site: ${SEEDS.length} random interleavings keep the five promises`, () => {
   for (const seed of SEEDS) run(seed);
+});
+
+test('spec 011: a form opened over a queued contact change carries it, so a later save never drops it', () => {
+  freshDiary();
+  const seen = { stage: 'Rate Quoted', value: 300000, terms: 'Credit', lostReason: '', followUp: page.addDays(TODAY, 2),
+    contact: { name: 'Start', phone: '923001234567' } };
+  const first = { stage: 'Rate Quoted', value: '300000', terms: 'Credit', followUp: seen.followUp, note: '', saveId: 'carry0000001',
+    seen, touched: [], contact: { name: 'Bilal', phone: '0300 1110001' } };
+  // The first never reaches Google; the second (opened over it) carries its contact and lands.
+  const second = plain(s.repUpdateSite(RIA, SITE, { ...first, note: 'met him', saveId: 'carry0000002' }));
+  assert.equal(second.ok, true, second.message);
+  assert.deepEqual([second.site.contactName, second.site.phone], ['Bilal', '923001110001']);
+  // The first is retried later: the person is already the main one, so nothing moves twice.
+  const retry = plain(s.repUpdateSite(RIA, SITE, first));
+  assert.equal(retry.ok, true, retry.message);
+  const state = sheetState(byId[SALES_DIARY_ID]);
+  assert.deepEqual(state.actions, ['update', 'contact']);
+  assert.deepEqual(state.earlier.map((x) => x.name), ['Start', 'Old']);
 });
 
 test('the lost-reply retry case (third review): an untouched value is never written back', () => {
