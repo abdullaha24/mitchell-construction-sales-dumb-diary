@@ -1588,7 +1588,7 @@
         // A form kept from before spec 008 has no 'seen': it saves as it always did.
         if (draft && !draft.seen) upd.seen = null;
         if (!upd.saveId) upd.saveId = newSaveId();
-        $('u-phoneNote').hidden = true;
+        $('u-phoneNote').hidden = $('u-cNote').hidden = true;
         showOnly('site');
         renderSiteHead(s);
         renderUpdate();
