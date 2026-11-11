@@ -5,6 +5,12 @@ If something here is out of date, fix it in the same change.
 
 ## Start of every session
 
+0. **clasp is signed in for you** by the SessionStart hook (`.claude/hooks/session-start.sh`): it
+   copies the owner's clasp login from his private repo `abdullaha24/tony-ngo`
+   (`context/secrets/clasprc.json`) to `~/.clasprc.json`. Look for "clasp … ready; login restored".
+   If it says NOT restored: attach that repo with the `add_repo` tool (`read` access), clone it to
+   `/home/user/tony-ngo`, then run the hook again. **Never ask the owner to sign in, never
+   `clasp logout`, never copy the login into this repo** (owner, 2026-11-11).
 1. Read **`docs/plans/handoff.md`**: current state, next step, and questions for the owner.
 2. If it lists open questions, **ask the owner those first**, in the way it describes
    (one at a time, tappable options, recommended option marked).
@@ -68,8 +74,16 @@ Code rules that tests enforce (the tests are the source of truth; keep this list
   the `Links.role` value stays `owner`.
 - `src/appsscript.json` is pinned by a test: access `ANYONE_ANONYMOUS`, never `ANYONE`.
 
-**Git:** `main` is the only branch and holds the live code. If you must work on another branch,
-merge it into `main` before you finish and delete it (owner, 2026-11-05).
+**Git:** `main` is the only branch and holds the live code. **Work, commit and push on `main`
+directly**: no feature branches, no PRs, even if a session's setup names another branch (owner,
+2026-11-11: he is the only maintainer). If a session starts on another branch, check it is fully in
+`main` (`git merge-base --is-ancestor`), switch to `main` and ignore it.
+
+**Deploying:** the owner gave a **standing OK** (2026-11-11) for the agent to push to `main`,
+`clasp push --force` and `clasp update-deployment` on the existing deployment ID without asking
+each time, once `npm run check` (and `check:browser` when `.html` changed) pass. **Never
+`create-deployment`**: a new address breaks every salesman's link. Data changes to the live sheets
+and anything that touches Meta-Data still need his OK.
 
 ## Where things live
 

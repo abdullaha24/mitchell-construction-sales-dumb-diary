@@ -95,8 +95,10 @@ his own snooze landed, can be refused once (he taps Save again; nothing lost).
 - He often works **from his phone**; he gives commands in chat, the agent builds, deploys and tests.
   Brisk updates, tappable questions, recommended option first and marked **(Recommended)**, plain
   English, one question at a time (several when he's brisk and they're independent).
-- **Keep clasp signed in for the whole session** until he says to sign out (a new chat is a fresh
-  machine: one sign-in per chat).
+- **clasp signs in by itself** (owner, 2026-11-11): the SessionStart hook restores his login from
+  `abdullaha24/tony-ngo` (AGENTS.md, step 0). Don't ask him to sign in; don't log out.
+- **Standing OK to push to `main` and deploy** (update the existing deployment) once checks pass;
+  report what went live. No branches, no PRs.
 - Link codes: to test, read `Links` columns A, B, D (role, rep, active) first, then **only the
   needed rows' `token` cells, one cell each** (not a range: a range shows other salesmen's codes).
   He has OK'd RIA's and his admin link for live testing. Keep codes in a private scratch file
@@ -114,15 +116,11 @@ his own snooze landed, can be refused once (he taps Save again; nothing lost).
    connector; owner checks on his phone.
 4. Close the spec / plan / roadmap; update this file.
 
-### Signing clasp in from a cloud session
-`npx clasp login --no-localhost` prints a Google link and waits for the address Google sends the
-browser to (`http://localhost:8888/?state=…&code=…`, a page that doesn't load). Keep it alive in the
-background reading from a pipe (`$S` = scratchpad):
-```bash
-mkfifo "$S/clasp-in" && exec 3<>"$S/clasp-in" && npx clasp login --no-localhost <&3 > "$S/clasp-login.log" 2>&1
-```
-Give the owner the link; he pastes back the whole address; check its `state=` matches;
-`printf '%s\n' '<address>' > "$S/clasp-in"`; delete the log.
+### clasp sign-in
+Automatic: `.claude/hooks/session-start.sh` copies `context/secrets/clasprc.json` from the owner's
+private repo `abdullaha24/tony-ngo` to `~/.clasprc.json` (mode 600). If it fails, attach that repo
+with `add_repo` (read), clone it to `/home/user/tony-ngo`, rerun the hook. (The old by-hand login,
+`npx clasp login --no-localhost` with a pipe, is no longer used.)
 
 ## Things learned (keep in mind)
 - **Formula injection:** text written with `setValues` that starts with `=` runs as a formula in
@@ -160,9 +158,7 @@ IDs aren't secret (each needs the owner's Google account):
 - **Git: one branch, `main`** (owner, 2026-11-05). It holds the live code (version 13) and the
   user guides. All older branches (`claude/laughing-fermi-ec4tlp`, `claude/vigilant-volta-yye9pn`,
   `claude/clever-hopper-ain3c5`, `ccr-f2566cb7-aaz6y0`, `ccr-18f7110f-to6vgz`) were checked to be
-  fully inside `main` (full history, not a shallow clone). **The owner deletes them on GitHub and
-  makes `main` the default branch** (a cloud session's git proxy refuses branch deletion with 403,
-  and no tool here can change the default branch). If any of them still exist, they hold nothing
-  that `main` lacks: check with `git merge-base --is-ancestor`, then ignore them. If a session has to work on
-  its own branch, merge it into `main` before the session ends and delete it, so `main` stays the
-  only branch. No PRs (PR #1 was merged long ago).
+  fully inside `main` (full history, not a shallow clone). If any of them (or a session's
+  own `claude/…` branch) still exist, they hold nothing that `main` lacks: check with `git
+  merge-base --is-ancestor`, then ignore them. **Since 2026-11-11 every session works and pushes on
+  `main` directly** (owner). No PRs.
