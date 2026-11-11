@@ -33,7 +33,7 @@ Read before any product or UI work:
 Phases 0–7 are **done and live** (specs 001–008). Weekly and monthly summaries (spec 009) are
 **live** with their new layout (spec 010: tables, lined-up WhatsApp numbers, pages served without
 comments) as deployment version 13 (2026-11-05), checked live by the agent; the owner's phone check
-is next. **Launched to the 7 salesmen on 2026-11-05**; bugs are fixed as they come in. Next: the rest of the speed pass (spec 011). Current state, next step and IDs: `docs/plans/handoff.md`.
+is next. **Launched to the 7 salesmen on 2026-11-05**; bugs are fixed as they come in. Next: spec 011 (review-meeting summaries, Plan tab, Mitchell look, new contact person; building), then the rest of the speed pass (spec 012). Current state, next step and IDs: `docs/plans/handoff.md`.
 
 ## Commands
 

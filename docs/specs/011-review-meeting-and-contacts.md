@@ -1,11 +1,11 @@
 # 011: Mitchell look, review-meeting summaries, Plan tab, new contact person
 
 - **Status:** Approved (build)
-- **Owner approval:** owner interview 2026-11-11 (answers **S11-1 to S11-7** in
+- **Owner approval:** owner interview 2026-11-11 (answers **S11-1 to S11-8** in
   [open questions](../product/open-questions.md)); he asked for it to be built and shipped in one go
 - **Related:** specs 008 (admin screen), 009 / 010 (summaries), 003 / 004 (contact, Edit details,
   Update) · ADR-0004 (privacy), ADR-0010 (admin updates), **ADR-0011** (earlier contacts) ·
-  [data model](../architecture/data-model.md) v0.9. The speed pass moves to spec 012.
+  [data model](../architecture/data-model.md) v0.9 (updated with the code). The speed pass moves to spec 012.
 
 ## Why
 Feedback from the owner and his team after the first week live:
@@ -62,15 +62,15 @@ On a window **900 px or wider** (a laptop shared on a call): the page content wi
 the admin's tabs show cards in two columns. Under 900 px nothing changes (phone layout).
 
 ### D. Admin: Plan tab (owner S11-3, S11-4)
-A fifth admin tab, **Plan**, after Today: *Today · Plan · Team · Late & cold · This month*. Today is
-unchanged. Plan has two pills: **Today** (picked) · **Tomorrow**.
+A fifth admin tab, **Plan**, after Today: *Today · Plan · Team · Late & cold · This month* (labels
+may wrap to two lines at 360 px, as the counts already do). Today is unchanged except for the new
+`contact` saves (Rules → Today feed). Plan has two pills: **Today** (picked) · **Tomorrow**.
 - One line per current salesman, in region order:
-  - Today: *"RIA  Due 4 · late 3 · done 2"*, where **Due** = his open sites with follow-up today
-    not yet updated today, **late** = open sites with follow-up before today (or none) not updated
-    today, **done** = his sites he saved an Update or added today (any site, planned or not; the
-    admin's own saves never count, P7-2). All 0: *"nothing planned"*.
+  - Today: *"RIA  Due 4 · late 3 · done 2"* (exact definitions in Rules → Plan). All 0: *"nothing
+    planned"*.
   - A salesman with **no save today** also shows when he last saved this month: *"last saved 3 days
-    ago"* / *"no saves this month"*.
+    ago"* / *"no saves yet this month"*.
+  - After midnight the same *"This is 11 Nov. Tap Refresh."* banner as Today.
   - Tomorrow: *"RIA  Due 5"* (open sites with follow-up tomorrow); *"nothing planned"*.
 - Tapping a line opens his list (Back returns): Today: the **done** sites first (each with a **✓
   Done today** tag), then due today, then late (oldest first); Tomorrow: his sites due tomorrow.
@@ -110,13 +110,15 @@ On the **site screen** the main contact shows as now (name · number, Call, What
   keeps it). Moving a contact to Earlier contacts needs a name or a number (an empty main contact
   just gets replaced). The new main contact's number is never also kept as an earlier one (same
   number: the earlier entry is removed).
-- Every contact change writes **one `Activity` row** with action `contact` (see Data), so the history
-  shows who changed what. It counts as work like Edit details does: it is a save ("worked today", P7-2)
-  but not a site worked (S9-12) and it does **not** reset going cold on its own. Inside an Update, the
-  Update itself is the work and resets going cold as always.
+- Every contact change writes **one `Activity` row** with action `contact` (see Data). A `contact` row
+  is a **save** (P7-2: "worked today", days logged) but **never work** (not a site worked, S9-12; never
+  resets going cold, P6-2), like Edit details.
 - Plan counts use Pakistan time days, the same follow-up and "open site" rules as Today's Chase.
 
 ## Data
+- **No new public function** (the allow-list in `tests/menu.test.js` stays 20): contacts ride on
+  `repUpdateSite` / `adminPageUpdateSite` (new contact, Make main) and `repEditSite` ("Yes, keep the
+  old one"); the region summaries ride on `adminPageSummary`.
 - `Sites` gains a column **`earlier_contacts`** (after `note_at`): plain text, one person per line,
   newest first: `<phone or -> · <name> · <yyyy-MM-dd>` (the day they stopped being main). Phone first
   and date last so a name with " · " still parses. Written as text (`asText_`). Blank = none. See
@@ -130,10 +132,104 @@ On the **site screen** the main contact shows as now (name · number, Call, What
 - The admin page data gains, per salesman, the day of his last save this month.
 - Card data gains `earlier` (list of `{ name, phone, till }`) when there are any.
 
+## Precise rules (after the adversarial spec review, 2026-11-11)
+
+**Privacy (ADR-0004).** On a salesman's own summary, a site counted in his Sites worked / New sites
+that is now another salesman's (`Sites.rep`), or no longer in `Sites`, is **never sent** (no ID, no
+card). His list ends with *"+ N no longer in your list"* so cards + that line = the tile. The admin's
+lists show such sites with their current salesman; sites no longer in `Sites` (or a `created` row with
+no site ID) appear there as *"+ N not in the sheet any more"*. `repSummary` never carries a site ID or
+card whose `Sites.rep` isn't his (test). A salesman's card data carries `earlier` only for his own sites.
+
+**What can be tapped.** Exactly: the six tiles, the four NOW rows, the team table's salesman and region
+rows (count > 0 for tiles / rows). Named-site rows in Won / Quotes given / Lost / Hot / Late tables open
+that site. Table headers, the target bar and Lost-reason rows are not tappable.
+
+**Lists.** Quotes / Won / Lost lists are sorted by the period value shown on the line (biggest first,
+then name); other lists by the card's Rs. then soonest follow-up. A list keeps the summary's site IDs
+until that summary is fetched again; cards show each site as it is now. After **Save or Back** on a site
+opened from a summary list he returns to that list at the same scroll place (Back on the list → the
+summary at its scroll place).
+
+**Admin closed cards.** The summary reply's cards of sites now at Won / Lost (his page holds only this
+month's) go into their own lookup used to open sites, **never into `data.sites`**. They carry `rep`,
+`region` and `closed` = the day of their last move to that stage (*"Won 3 Oct"*). After a save on such a
+site, its `closed` stays as it was unless the save moved it to another stage. This month's counts
+(`aWonMonth` / `aLostMonth`, Team, the top line) count only sites whose `closed` day is in this month.
+
+**Region summaries.** The admin's reply gains `regions: [...]` built by the same server code as a
+salesman's summary for the set of that region's current salesmen (`Rep_Mapping`), heading
+*"North · This week"*, no "Logged on" line, WhatsApp text built on the server as all summary text is.
+Region NOW = open sites whose `Sites.rep` is one of its current salesmen. The team's NOW also counts
+former salesmen's sites, so it can exceed the three regions' total (that's correct).
+
+**Plan.** *done* = distinct site IDs in today's saves **by him** (`Activity.rep`) with action `created`,
+`stage_change` or `update` (not snooze, details or contact). *Due* = open sites with `Sites.rep` = him,
+follow-up today, not in his done set. *late* = open sites with `Sites.rep` = him, follow-up before today
+or none, not in his done set. The admin's own saves never move a site into done. *last saved* = his
+latest save of any action this month (P7-2). A done site not on the page is left out of the count.
+Tomorrow: open sites with `Sites.rep` = him and follow-up tomorrow.
+
+**Contacts: the Update path.** A new contact (or Make main) **is a change**: an Update whose only change
+is the contact saves. Then it writes `contact_name`, `contact_phone`, `earlier_contacts` and `updated_at`
+and **one `contact` row only**: no `update` row, no `worked_at`, no `note_at`. With any other change it
+writes as today **plus** the `contact` row: both rows appended in one call, the update row first, the
+`contact` row's ID one more. The stage rule (P3-4) is judged on the **stage the Update saves**: a new
+contact without a number at Sample / Trial, Rate Quoted or Won is refused with *"Type the new contact's
+number: a site at <stage> needs one."* While + New contact person is open, the existing "add the number"
+box is hidden (the new contact's number does that job). At Visited / Lead a new contact without a number
+gets the same second tap as + New Site ("Save without a number?").
+
+**Contacts: repeats and conflicts.** The form sends the main contact it saw (`seen.contact` = name +
+tidy phone). The server refuses with the usual *"This site was changed a moment ago…"* message when the
+main contact now differs from what he saw, unless it already equals his own new contact (then it's a
+repeat). If the new contact equals the current main (same tidy phone; or both without a phone and the
+same name ignoring case and spaces), nothing moves and no `contact` row is written. Make main removes the
+first earlier entry with the same phone, else the same name. An Update form opened over a queued Update
+of the same site that carries a new contact / Make main **carries that contact change** and sends it
+again (so a later save never drops it). Interleave promise 3 becomes: one update / stage_change row per
+landed save, **plus at most one `contact` row**; `tests/interleave.test.js` gains contact changes.
+
+**Contacts: Edit details.** Edit details sends the main contact it opened with; if the sheet's main
+contact differs, it is refused with the usual changed message and reopens with the contact as it is
+now. It asks *"Is this a new person?"* when the **number** changes on a contact that had one, or the
+**name** changes on a contact without a number. **Yes** moves the main contact as it is at save time
+to Earlier contacts and writes the `contact` row (plus a `details` row only if other fields changed);
+**No** saves as today. The answer is kept with the queued save if it has to be retried.
+
+**Contacts: duplicate check.** Covers every site's main **and** earlier numbers. Other salesmen: yes/no
+only. His own sites: named, with *"(earlier contact)"* when it matched an earlier one. The site being
+changed is never matched (`repCheckPhone` gains an optional site ID to skip; `saveUpdate_` skips the
+site itself). The admin gets the warning only in the saved reply (as today).
+
+**Contacts: the cell.** Reading: a line that doesn't parse (no valid date, or hand-typed text) is shown
+as typed (name = the line, no Call) and kept unchanged when the app rewrites the cell. Writing: spaces in
+names squeezed, newlines removed; a main phone that isn't a real number moves as typed into the name
+part with phone `-`. `till` shows as *"till 11 Nov"*, with the year when it isn't this year. The admin
+gets Make main too. Make main is hidden for a person without a number when the site is at a hot stage.
+
+**Today feed.** A `contact` row shows as *"New contact: …"* (its note) and counts as *"contact change"* in
+the per-salesman line; an Update with its `contact` row counts as **one** save. The admin's own new
+contact appears at once in his feed.
+
+**Look.** `--blue` becomes teal everywhere (it is the main colour: who-line, tappable names, links).
+Two oranges are intended: the logo line `#f39029` (brand) and the "no number" warning `#b45309`
+(readable text). Wide layout: two columns apply to **site cards** only (lists, Late & cold, This month,
+drill lists, Plan lists); Today's feed rows, salesman rows, Team cards and Plan lines stay one column,
+centred, max 1,100 px.
+
+**Size budget.** The logo lives once in `App.html` and once in `Page.html` (never in page data). Pins:
+salesman's page **≤ 84,000** bytes, admin's **≤ 104,000** (`tests/served.test.js`, AGENTS.md updated).
+Admin summary reply for the current sheet ×3 stays ≤ 150 KB (a size check in the tests).
+
+**Deploy order.** Add the `earlier_contacts` header on the live `Sites` tab first (old code ignores
+extra columns), check the app still opens, then `clasp push` and `update-deployment` on the same ID.
+The column is required like every other (a missing header shows the usual setup message).
+
 ## Acceptance criteria
 - [ ] Logo strip + teal on both pages and the error page; red / yellow / green / orange unchanged.
-- [ ] Every tile and NOW row with a count > 0 opens a list whose length equals the count, on both
-      pages, for all four periods; Back returns to the same scroll place; a card opens the site and
+- [ ] Every tile and NOW row with a count > 0 opens a list whose cards plus its "+ N …" line equal
+      the count, on both pages, for all four periods; Back returns to the same scroll place; a card opens the site and
       Back returns to the list.
 - [ ] Quotes / Won / Lost list cards show the period's value line.
 - [ ] Region rows open a region summary (numbers equal the region row; Share / Copy work); its tiles
@@ -147,7 +243,10 @@ On the **site screen** the main contact shows as now (name · number, Call, What
       today's date, one `contact` Activity row; Make main swaps; Edit details asks "Is this a new
       person?" when a number changes; search and the duplicate check include earlier contacts;
       hot stages refuse a new contact without a number.
-- [ ] A salesman never receives another salesman's earlier contacts (ADR-0004 test).
+- [ ] A salesman never receives another salesman's earlier contacts, site IDs or cards, from any
+      reply including his summary (ADR-0004 tests).
+- [ ] A contact-only Update writes no `update` row and doesn't reset going cold; queued and repeated
+      contact changes never lose or double a person (interleave test).
 - [ ] `npm run check` and `npm run check:browser` green; new logic tested; served-size pins
       updated deliberately; user guides rebuilt.
 

@@ -54,7 +54,7 @@ test, ~20 s) + 8 browser checks.
    the owner's OK to read one link (`Links` columns A, B, D first, then that one `token` cell), or
    use his admin link. Bugs: salesmen report to him on WhatsApp; he pastes them in chat. Watch the
    first week (who logs nothing, anything odd) by reading the sheet through the connector.
-3. **Speed pass (spec 011, to write)**: measure where the salesman's open time goes (server vs
+3. **Speed pass (spec 012, to write)**: measure where the salesman's open time goes (server vs
    download vs page script), then shrink what runs at open (e.g. defer Update / form code, check
    the page data size). Target ≤ ~3.9 s warm. Spec briefly, owner's OK, build the usual way.
 4. **User guides** (`docs/guide/`, built by `npm run guide`, see `scripts/README.md`), on `main`:
@@ -144,7 +144,7 @@ with `add_repo` (read), clone it to `/home/user/tony-ngo`, rerun the hook. (The 
 ## Questions for the owner
 Waiting on him: (1) the **phone check** of the summaries (Next, 1); (2) his OK on the **two user
 guide PDFs** (`docs/guide/`), then send the salesmen's PDF to the team; (3) go-ahead to **spec the
-speed pass** (spec 011) in the first week; (4) **bug reports** from the salesmen as they come.
+speed pass** (spec 012) in the first week; (4) **bug reports** from the salesmen as they come.
 
 ## Useful facts
 IDs aren't secret (each needs the owner's Google account):
