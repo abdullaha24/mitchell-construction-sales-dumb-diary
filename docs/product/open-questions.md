@@ -2,8 +2,8 @@
 
 Things the owner needs to decide or supply. Agents: **add questions here instead of guessing**,
 and move answered ones to *Answered* with the answer and date. If an answer changes a spec, ADR or
-the data model, update those too. The ready-to-ask versions (options and recommendations) are in
-[`docs/plans/handoff.md`](../plans/handoff.md); keep both in sync.
+the data model, update those too. Ask them one at a time with tappable options (recommended option
+first); [`docs/plans/handoff.md`](../plans/handoff.md) lists what is waiting on the owner.
 
 ## Open
 

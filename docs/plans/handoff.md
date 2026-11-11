@@ -1,193 +1,110 @@
 # Handoff: start here
 
-> Updated 2026-11-11, end of session 6 (spec 011 live as version 14: Mitchell look, tappable
-> summaries for the review meeting, region summaries, Plan tab, new contact person; clasp signs in by
-> itself; work and deploy on `main`). **Every session: read this first, and update it before you finish.** Then read
-> `AGENTS.md` (rules, commands) if you haven't.
+> Updated 2026-11-11, end of session 6. **Every session: read this first, and update it before you
+> finish.** Rules and commands are in `AGENTS.md`; owner decisions in `docs/product/open-questions.md`.
 
 ## Where we are
-**Phases 0–7 and specs 009–011 are live** (deployment version 14, 2026-11-11).
-- **Spec 011 (session 6, owner answers S11-1–S11-8):** Mitchell **logo strip** + **teal** main colour
-  on both pages and the error page; every **summary tile, NOW row, region and salesman row is
-  tappable** (site lists that add up to the number, "+ N" for sites no longer his / not in the
-  sheet; Quotes / Won / Lost show the period's value); **region summaries** with their own WhatsApp
-  text; **‹ Prev / Next ›** between salesmen and regions; a **wide layout** at ≥ 900 px for screen
-  share; the admin's **Plan tab** (Today / Tomorrow: Due · late · done per salesman, "last saved N
-  days ago"); **+ New contact person** in Update (old one kept under **Earlier contacts**, Call /
-  WhatsApp / Make main; Edit details asks "Is this a new person?" when a number changes; search and
-  the duplicate check cover earlier contacts). New column `Sites.earlier_contacts` (ADR-0011, data
-  model v0.9) and `Activity.action` `contact` (a save, never work).
+**Live: deployment version 14** (2026-11-11), same address since phase 1. Launched to the 7 salesmen
+on 2026-11-05. `main` = GitHub = what is deployed.
+
 - **Salesman** (his private link): Today's Chase / Hot Pipeline / All My Parties (search, area
   filter), his monthly target, cards with Call / WhatsApp, last-spoken line, going cold, Snooze;
-  add / Update / Edit details; instant saves with a queue (failed saves orange). **Summary** button
-  (top bar): This week · Last week · This month · Last month (a week is **Saturday to Friday**).
-- **Admin** (the owner; screens say "Admin", never "owner", P7-7) on his own link: tabs Today ·
-  Team · Late & cold · This month; he can **Update** any site (history `rep` = `admin`, salesman
-  sees "Admin: …", never resets going cold). **Summary** button: team tiles, team target bar,
-  one team table (region subtotals, Team row, Won in millions, tap a salesman for his summary with
-  "Logged on N days"), lost reasons. Links are made / cancelled on the computer only (P7-6).
-- **Summaries** (specs 009 + 010; owner answers S9-1–S9-16, S10-1–S10-4 in `open-questions.md`):
-  six tiles, target bar (month), two-column tables (Won / Quotes given / Lost), a NOW table plus
-  his named Hot sites (top 5) and Late & going cold (top 3); **Share on WhatsApp** (numbers in a
-  monospace block, lines ≤ 30 chars; past periods leave out NOW) and **Copy**. Built on the server
-  in `src/summary.js` (`repSummary`, `adminPageSummary`; 20 public functions). Past weeks / months
-  are counted **as the period ended** (S9-14); running ones exactly as the Team tab (P7-1). Since
-  S9-13 an Update row saves Rs. only when it changed.
-- **Pages are served through `servedHtml_`** (`src/webapp.js`): comments and indentation removed
-  as Google sends the page; no build step (ADR-0003 kept). Served salesman's page ~82.3 KB (pin
-  84,000), admin's ~106.7 KB (pin 110,000), `tests/served.test.js`.
-- Sheet menu (computer): **Sales Diary → Check setup / Links / Refresh salesmen & targets**.
-  Everything is in **Sales Diary**; **Meta-Data** is only ever read. The kept copy of salesmen and
-  targets holds last, this and next month plus a `months` marker.
+  + New Site, Update, Edit details; instant saves with a queue (failed saves orange). **Summary**:
+  This week · Last week · This month · Last month (week = **Saturday to Friday**); every tile and
+  NOW row taps through to its sites; Share on WhatsApp / Copy.
+- **Admin** (the owner; screens say "Admin", never "owner"): tabs **Today · Plan · Team · Late &
+  cold · This month**; he can Update any site (history `rep` = `admin`). **Summary**: team tiles,
+  target bar, team table (tap a region or salesman for its own summary, ‹ Prev / Next ›), lost
+  reasons; wide layout at ≥ 900 px for screen share. Links are made / cancelled on the computer
+  only (Sales Diary → Links).
+- **Contacts** (spec 011): + New contact person in Update; old ones kept under Earlier contacts
+  (`Sites.earlier_contacts`, ADR-0011); `Activity.action` `contact` is a save, never work.
+- **Look**: Mitchell logo strip, teal `#00738e` main colour (`docs/brand/`).
+- Specs 001–008 Done; 009, 010, 011 In progress (only the owner's own checks left). ADRs 0001–0011
+  Accepted. Tests: 429 unit + 9 browser checks. Served pages: salesman ~82.3 KB (pin 84,000),
+  admin ~106.7 KB (pin 110,000).
 
-Specs 001–008 Done; 009, 010 and 011 In progress (only the owner's own checks left). Plans 001–010
-ticked to their last step (spec 011 was built straight from its spec, no separate plan). ADRs
-0001–0011 Accepted. Tests: 429 unit (incl. the random interleave test with contacts) + 9 browser
-checks.
-
-### Live state (2026-11-11)
-- **Version 14** live at the same address. `Sites` has the new header **`earlier_contacts`** in
-  column T (added before the push; old code ignored it). Week 1: 41+ sites, RIA has logged nothing
-  since launch; two salesmen overwrote a contact through Edit details (S11-7: left as they are).
-- Agent checked live on the admin link (360 px and 1280 px): logo, five tabs, Plan lines, summary
-  tiles tappable (36 sites worked → 36 cards), region rows tappable, RIA's empty row not; no page
-  errors; admin's page opens in ~4.7 s. **Not checked live:** a salesman's own page (no salesman
-  link; same `App.html`) and a contact save on live data (would write; covered by tests).
-
-- **TEST rows deleted** (owner's OK, 2026-11-05, pinned to the revision just read): `Sites` and
-  `Activity` now hold only their header rows, ready for launch. IDs start again at S000001 /
-  A0000001 (the old TEST rows are gone, so nothing clashes). From now on, live checks use real data
-  read-only, or a TEST row the owner OKs and that is deleted right after.
-- `Links`: row 2 the admin link (`role` `owner`), row 3 RIA's test link, row 4 SJ's test link.
-  Cancel RIA's and SJ's only when the owner says, before launch.
-- **Speed** (agent, Chromium at 360 px, warm, version 13): salesman's page opens in ~4.2 s, admin's
-  ~4.1 s; a summary loads in 2–3.5 s. After Save, back on the list in ~0.3 s.
+### Live data (2026-11-11)
+- 42 sites. **RIA has logged nothing since launch.** Two salesmen overwrote a contact through Edit
+  details in week 1 (owner S11-7: leave them).
+- `Links`: row 2 the admin link (`role` `owner`), rows 3–9 the 7 salesmen, all active.
+- Speed (agent, Chromium, warm, v14): admin's page opens in ~4.7 s; a summary in 2–3.5 s.
 
 ## Next
-0. **Owner's check of spec 011**: run a review call from Summary on a laptop (tap tiles, regions,
-   Prev / Next, Plan tab); a salesman tries + New contact person. Then close spec 011 (Done),
-   roadmap 7d. Feedback goes into a follow-up spec.
-1. **Owner's phone check** (specs 009 + 010): he taps Summary → Share on WhatsApp → sends it to
-   himself: WhatsApp app opens with the text, the numbers block **lines up**, Copy says "Copied".
-   If the block doesn't line up: fall back to bold labels (spec 010, mockup C bottom). Then close
-   specs 009 and 010 (Done), roadmap 7b.
-2. **Launched (2026-11-05)**: TEST rows deleted; the owner made fresh links for the 7 salesmen and
-   sent each his own privately with a WhatsApp how-to ("ready to roll, fix bugs as they come").
-   The old RIA / SJ test links were replaced, so **the agent has no test link**: to test live, ask
-   the owner's OK to read one link (`Links` columns A, B, D first, then that one `token` cell), or
-   use his admin link. Bugs: salesmen report to him on WhatsApp; he pastes them in chat. Watch the
-   first week (who logs nothing, anything odd) by reading the sheet through the connector.
-3. **Speed pass (spec 012, to write)**: measure where the salesman's open time goes (server vs
-   download vs page script), then shrink what runs at open (e.g. defer Update / form code, check
-   the page data size). Target ≤ ~3.9 s warm. Spec briefly, owner's OK, build the usual way.
-4. **User guides** (`docs/guide/`, built by `npm run guide`, see `scripts/README.md`), on `main`:
-   - `sales-diary-guide.pdf`, 17 A5 pages for the salesmen: the app (12) plus **Summary** (5: the
-     button and the 4 buttons, Saturday to Friday; the six tiles and the target bar; the Won /
-     Quotes given / Lost tables and NOW; Share on WhatsApp / Copy with the message as WhatsApp shows
-     it; "saves not sent yet", and Last week / Last month stay as they ended, S9-14); "Friday: share
-     This week" on the last page. **If the owner's phone check makes the WhatsApp message fall back
-     to bold labels (spec 010), page 13 ("the numbers line up in a block") must change.**
-   - `admin-summary-guide.pdf`, 2 pages for the Admin (owner chose a separate short PDF): his
-     Summary, team tiles and target with house / office, the team table (regions, Team, tap a name
-     for "Logged on N days", millions, % / Lost) and lost reasons.
-   - All pictures from the real pages on **fake data** (pretend `DEMO` and teammates, made-up
-     targets, pretend codes); fact-checked by an independent reviewer. **Owner's OK pending**; then
-     send the salesmen's PDF with the links at launch. **Owner, 2026-11-11: "no need to build the
-     pdfs"**: they still show the version 13 look; don't rebuild unless he asks.
-5. **Phase 8 done when** all 7 have logged at least one site (roadmap).
+1. **Owner's check of spec 011**: a review call from Summary on a laptop (tiles, regions, Prev /
+   Next, Plan tab); a salesman tries + New contact person. Then spec 011 Done, roadmap 7d.
+   Not yet checked live by the agent: a salesman's own page (no salesman link) and a contact save
+   on live data (would write; covered by tests).
+2. **Owner's phone check of the WhatsApp summary** (specs 009 / 010): the numbers block lines up,
+   Copy says "Copied". If it doesn't line up: bold labels instead (spec 010). Then 009 / 010 Done.
+3. **Speed pass (spec 012, to write)**: measure where the salesman's open time goes (server /
+   download / page script), shrink what runs at open. Target ≤ ~3.9 s warm. The salesman's page
+   has ~1.7 KB left under its pin.
+4. **Bugs** from salesmen arrive via the owner in chat. Watch usage through the Sheets connector
+   (read only).
+5. **Phase 8 done when** all 7 have logged at least one site.
 
-Known limits kept on purpose (specs 006 / 008): a phone clock changed while the app is open can make
-"today" off until reload; a lost reply retried unchanged after midnight, or a retried Update after
-his own snooze landed, can be refused once (he taps Save again; nothing lost).
+Ideas not asked yet: contact roles (site engineer / thekedar / procurement); a home-screen icon
+(needs a hosted image); nudging RIA.
 
-## How we work (sessions 4–6, the owner likes it)
-- The main agent orchestrates and stays lean. A **builder subagent** builds from an approved spec
-  with tests and commits (no push, no clasp); a **separate reviewer subagent** (cold, adversarial)
-  reviews each build and re-reviews each fix round; the main agent re-runs every check, pushes,
-  deploys and **tests live itself**, and loops (problem → builder → redeploy → retest) until clean.
-- Before a spec: interview the owner (tappable questions), then an adversarial review of the
-  **spec**, then his answers to what it raises. For look-and-feel, research and show a **mockup
-  picture** (rendered with Playwright, sent with SendUserFile) before writing the spec.
-- Session 6: **two builders in parallel** (separate worktrees, then merged by the main agent; only
-  docs and the size pins clashed) and three cold review rounds caught real bugs each time (a blank
-  `site_id` crashing the admin summary; a removed contact still sent on retry; lists doubling in
-  phone storage along a chain of queued saves). Keep doing a final re-review of every fix round.
-- When a fix area keeps producing new bugs, stop patching: simplify the design and add a randomized
-  invariant test.
-- Live testing: `chromium.launch({ proxy: { server: process.env.HTTPS_PROXY } })`, 360 px; the app is
-  in a nested Google frame (find the frame with `#who`). For a full-length screenshot use a tall
-  window (e.g. 360 × 2400): the frame only paints what fits.
+**PDF guides** (`docs/guide/`): still the version 13 look. Owner (2026-11-11): "no need to build the
+pdfs". Don't rebuild unless he asks.
+
+Known limits kept on purpose: a phone clock changed while the app is open can make "today" off
+until reload; a lost reply retried after midnight, or a retried Update after his own snooze landed,
+can be refused once (he taps Save again; nothing lost).
+
+## How we work (the owner likes it)
+- Interview the owner first (tappable questions, one at a time, **(Recommended)** option first),
+  show a **mockup picture** for look-and-feel, write the spec, have it reviewed cold, fold in fixes.
+- **Builder subagents** build from the spec with tests (separate worktrees when two run in
+  parallel; the main agent merges). A **cold reviewer** reviews every build and **re-reviews every
+  fix round** (each round in session 6 found real bugs). The main agent re-runs all checks, pushes,
+  deploys and tests live itself.
+- When a fix area keeps producing bugs: simplify and add a randomized invariant test.
+- Live testing: `chromium.launch({ proxy: { server: process.env.HTTPS_PROXY } })`; the app is in a
+  nested Google frame (find the frame with `#who`); use a tall window for full-page screenshots.
 
 ## Owner's working rules
-- He often works **from his phone**; he gives commands in chat, the agent builds, deploys and tests.
-  Brisk updates, tappable questions, recommended option first and marked **(Recommended)**, plain
-  English, one question at a time (several when he's brisk and they're independent).
-- **clasp signs in by itself** (owner, 2026-11-11): the SessionStart hook restores his login from
-  `abdullaha24/tony-ngo` (AGENTS.md, step 0). Don't ask him to sign in; don't log out.
-- **Standing OK to push to `main` and deploy** (update the existing deployment) once checks pass;
-  report what went live. No branches, no PRs.
-- Link codes: to test, read `Links` columns A, B, D (role, rep, active) first, then **only the
-  needed rows' `token` cells, one cell each** (not a range: a range shows other salesmen's codes).
-  He has OK'd RIA's and his admin link for live testing. Keep codes in a private scratch file
-  (`chmod 700` folder), never in git, logs, commits, docs or chat; delete them after.
+- Works **from his phone**: brisk plain-English updates, tappable questions.
+- **clasp signs in by itself** (AGENTS.md step 0). **Standing OK** to push to `main` and update
+  the deployment once checks pass. No branches, no PRs. Live **data** changes still need his OK.
+- Link codes: read `Links` columns A, B, D first, then **only the needed `token` cell** (one cell,
+  never a range). His admin link is OK'd for live tests; a salesman's link needs his OK. Keep codes
+  in a `chmod 700` scratch folder, never in git, logs, docs or chat; delete after.
 - Test rows are named **TEST …**; delete only with his OK.
 
-## How a change goes live (the routine)
-1. `npm run check` and `npm run check:browser` green; independent review; fresh-clone check;
-   secrets sweep (no real target amounts, no link codes, no `.clasprc.json`).
-2. `npx clasp push --force` → pull back into a scratch folder and compare (copy `.clasp.json` there
-   with `rootDir` `.`, run the **repo's** `node_modules/.bin/clasp pull`) → `npx clasp
-   update-deployment AKfycbwmWhxLQfpkQRfFIfdv9tZD4CvZfeWEB__YiXnGTSk7-6mlZVZUvLEp2aJDwey0HXaF -d
-   "<note>"`. **Never `create-deployment`** (a new address breaks every link).
-3. Agent tests live (both pages), checks numbers against the sheet through the Google Sheets
-   connector; owner checks on his phone.
-4. Close the spec / plan / roadmap; update this file.
+## How a change goes live
+1. `npm run check` and `npm run check:browser` green; cold review clean; secrets sweep (no real
+   targets, link codes or `.clasprc.json`).
+2. A new `Sites` / `Activity` column: add its header on the live sheet **first** (old code ignores
+   extra columns), then push.
+3. `npx clasp push --force` → pull back into a scratch folder and compare (copy `.clasp.json` with
+   `rootDir` `.`, run the repo's `node_modules/.bin/clasp pull`) → `npx clasp update-deployment
+   AKfycbwmWhxLQfpkQRfFIfdv9tZD4CvZfeWEB__YiXnGTSk7-6mlZVZUvLEp2aJDwey0HXaF -d "<note>"`.
+   **Never `create-deployment`.**
+4. Test live (admin link), check numbers against the sheet; close the spec; update this file.
 
-### clasp sign-in
-Automatic: `.claude/hooks/session-start.sh` copies `context/secrets/clasprc.json` from the owner's
-private repo `abdullaha24/tony-ngo` to `~/.clasprc.json` (mode 600). If it fails, attach that repo
-with `add_repo` (read), clone it to `/home/user/tony-ngo`, rerun the hook. (The old by-hand login,
-`npx clasp login --no-localhost` with a pipe, is no longer used.)
-
-## Things learned (keep in mind)
-- **Formula injection:** text written with `setValues` that starts with `=` runs as a formula in
-  the owner's sheet. Every typed or picked text goes through `asText_` / `textify_`.
-- **Checks inside the lock:** saves re-read and re-check the row inside the script lock; replies
-  carry only the saved card; `tests/speed.test.js` pins one Sales Diary open and one read per tab.
-- **Save once:** each form has a one-time `saveId`; the page asks `repSaveStatus` which saves
-  landed (`tests/browser/queue.check.js`).
-- **`Activity` rows can land a few seconds out of time order** (time taken before the lock): the
-  bottom-up read (`activitySince_`) stops only at a row older than the period start minus
-  `ACTIVITY_SKEW_MS` (5 min).
-- **WhatsApp:** no tables; monospace (```) lines ≤ 30 chars; `waSafe_` neutralises backticks and
-  `* _ ~` in names. The page is in Google's frame: WhatsApp is a `wa.me/?text=` link (no share
-  sheet); Copy falls back to select-and-copy, then "Press and hold".
-- `tsc` doesn't catch a function defined in two `src/` files; `tests/load-src.test.js` does.
-- `clasp pull` can overwrite `src/appsscript.json`; git is the truth.
-- `npm audit`: 8 issues inside clasp 3.4.1's own dependencies (local tool, never deployed).
-- Real target amounts never go in git (S3-1): read them live for checks only.
-- The owner wants **speed on cheap phones and weak signal**: measure, avoid extra trips.
-
-## Questions for the owner
-Waiting on him: (0) his **check of spec 011** in a real review call (Next, 0); (1) the **phone
-check** of the summaries (Next, 1); (2) go-ahead to **spec the speed pass** (spec 012); (3) **bug
-reports** from the salesmen as they come. (The PDFs: not wanted for now.)
-Ideas raised in session 6, not asked yet: contact roles (site engineer / thekedar / procurement);
-a favicon / home-screen icon (needs a hosted image); nudging RIA, who has logged nothing.
+## Things learned
+- **Formula injection:** every typed or picked text goes through `asText_` / `textify_`.
+- **Saves:** checks re-run inside the script lock; one-time `saveId` per form (`repSaveStatus`);
+  replies carry only the saved card; one Sales Diary open, one read per tab (`tests/speed.test.js`).
+- **The save queue** is where bugs hide (carried saves, retries, contacts): every change there gets
+  a case in `tests/interleave.test.js`, and lists kept per queued save must never grow per chain.
+- **`Activity` rows can land a few seconds out of order**: `activitySince_` reads bottom-up and stops
+  only past `ACTIVITY_SKEW_MS` (5 min).
+- **Hand-edited sheet rows** (blank `site_id`, duplicates, odd cells) must never crash a screen.
+- **WhatsApp:** no tables; monospace lines ≤ 30 chars; `waSafe_` for names; `wa.me/?text=` link.
+- `tsc` misses a function defined twice; `tests/load-src.test.js` (src) and `tests/served.test.js`
+  (App.html + Admin.html) catch it. `clasp pull` can overwrite `src/appsscript.json`: git wins.
+- Real target amounts never go in git. `npm audit`'s 8 issues are inside clasp (local tool only).
 
 ## Useful facts
-IDs aren't secret (each needs the owner's Google account):
-- **Meta-Data** "Mitchell Sales Meta-Data": `11rcjx1eZA9BqwSTIoK66hrs7M8rYisL12GirSzLyrkc`.
-  **Never edit it without the owner's explicit OK in that session.**
-- **Sales Diary**: `1tuyVPDB33x1Vw8JQYashM4PRQSjGjQq8MBs7l4cJn5Y`. **Never share it** (link codes).
-- **Apps Script** (bound to Sales Diary): script ID in `.clasp.json`.
-- **Web app** (same address since phase 1, now version 13): deployment
+- **Meta-Data** "Mitchell Sales Meta-Data": `11rcjx1eZA9BqwSTIoK66hrs7M8rYisL12GirSzLyrkc` (read
+  only; never edit without the owner's OK in that session).
+- **Sales Diary**: `1tuyVPDB33x1Vw8JQYashM4PRQSjGjQq8MBs7l4cJn5Y` (never share: link codes).
+- **Apps Script**: script ID in `.clasp.json`. **Web app**: deployment
   `AKfycbwmWhxLQfpkQRfFIfdv9tZD4CvZfeWEB__YiXnGTSk7-6mlZVZUvLEp2aJDwey0HXaF`,
   https://script.google.com/macros/s/AKfycbwmWhxLQfpkQRfFIfdv9tZD4CvZfeWEB__YiXnGTSk7-6mlZVZUvLEp2aJDwey0HXaF/exec
-- **Git: one branch, `main`** (owner, 2026-11-05). It holds the live code (version 13) and the
-  user guides. All older branches (`claude/laughing-fermi-ec4tlp`, `claude/vigilant-volta-yye9pn`,
-  `claude/clever-hopper-ain3c5`, `ccr-f2566cb7-aaz6y0`, `ccr-18f7110f-to6vgz`) were checked to be
-  fully inside `main` (full history, not a shallow clone). If any of them (or a session's
-  own `claude/…` branch) still exist, they hold nothing that `main` lacks: check with `git
-  merge-base --is-ancestor`, then ignore them. **Since 2026-11-11 every session works and pushes on
-  `main` directly** (owner). No PRs.
+- **Git:** only `main` matters. Leftover remote branches (e.g. `claude/exciting-cray-58kmmu`) are
+  fully inside `main`; a cloud session can't delete them (403); the owner may delete them on GitHub.
