@@ -1327,9 +1327,9 @@
         // them, so it carries their changes (spec 008). Not Edit details: those are their own saves.
         // A retry is its own form again: it carries what it was first opened over, and itself. What those
         // carried goes too, so a late reply of a save carried twice over never counts (spec 011 review).
-        var earlier = retrying ? (retrying.carries || []).concat([retrying.id]) : queue.filter(function (q) {
+        var earlier = retrying ? (retrying.carries || []).concat([retrying.id]) : carriedBy(queue.filter(function (q) {
           return q.card.id === s.id && (q.fn === 'repUpdateSite' || q.fn === 'adminPageUpdateSite' || q.fn === 'repSnoozeSite');
-        }).reduce(function (a, q) { return a.concat(q.carries || [], q.id); }, []);
+        }));
         // Spec 011: only the new contact the form shows (one carried from a queued save is in the box).
         if (mine) input.contact = { name: mine.name.trim(), phone: mine.phone.trim(), again: !!mine.again };
         // What Google had when the form opened, and what he changes: Google writes only that.
@@ -1394,9 +1394,17 @@
       // Google last confirmed: newest first, each person once, at most 20. Google having one of them is
       // no change under him. A new form shows the newest Update's new contact in the box (× drops it,
       // then it is never sent) unless it already has its own; a retry keeps its own.
+      // The saves a form carries: each queued one and what it carried, each once (never doubling along a chain).
+      function carriedBy(list) {
+        return list.reduce(function (a, q) {
+          (q.carries || []).concat(q.id).forEach(function (x) { if (a.indexOf(x) < 0) a.push(x); });
+          return a;
+        }, []);
+      }
       function carryContact(u, id, list, known, retry) {
         var last, seen = {};
         u.via = [];
+        add(known); // Google's last confirmed main contact always has a place
         function add(c) {
           var key = c && tidyPhone(c.phone) + '|' + loose(c.name);
           if (key && !seen[key] && u.via.length < 20) { seen[key] = 1; u.via.push({ name: c.name, phone: c.phone }); }
@@ -1407,7 +1415,6 @@
           if (!ed && last === undefined) last = st.contact;
           [ed ? { name: st.contactName, phone: st.phone } : st.contact].concat(st.via).forEach(add);
         });
-        add(known);
         if (!retry && u.contact === undefined && last !== undefined) u.contact = clone(last);
       }
       // The main number is never also an earlier one (spec 011), whatever changed it.
@@ -1613,7 +1620,7 @@
           if (form.newPerson) moveMain(card, { name: form.contactName, phone: form.phone });
           card.name = form.name.trim(); card.buyerType = form.buyerType; card.contactName = form.contactName.trim();
           card.phone = tidyPhone(form.phone) || site.phone; card.products = form.products.slice(); card.area = area;
-          dropEarlier(card);
+          if (card.phone !== site.phone) dropEarlier(card);
           var editReplaces = retrying;
           store(formKey(), null); // the queue carries it now
           enqueue({ id: form.saveId, fn: 'repEditSite', siteId: id, input: input, card: card, state: clone(form) }, editReplaces);

@@ -86,13 +86,13 @@ const s = src.sandbox;
 const RULES = plain(s.pageRules_());
 const LOST = RULES.lostStage;
 const TODAY = s.dayKey_(new Date());
-const page = new Function('rules', 'todayKey', [has, digitsOf, addDays, tidyPhone, clone, loose, moveMain, carryContact]
+const page = new Function('rules', 'todayKey', [has, digitsOf, addDays, tidyPhone, clone, loose, moveMain, carryContact, carriedBy]
   .map((f) => pageFunction(f.name)).join('\n') +
   `\n${block}\n` + 'return { snap: snap, sameSnap: sameSnap, intendedOf: intendedOf, touchedOf: touchedOf, choseFollowUp: choseFollowUp, ' +
-  'addDays: addDays, moveMain: moveMain, carryContact: carryContact };')(() => RULES, () => TODAY);
+  'addDays: addDays, moveMain: moveMain, carryContact: carryContact, carriedBy: carriedBy };')(() => RULES, () => TODAY);
 // Names for pageFunction only (the page's own functions are what runs).
 function has() {} function digitsOf() {} function addDays() {} function tidyPhone() {} function clone() {} function loose() {}
-function moveMain() {} function carryContact() {}
+function moveMain() {} function carryContact() {} function carriedBy() {}
 // Every change of the main contact in this run, and who made it (promise 5 for contacts: a refusal
 // needs a change by someone else after his form's knowledge of the site).
 let changeLog = [];
@@ -220,7 +220,7 @@ function makePhone(who) {
     const card = { ...JSON.parse(JSON.stringify(p.card)), stage: want.stage, lostReason: want.lostReason, followUp: want.followUp };
     if (RULES.valueStages.includes(want.stage)) { card.value = want.value; card.terms = want.terms; }
     if (u.note.trim()) card.note = (isAdmin ? 'Admin: ' : '') + u.note.trim();
-    const carries = replaces ? replaces.carries.concat([replaces.id]) : p.queue.flatMap((e) => e.carries.concat([e.id])); // a retry: what it first carried, and itself
+    const carries = replaces ? replaces.carries.concat([replaces.id]) : page.carriedBy(p.queue); // a retry: what it first carried, and itself
     // Only the new contact the form shows goes (spec 011), as App.html's saveUpdate does.
     const c = u.contact;
     if (c) {
@@ -470,7 +470,8 @@ test('spec 011 review: seen.via stays small along a chain of 30 queued Updates, 
   u = {};
   page.carryContact(u, SITE, queue, known);
   assert.equal(u.via.length, 20);
-  assert.equal(u.via[0].name, 'P29', 'the newest first');
+  assert.equal(u.via[0].name, 'Start', "Google's confirmed contact always has a place");
+  assert.equal(u.via[1].name, 'P29', 'then the newest first');
   assert.equal(u.contact.name, 'P29', 'the newest new contact is carried');
   assert.ok(JSON.stringify(queue).length < 60000, 'no growth to fill phone storage');
   // Google has his newest own contact (P29) and an older one's reply never came: no change under him.
@@ -483,12 +484,19 @@ test('spec 011 review: seen.via stays small along a chain of 30 queued Updates, 
   assert.equal(r.ok, true, r.message);
 });
 
+test('spec 011 review: carries stays one entry per save along a chain of 30 queued Updates', () => {
+  const queue = [];
+  for (let i = 0; i < 30; i++) queue.push({ id: `q${i}`, carries: page.carriedBy(queue) });
+  assert.deepEqual(plain(queue[29].carries), Array.from({ length: 29 }, (_, i) => `q${i}`));
+  assert.ok(JSON.stringify(queue).length < 20000, 'no growth to fill phone storage');
+});
+
 test("spec 011 review: his own queued Edit details' contact is in via (no false \"changed\" on his next Update)", () => {
   const u = {};
   const queue = [{ id: 'e1', fn: 'repEditSite', card: { id: SITE }, state: { contactName: 'Nadeem Khan', phone: '' } },
     { id: 's1', fn: 'repSnoozeSite', card: { id: SITE }, state: { followUp: '3days' } }];
   page.carryContact(u, SITE, queue, { name: 'Nadeem', phone: '' });
-  assert.deepEqual(u.via, [{ name: 'Nadeem Khan', phone: '' }, { name: 'Nadeem', phone: '' }]);
+  assert.deepEqual(u.via, [{ name: 'Nadeem', phone: '' }, { name: 'Nadeem Khan', phone: '' }]); // Google's confirmed first
   assert.equal(u.contact, undefined, 'an Edit details is not carried into the new contact box');
 });
 
