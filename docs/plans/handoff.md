@@ -1,11 +1,22 @@
 # Handoff: start here
 
-> Updated 2026-11-05, end of session 5 (specs 009 and 010 live as version 13; launched to the team;
-> all branches merged into `main`). **Every session: read this first, and update it before you finish.** Then read
+> Updated 2026-11-11, end of session 6 (spec 011 live as version 14: Mitchell look, tappable
+> summaries for the review meeting, region summaries, Plan tab, new contact person; clasp signs in by
+> itself; work and deploy on `main`). **Every session: read this first, and update it before you finish.** Then read
 > `AGENTS.md` (rules, commands) if you haven't.
 
 ## Where we are
-**Phases 0–7 and specs 009–010 are live** (deployment version 13, 2026-11-05).
+**Phases 0–7 and specs 009–011 are live** (deployment version 14, 2026-11-11).
+- **Spec 011 (session 6, owner answers S11-1–S11-8):** Mitchell **logo strip** + **teal** main colour
+  on both pages and the error page; every **summary tile, NOW row, region and salesman row is
+  tappable** (site lists that add up to the number, "+ N" for sites no longer his / not in the
+  sheet; Quotes / Won / Lost show the period's value); **region summaries** with their own WhatsApp
+  text; **‹ Prev / Next ›** between salesmen and regions; a **wide layout** at ≥ 900 px for screen
+  share; the admin's **Plan tab** (Today / Tomorrow: Due · late · done per salesman, "last saved N
+  days ago"); **+ New contact person** in Update (old one kept under **Earlier contacts**, Call /
+  WhatsApp / Make main; Edit details asks "Is this a new person?" when a number changes; search and
+  the duplicate check cover earlier contacts). New column `Sites.earlier_contacts` (ADR-0011, data
+  model v0.9) and `Activity.action` `contact` (a save, never work).
 - **Salesman** (his private link): Today's Chase / Hot Pipeline / All My Parties (search, area
   filter), his monthly target, cards with Call / WhatsApp, last-spoken line, going cold, Snooze;
   add / Update / Edit details; instant saves with a queue (failed saves orange). **Summary** button
@@ -23,17 +34,26 @@
   are counted **as the period ended** (S9-14); running ones exactly as the Team tab (P7-1). Since
   S9-13 an Update row saves Rs. only when it changed.
 - **Pages are served through `servedHtml_`** (`src/webapp.js`): comments and indentation removed
-  as Google sends the page; no build step (ADR-0003 kept). Served salesman's page 69.8 KB (pin
-  75,000), admin's 90.7 KB (pin 92,300), `tests/served.test.js`.
+  as Google sends the page; no build step (ADR-0003 kept). Served salesman's page ~82.3 KB (pin
+  84,000), admin's ~106.7 KB (pin 110,000), `tests/served.test.js`.
 - Sheet menu (computer): **Sales Diary → Check setup / Links / Refresh salesmen & targets**.
   Everything is in **Sales Diary**; **Meta-Data** is only ever read. The kept copy of salesmen and
   targets holds last, this and next month plus a `months` marker.
 
-Specs 001–008 Done; 009 and 010 In progress (only the owner's phone check left). Plans 001–010
-ticked to their last step. ADRs 0001–0010 Accepted. Tests: 382 unit (incl. the random interleave
-test, ~20 s) + 8 browser checks.
+Specs 001–008 Done; 009, 010 and 011 In progress (only the owner's own checks left). Plans 001–010
+ticked to their last step (spec 011 was built straight from its spec, no separate plan). ADRs
+0001–0011 Accepted. Tests: 429 unit (incl. the random interleave test with contacts) + 9 browser
+checks.
 
-### Live state (2026-11-05)
+### Live state (2026-11-11)
+- **Version 14** live at the same address. `Sites` has the new header **`earlier_contacts`** in
+  column T (added before the push; old code ignored it). Week 1: 41+ sites, RIA has logged nothing
+  since launch; two salesmen overwrote a contact through Edit details (S11-7: left as they are).
+- Agent checked live on the admin link (360 px and 1280 px): logo, five tabs, Plan lines, summary
+  tiles tappable (36 sites worked → 36 cards), region rows tappable, RIA's empty row not; no page
+  errors; admin's page opens in ~4.7 s. **Not checked live:** a salesman's own page (no salesman
+  link; same `App.html`) and a contact save on live data (would write; covered by tests).
+
 - **TEST rows deleted** (owner's OK, 2026-11-05, pinned to the revision just read): `Sites` and
   `Activity` now hold only their header rows, ready for launch. IDs start again at S000001 /
   A0000001 (the old TEST rows are gone, so nothing clashes). From now on, live checks use real data
@@ -44,6 +64,9 @@ test, ~20 s) + 8 browser checks.
   ~4.1 s; a summary loads in 2–3.5 s. After Save, back on the list in ~0.3 s.
 
 ## Next
+0. **Owner's check of spec 011**: run a review call from Summary on a laptop (tap tiles, regions,
+   Prev / Next, Plan tab); a salesman tries + New contact person. Then close spec 011 (Done),
+   roadmap 7d. Feedback goes into a follow-up spec.
 1. **Owner's phone check** (specs 009 + 010): he taps Summary → Share on WhatsApp → sends it to
    himself: WhatsApp app opens with the text, the numbers block **lines up**, Copy says "Copied".
    If the block doesn't line up: fall back to bold labels (spec 010, mockup C bottom). Then close
@@ -69,15 +92,15 @@ test, ~20 s) + 8 browser checks.
      for "Logged on N days", millions, % / Lost) and lost reasons.
    - All pictures from the real pages on **fake data** (pretend `DEMO` and teammates, made-up
      targets, pretend codes); fact-checked by an independent reviewer. **Owner's OK pending**; then
-     send the salesmen's PDF with the links at launch. Rebuild after any visible change (e.g. the
-     speed pass).
+     send the salesmen's PDF with the links at launch. **Owner, 2026-11-11: "no need to build the
+     pdfs"**: they still show the version 13 look; don't rebuild unless he asks.
 5. **Phase 8 done when** all 7 have logged at least one site (roadmap).
 
 Known limits kept on purpose (specs 006 / 008): a phone clock changed while the app is open can make
 "today" off until reload; a lost reply retried unchanged after midnight, or a retried Update after
 his own snooze landed, can be refused once (he taps Save again; nothing lost).
 
-## How we work (sessions 4–5, the owner likes it)
+## How we work (sessions 4–6, the owner likes it)
 - The main agent orchestrates and stays lean. A **builder subagent** builds from an approved spec
   with tests and commits (no push, no clasp); a **separate reviewer subagent** (cold, adversarial)
   reviews each build and re-reviews each fix round; the main agent re-runs every check, pushes,
@@ -85,6 +108,10 @@ his own snooze landed, can be refused once (he taps Save again; nothing lost).
 - Before a spec: interview the owner (tappable questions), then an adversarial review of the
   **spec**, then his answers to what it raises. For look-and-feel, research and show a **mockup
   picture** (rendered with Playwright, sent with SendUserFile) before writing the spec.
+- Session 6: **two builders in parallel** (separate worktrees, then merged by the main agent; only
+  docs and the size pins clashed) and three cold review rounds caught real bugs each time (a blank
+  `site_id` crashing the admin summary; a removed contact still sent on retry; lists doubling in
+  phone storage along a chain of queued saves). Keep doing a final re-review of every fix round.
 - When a fix area keeps producing new bugs, stop patching: simplify the design and add a randomized
   invariant test.
 - Live testing: `chromium.launch({ proxy: { server: process.env.HTTPS_PROXY } })`, 360 px; the app is
@@ -142,9 +169,11 @@ with `add_repo` (read), clone it to `/home/user/tony-ngo`, rerun the hook. (The 
 - The owner wants **speed on cheap phones and weak signal**: measure, avoid extra trips.
 
 ## Questions for the owner
-Waiting on him: (1) the **phone check** of the summaries (Next, 1); (2) his OK on the **two user
-guide PDFs** (`docs/guide/`), then send the salesmen's PDF to the team; (3) go-ahead to **spec the
-speed pass** (spec 012) in the first week; (4) **bug reports** from the salesmen as they come.
+Waiting on him: (0) his **check of spec 011** in a real review call (Next, 0); (1) the **phone
+check** of the summaries (Next, 1); (2) go-ahead to **spec the speed pass** (spec 012); (3) **bug
+reports** from the salesmen as they come. (The PDFs: not wanted for now.)
+Ideas raised in session 6, not asked yet: contact roles (site engineer / thekedar / procurement);
+a favicon / home-screen icon (needs a hosted image); nudging RIA, who has logged nothing.
 
 ## Useful facts
 IDs aren't secret (each needs the owner's Google account):

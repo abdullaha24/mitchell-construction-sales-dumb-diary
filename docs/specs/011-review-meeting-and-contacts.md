@@ -1,6 +1,8 @@
 # 011: Mitchell look, review-meeting summaries, Plan tab, new contact person
 
-- **Status:** Approved (build)
+- **Status:** In progress: **live as deployment version 14** (2026-11-11), reviewed cold three
+  times (fix rounds re-reviewed), checked live by the agent on the admin link (360 px and 1280 px);
+  the owner's own check (a review call, a salesman's phone) is the last open item
 - **Owner approval:** owner interview 2026-11-11 (answers **S11-1 to S11-8** in
   [open questions](../product/open-questions.md)); he asked for it to be built and shipped in one go
 - **Related:** specs 008 (admin screen), 009 / 010 (summaries), 003 / 004 (contact, Edit details,
@@ -227,28 +229,29 @@ extra columns), check the app still opens, then `clasp push` and `update-deploym
 The column is required like every other (a missing header shows the usual setup message).
 
 ## Acceptance criteria
-- [ ] Logo strip + teal on both pages and the error page; red / yellow / green / orange unchanged.
-- [ ] Every tile and NOW row with a count > 0 opens a list whose cards plus its "+ N …" line equal
+- [x] Logo strip + teal on both pages and the error page; red / yellow / green / orange unchanged.
+- [x] Every tile and NOW row with a count > 0 opens a list whose cards plus its "+ N …" line equal
       the count, on both pages, for all four periods; Back returns to the same scroll place; a card opens the site and
       Back returns to the list.
-- [ ] Quotes / Won / Lost list cards show the period's value line.
-- [ ] Region rows open a region summary (numbers equal the region row; Share / Copy work); its tiles
+- [x] Quotes / Won / Lost list cards show the period's value line.
+- [x] Region rows open a region summary (numbers equal the region row; Share / Copy work); its tiles
       open lists.
-- [ ] Prev / Next steps through salesmen in table order and regions N → C → S; none at the ends.
-- [ ] ≥ 900 px: content ≤ 1,100 px, six tiles in a row, two tables per row, cards in two columns;
+- [x] Prev / Next steps through salesmen in table order and regions N → C → S; none at the ends.
+- [x] ≥ 900 px: content ≤ 1,100 px, six tiles in a row, two tables per row, cards in two columns;
       360 px unchanged apart from the logo strip.
-- [ ] Plan tab: Today / Tomorrow; per-salesman Due / late / done as defined, "last saved N days ago";
+- [x] Plan tab: Today / Tomorrow; per-salesman Due / late / done as defined, "last saved N days ago";
       tapping opens his list with ✓ Done today first. Five tabs fit at 360 px.
-- [ ] + New contact person in Update (salesman and admin): new main, old to Earlier contacts with
+- [x] + New contact person in Update (salesman and admin): new main, old to Earlier contacts with
       today's date, one `contact` Activity row; Make main swaps; Edit details asks "Is this a new
       person?" when a number changes; search and the duplicate check include earlier contacts;
       hot stages refuse a new contact without a number.
-- [ ] A salesman never receives another salesman's earlier contacts, site IDs or cards, from any
+- [x] A salesman never receives another salesman's earlier contacts, site IDs or cards, from any
       reply including his summary (ADR-0004 tests).
-- [ ] A contact-only Update writes no `update` row and doesn't reset going cold; queued and repeated
+- [x] A contact-only Update writes no `update` row and doesn't reset going cold; queued and repeated
       contact changes never lose or double a person (interleave test).
-- [ ] `npm run check` and `npm run check:browser` green; new logic tested; served-size pins
-      updated deliberately; user guides rebuilt.
+- [x] `npm run check` and `npm run check:browser` green; new logic tested; served-size pins
+      updated deliberately (salesman 84,000; admin 110,000). *User guides: not rebuilt, owner's call
+      (2026-11-11: "no need to build the pdfs").*
 
 ## Out of scope
 - Contact roles (site engineer / thekedar / procurement): later, if wanted.

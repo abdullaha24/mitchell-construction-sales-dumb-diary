@@ -25,4 +25,4 @@ Status values: `Draft` → `Approved` → `In progress` → `Done` (or `Dropped`
 | [008](008-owner-screen.md) | Owner (admin) screen: team against target, who worked today, late and going cold, won / lost this month; admin updates | Done |
 | [009](009-summaries.md) | Weekly and monthly summaries: one tap, share on WhatsApp; salesman and admin | In progress (live, v12) |
 | [010](010-summary-tables.md) | Summary tables (neat layout) and a smaller page download | In progress (live, v13) |
-| [011](011-review-meeting-and-contacts.md) | Mitchell look, tappable summaries for the review meeting, Plan tab, new contact person | Approved (building) |
+| [011](011-review-meeting-and-contacts.md) | Mitchell look, tappable summaries for the review meeting, Plan tab, new contact person | In progress (live, v14) |
