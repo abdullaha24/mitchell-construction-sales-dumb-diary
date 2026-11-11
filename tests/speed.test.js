@@ -93,6 +93,29 @@ test('a save opens Sales Diary once, not Meta-Data, and reads each tab once', ()
   assert.deepEqual(check.reads, { Links: 1, Sites: 1 });
 });
 
+test('a contact change (spec 011) costs the same: one open, each tab read once, one Activity write', () => {
+  const w = world();
+  w.s.repLoad(RIA);
+  const writes = () => w.diary._writes().filter((x) => x === 'setValues on Activity').length;
+  let before = writes();
+  const update = w.cost(() => w.s.repUpdateSite(RIA, 'S000001', { stage: 'Visited / Lead', followUp: '3days', note: 'x',
+    contact: { name: 'Bilal', phone: '0300 7654321' } }));
+  assert.equal(update.result.ok, true, update.result.message);
+  assert.deepEqual(update.opens, ['diary']);
+  assert.deepEqual(update.reads, { Links: 1, Sites: 1, Activity: 1, Lists: 1 });
+  assert.equal(writes() - before, 1, 'the update row and the contact row in one write');
+  before = writes();
+  const edit = w.cost(() => w.s.repEditSite(RIA, 'S000001', { name: 'F-11', buyerType: 'Dealer', contactName: 'Asif',
+    phone: '0300 1112222', newPerson: true }));
+  assert.equal(edit.result.ok, true, edit.result.message);
+  assert.deepEqual(edit.opens, ['diary']);
+  assert.deepEqual(edit.reads, { Links: 1, Sites: 1, Activity: 1, Lists: 1 });
+  assert.equal(writes() - before, 1);
+  const check = w.cost(() => w.s.repCheckPhone(RIA, '0300 7654321', 'S000001'));
+  assert.deepEqual(check.reads, { Links: 1, Sites: 1 });
+  assert.deepEqual(plain(check.result).mine, [], 'the site itself is skipped');
+});
+
 test('opening his page costs one Sales Diary open and one read of Links, Sites and Lists', () => {
   const w = world();
   w.s.repLoad(RIA);

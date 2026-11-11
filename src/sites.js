@@ -14,8 +14,10 @@
 /**
  * One site as the salesman's page shows it. Plain values only (no Dates). `worked` is the day
  * it was last really worked (added or updated, spec 007: drives going cold); `noteDay` the day
- * its note was written ('' if unknown).
- * @typedef {CurrentSite & { id: string, note: string, created: string, worked: string, noteDay: string }} SiteCard
+ * its note was written ('' if unknown). `earlier`: the earlier contacts, newest first, only when
+ * there are any (spec 011; a salesman only ever gets his own sites' cards, ADR-0004).
+ * @typedef {CurrentSite & { id: string, note: string, created: string, worked: string, noteDay: string,
+ *   earlier?: Array<{ name: string, phone: string, till: string }> }} SiteCard
  */
 
 /**
@@ -194,11 +196,13 @@ function phoneText_(value) {
  * @returns {SiteCard}
  */
 function cardOf_(r) {
+  const earlier = earlierContacts_(r.earlier_contacts).map((e) => ({ name: e.name, phone: e.phone, till: e.till }));
   return {
     id: text_(r.site_id), ...currentSiteOf_(r), note: text_(r.last_note), created: dayText_(r.created_at),
     // A row without worked_at (typed by hand) goes cold from the day it was added (spec 007).
     worked: dayText_(r.worked_at) || dayText_(r.created_at),
     noteDay: dayText_(r.note_at),
+    ...(earlier.length ? { earlier } : {}),
   };
 }
 
@@ -232,21 +236,26 @@ function textify_(values) {
 }
 
 /**
- * Who has a tidy phone number. For everyone else, only yes/no (ADR-0004); for him, the names
- * of his own sites with it.
+ * Who has a tidy phone number, as a main or an earlier contact (spec 011). For everyone else, only
+ * yes/no (ADR-0004); for him, the names of his own sites with it ("(earlier contact)" when only an
+ * earlier contact has it). The site being changed (`skipId`) is never matched.
  * @param {Tab} sites
  * @param {string} phone tidy form, not blank
  * @param {string} rep
+ * @param {string} [skipId]
  * @returns {{ team: boolean, mine: string[] }}
  */
-function phoneOwners_(sites, phone, rep) {
+function phoneOwners_(sites, phone, rep, skipId = '') {
   let team = false;
   /** @type {string[]} */
   const mine = [];
   for (const r of sites.rows) {
+    if (skipId && text_(r.site_id) === skipId) continue;
     const tidy = tidyPhone_(r.contact_phone);
-    if (!tidy.ok || tidy.phone !== phone) continue;
-    if (tidyCode_(r.rep) === rep) mine.push(isBlank_(r.site_name) ? String(r.site_id) : String(r.site_name));
+    const main = tidy.ok && tidy.phone === phone;
+    if (!main && !earlierContacts_(r.earlier_contacts).some((e) => e.phone === phone)) continue;
+    const name = isBlank_(r.site_name) ? String(r.site_id) : String(r.site_name);
+    if (tidyCode_(r.rep) === rep) mine.push(main ? name : `${name} (earlier contact)`);
     else team = true;
   }
   return { team, mine };
@@ -457,7 +466,18 @@ function saveUpdate_(diary, saver, siteId, input, now, saveId) {
     const checked = checkUpdate_(merge.input, before, choices, dayKey_(now));
     if (!checked.ok) return checked;
     const update = checked.update;
-    const warning = update.phone ? phoneOwners_(sites, update.phone, rep) : { team: false, mine: [] };
+    // A new contact person (spec 011): refused if the main contact changed since his form opened
+    // (unless it is already his own new one: a repeat); nothing moves if it is the main one now.
+    const next = update.contact;
+    const seenContact = seenMain_(input && input.seen);
+    const nowMain = { name: before.contactName, phone: before.phone };
+    if (next && seenContact && !sameMain_(seenContact, nowMain) && !samePerson_(next, nowMain)) {
+      return { ok: false, changed: true, message: CHANGED_MESSAGE, site: replyCard_(saver, row) };
+    }
+    const moves = !!next && !samePerson_(next, nowMain);
+    if (update.contactOnly && !moves) return { ok: true, site: replyCard_(saver, row), warning: { team: false, mine: [] } };
+    const newPhone = update.phone || (moves && next ? next.phone : '');
+    const warning = newPhone ? phoneOwners_(sites, newPhone, rep, text_(row.site_id)) : { team: false, mine: [] };
     const followUp = update.followUp ? dayStart_(update.followUp) : '';
     const valueStage = VALUE_STAGES.includes(update.stage);
     const note = admin && update.note ? ADMIN_NOTE_PREFIX + update.note : update.note;
@@ -465,8 +485,9 @@ function saveUpdate_(diary, saver, siteId, input, now, saveId) {
     // Only what changes: a value or reason the owner typed by hand is never overwritten by an
     // unrelated update. A salesman's Update is work on the site: it resets going cold (spec 007,
     // P6-2); the admin's never does (P7-5).
+    // A contact-only Update is not work (spec 011): no worked_at, no update row.
     /** @type {Object<string, any>} */
-    const cells = admin ? { updated_at: now } : { updated_at: now, worked_at: now };
+    const cells = admin || update.contactOnly ? { updated_at: now } : { updated_at: now, worked_at: now };
     if (update.stage !== before.stage) cells.stage = update.stage;
     const moneyChanged = valueStage && (update.value !== before.value || update.terms !== before.terms);
     if (moneyChanged) {
@@ -480,15 +501,25 @@ function saveUpdate_(diary, saver, siteId, input, now, saveId) {
       cells.note_at = now;
     }
     if (update.phone) cells.contact_phone = update.phone;
+    const main = mainPerson_(row);
+    const contactNote = moves && next ? contactNote_(next, main, next.again) : '';
+    if (moves && next) {
+      cells.contact_name = next.name;
+      cells.contact_phone = next.phone;
+      cells.earlier_contacts = earlierAfter_(row.earlier_contacts, main, next, dayKey_(now));
+    }
     setCells_(sites, row._row, textify_(cells), ['contact_phone']);
 
     const stageChanged = update.stage !== before.stage;
     // A stage change carries the Rs. at that stage; an `update` (same stage) only a changed Rs. or
     // Cash / Credit, so a revised price can be told from a plain note (spec 009, owner S9-13).
     const money = valueStage && (stageChanged || moneyChanged);
-    appendRows_(activity.sheet, [rowFor_(activity.columns, {
-      activity_id: nextId_(activity.rows.map((r) => r.activity_id), 'A', 7),
-      timestamp: now, rep: asText_(admin ? ADMIN_ACTOR : rep), site_id: siteId,
+    const by = asText_(admin ? ADMIN_ACTOR : rep);
+    const firstId = nextId_(activity.rows.map((r) => r.activity_id), 'A', 7);
+    // The update row first, then the contact row (its ID one more), in one write (spec 011).
+    const rows = update.contactOnly ? [] : [rowFor_(activity.columns, {
+      activity_id: firstId,
+      timestamp: now, rep: by, site_id: siteId,
       action: stageChanged ? 'stage_change' : 'update',
       from_stage: stageChanged ? asText_(before.stage) : '',
       to_stage: stageChanged ? asText_(update.stage) : '',
@@ -497,15 +528,37 @@ function saveUpdate_(diary, saver, siteId, input, now, saveId) {
       lost_reason: asText_(update.lostReason),
       note: asText_([note, update.phone ? `Phone added ${update.phone}` : ''].filter(Boolean).join(' · ')),
       next_followup: followUp,
-    })]);
-    return { ok: true, site: replyCard_(saver, { ...row, ...cells }), warning };
+    })];
+    if (contactNote) rows.push(contactRow_(activity, rows.length ? nextId_([firstId], 'A', 7) : firstId, now, by, siteId, contactNote));
+    appendRows_(activity.sheet, rows);
+    return {
+      ok: true, site: replyCard_(saver, { ...row, ...cells }), warning,
+      ...(contactNote ? { contact: contactNote } : {}), ...(update.contactOnly ? { only: true } : {}),
+    };
   });
+}
+
+/**
+ * A `contact` row for `Activity` (spec 011): the note says who is the main contact now and who it
+ * was; the other detail columns stay blank.
+ * @param {Tab} activity
+ * @param {string} id
+ * @param {Date} now
+ * @param {string} by already as text
+ * @param {any} siteId
+ * @param {string} note
+ */
+function contactRow_(activity, id, now, by, siteId, note) {
+  return rowFor_(activity.columns, { activity_id: id, timestamp: now, rep: by, site_id: siteId, action: 'contact', note: asText_(note) });
 }
 
 /**
  * Checks and saves Edit details (spec 004) for one of his sites, **inside the lock**, against
  * the row as it is at that moment (so a number added a moment ago can't be removed). Writes the
- * fields, a new area if any, and one `details` row in `Activity` listing what changed.
+ * fields, a new area if any, and one `details` row in `Activity` listing what changed. Spec 011:
+ * refused (with the site as it is now) if the main contact changed since the form opened
+ * (`seen.contact`); `newPerson` ("Yes, keep the old one") moves the main contact to Earlier
+ * contacts and writes a `contact` row (plus a `details` row only if other fields changed).
  * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} diary
  * @param {{ rep: string, region: string }} salesman
  * @param {any} siteId
@@ -524,21 +577,37 @@ function saveDetails_(diary, salesman, siteId, input, now, saveId) {
     const checked = checkDetails_(input, before, choicesFor_(lists, salesman.region));
     if (!checked.ok) return checked;
     const fields = checked.fields;
+    const next = { name: fields.contactName, phone: fields.phone };
+    const nowMain = { name: before.contactName, phone: before.phone };
+    const seenContact = seenMain_(input.seen);
+    if (seenContact && !sameMain_(seenContact, nowMain) && !sameMain_(next, nowMain)) {
+      return { ok: false, changed: true, message: CHANGED_MESSAGE, site: cardOf_(row) };
+    }
     let warning = { team: false, mine: /** @type {string[]} */ ([]) };
     if (fields.phone && fields.phone !== before.phone) {
-      warning = phoneOwners_({ ...sites, rows: sites.rows.filter((r) => r !== row) }, fields.phone, salesman.rep);
+      warning = phoneOwners_(sites, fields.phone, salesman.rep, text_(row.site_id));
     }
+    const main = mainPerson_(row);
+    const newPerson = input.newPerson === true && !!(main.name || main.phone) && !samePerson_(next, nowMain);
     const area = saveArea_(lists, salesman, fields.area, fields.newArea);
+    /** @type {Object<string, any>} */
     const cells = {
       site_name: fields.name, buyer_type: fields.buyerType, contact_name: fields.contactName,
       contact_phone: fields.phone, products: fields.products.join(PRODUCTS_SEPARATOR), area, updated_at: now,
     };
+    if (newPerson) cells.earlier_contacts = earlierAfter_(row.earlier_contacts, main, next, dayKey_(now));
     setCells_(sites, row._row, textify_(cells), ['contact_phone']);
-    appendRows_(activity.sheet, [rowFor_(activity.columns, {
-      activity_id: nextId_(activity.rows.map((r) => r.activity_id), 'A', 7),
-      timestamp: now, rep: asText_(salesman.rep), site_id: siteId, action: 'details',
-      note: asText_(checked.changes.join('; ')),
-    })]);
+    const firstId = nextId_(activity.rows.map((r) => r.activity_id), 'A', 7);
+    const by = asText_(salesman.rep);
+    const changes = newPerson ? checked.other : checked.changes;
+    const rows = changes.length ? [rowFor_(activity.columns, {
+      activity_id: firstId, timestamp: now, rep: by, site_id: siteId, action: 'details', note: asText_(changes.join('; ')),
+    })] : [];
+    if (newPerson) {
+      rows.push(contactRow_(activity, rows.length ? nextId_([firstId], 'A', 7) : firstId, now, by, siteId,
+        contactNote_(next, main, false)));
+    }
+    appendRows_(activity.sheet, rows);
     return {
       ok: true, site: cardOf_({ ...row, ...cells }), warning,
       ...(fields.newArea ? { areas: areasAfter_(lists, salesman, area) } : {}),
