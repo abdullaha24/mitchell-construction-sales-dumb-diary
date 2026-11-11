@@ -4,7 +4,7 @@
     <base target="_top">
     <meta charset="utf-8">
     <style>
-      :root { --ink: #1f2933; --soft: #52606d; --line: #d9e2ec; --blue: #1f5fbf; --orange: #b45309;
+      :root { --ink: #1f2933; --soft: #52606d; --line: #d9e2ec; --blue: #00738e; --orange: #b45309;
               --red: #b42318; --green: #1e7d4f; }
       * { box-sizing: border-box; }
       body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
@@ -46,7 +46,7 @@
       .card .name { font-weight: 600; font-size: 17px; }
       .card .meta { color: var(--soft); font-size: 14px; margin-top: 2px; }
       .tag { display: inline-block; font-size: 13px; padding: 2px 8px; border-radius: 999px;
-             background: #e6effb; color: var(--blue); margin: 6px 6px 0 0; }
+             background: #e3f1f4; color: var(--blue); margin: 6px 6px 0 0; }
       .tag.nonum { background: #fff4e5; color: var(--orange); font-weight: 600; }
       .empty, .banner { text-align: center; color: var(--soft); padding: 24px 8px; }
       .banner { background: #fff4e5; color: var(--orange); border-radius: 10px; padding: 10px; margin-bottom: 12px; }
@@ -105,7 +105,7 @@
       .areas .pill { flex: none; white-space: nowrap; }
       /* The count is a badge, so "Phase 2" with 3 sites never reads as "Phase 2 3". */
       .areas .pill .n { display: inline-block; margin-left: 2px; padding: 0 7px; border-radius: 999px;
-                        font-size: 12px; font-weight: 700; background: #e6effb; color: var(--blue); }
+                        font-size: 12px; font-weight: 700; background: #e3f1f4; color: var(--blue); }
       .areas .pill[aria-pressed=true] .n { background: rgba(255, 255, 255, .25); color: #fff; }
       .sheet-back { position: fixed; inset: 0; background: rgba(31, 41, 51, .45); z-index: 4; }
       .sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; background: #fff; border-radius: 16px 16px 0 0;
@@ -140,7 +140,7 @@
       .sumt th { font-size: 12px; background: #fafbfc; }
       .sumt .cols td, .sumt .cols th { padding: 7px 6px; }
       .sumt .num { text-align: right; white-space: nowrap; overflow-wrap: normal; font-variant-numeric: tabular-nums; }
-      .sumt .reg td { background: #f3f6fb; font-weight: 700; }
+      .sumt .reg td { background: #eef5f7; font-weight: 700; }
       .sumt .tot td { background: #eef6ef; font-weight: 700; }
       .sumt .grey td { font-size: 12px; }
       .sumt .late { color: var(--red); }
@@ -151,11 +151,26 @@
       .nowcap { font-size: 12px; font-weight: 700; color: var(--soft); text-transform: uppercase; letter-spacing: .04em; margin: 14px 2px 6px; }
       #sumWa { background: #1fa855; border-color: #1fa855; color: #fff; }
       #sumCopy { width: 100%; height: 50vh; font: inherit; }
+      /* Spec 011: the logo strip (scrolls away), tappable counts and names, the wide screen. */
+      .logo { display: flex; align-items: center; justify-content: space-between; background: #fff;
+              padding: 6px max(16px, calc(50% - 550px)); border-bottom: 2px solid #f39029; font-size: 13px; color: var(--soft); }
+      .logo img { height: 30px; display: block; }
+      .tap { cursor: pointer; }
+      .tile.tap { border-color: #9cc9d4; }
+      .sumt .tap:not(.late):not(.cold) td:first-child, .sumt .tap.w td:first-child { color: var(--blue); font-weight: 600; }
+      .card .pl { color: var(--blue); }
+      @media (min-width: 900px) {
+        main, .tabs { max-width: 1100px; }
+        header { padding: 10px max(16px, calc(50% - 550px)); }
+        .tiles { grid-template-columns: repeat(6, 1fr); }
+        #sumBody, #sites, .list { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; align-items: start; }
+        #sumBody > :not(.sumt), #sites > :not(.sc) { grid-column: 1 / -1; }
+      }
     </style>
   </head>
   <body>
     <div id="data" hidden><?= data ?></div>
-
+    <div class="logo"><img alt="Mitchell Construction Chemicals" src="data:image/png;base64,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">Sales Diary</div>
     <div class="top">
       <header>
         <div>
@@ -366,7 +381,7 @@
       function clone(x) { return JSON.parse(JSON.stringify(x)); }
       function siteById(id) {
         for (var i = 0; i < data.sites.length; i++) if (data.sites[i].id === id) return data.sites[i];
-        return null;
+        return sum.c[id] || null; // the admin's summary brought it (spec 011)
       }
       // A one-time ID per form, so a save repeated after a lost reply is saved only once.
       function newSaveId() {
@@ -463,7 +478,10 @@
       var SLOW_MS = (window.__timing && window.__timing.slow) || 30000;      // then "Still sending…"
       var GIVE_UP_MS = (window.__timing && window.__timing.giveUp) || 120000; // then "not saved" and the next goes
       var retrying = null;      // the failed entry the open form / update is bound to
-      function saveQueue() { store(QUEUE_KEY, queue); sumUnsent(); }
+      function saveQueue() {
+        store(QUEUE_KEY, queue); sumUnsent();
+        if (sum.l && screen === 'summary') { var y = window.scrollY; renderSum(); window.scrollTo(0, y); } // a list shows saves too
+      }
       function readable(error) {
         var message = (error && error.message) || String(error || '');
         if ((typeof navigator !== 'undefined' && navigator.onLine === false) ||
@@ -920,11 +938,11 @@
         }
         return el('div', 'Follow up: ' + (s.followUp === today ? 'Today' : shortDay(s.followUp)), 'meta');
       }
-      function cardFor(s, today) {
+      function cardFor(s, today, noSnooze) {
         var entry = entryFor(s.id);
         var late = isOpenSite(s) && !!s.followUp && s.followUp < today;
         var cold = coldDays(s, today);
-        var card = el('div', undefined, 'card' + (entry && entry.status === 'failed' ? ' failed' : '') + (late ? ' late' : '') +
+        var card = el('div', undefined, 'card sc' + (entry && entry.status === 'failed' ? ' failed' : '') + (late ? ' late' : '') +
           (cold ? ' cold' : ''));
         card.setAttribute('role', 'button');
         card.addEventListener('click', function () {
@@ -950,7 +968,7 @@
           card.appendChild(el('div', entry.message, 'meta'));
         }
         if (ADMIN) adminCardExtras(card, s);
-        var buttons = buttonRow(s, !ADMIN && canSnooze(s, today));
+        var buttons = buttonRow(s, !ADMIN && !noSnooze && canSnooze(s, today));
         if (buttons) card.appendChild(buttons);
         return card;
       }
@@ -1461,6 +1479,7 @@
       // ---- Screens ----
       function showOnly(name) {
         if (screen === 'list' && name !== 'list') listScroll = window.scrollY || 0;
+        if (screen === 'summary') sum.ly = window.scrollY;
         screen = name;
         $('tabs').hidden = name !== 'list';
         $('listView').hidden = name !== 'list';
@@ -1473,8 +1492,11 @@
         clearProblem();
         window.scrollTo(0, 0);
       }
-      // back: return to where he was in the list (after Back or an Update), not the top.
+      // back: return to where he was in the list (after Back or an Update), not the top; or to the
+      // summary he opened the site from (spec 011), where he was.
       function showList(back) {
+        if (back && sum.o) { showOnly('summary'); sum.o = 0; renderSum(); return window.scrollTo(0, sum.ly); }
+        sum.o = 0;
         showOnly('list');
         renderList();
         if (back) window.scrollTo(0, listScroll);
@@ -1572,17 +1594,23 @@
         $('search').focus();
       });
       // ---- Summary (spec 009): built on the server, shown as text, fetched only when asked ----
-      var sum = { p: '', got: {}, busy: {}, bad: {} };
+      // Spec 011: a tapped count shows its sites (l) instead; a site opened from the summary (o)
+      // comes back to it. c: cards the admin's summary brought (sites his page doesn't hold).
+      var sum = { p: '', got: {}, busy: {}, bad: {}, c: {}, l: 0, o: 0, y: 0, ly: 0 };
       function sumView() { return ADMIN ? aSumView() : sum.got[sum.p]; }
       function getSum(p) {
-        function done(r, bad) { sum.busy[p] = 0; if (r) sum.got[p] = r; sum.bad[p] = bad; renderSum(); }
+        function done(r, bad) {
+          sum.busy[p] = 0; sum.bad[p] = bad;
+          if (r) { sum.got[p] = r; (r.cards || []).forEach(function (c) { sum.c[c.id] = c; }); }
+          renderSum();
+        }
         sum.p = p; sum.busy[p] = 1; sum.bad[p] = '';
         google.script.run.withSuccessHandler(function (r) {
           if (r && r.ok) done(r, ''); else done(0, 'Something went wrong. Try again.');
         }).withFailureHandler(function (e) {
           e = readable(e);
           done(0, /no signal/.test(e) ? "Couldn't get the summary: no signal. Try again." : e);
-        })[ADMIN ? 'adminPageSummary' : 'repSummary'](k, p);
+        })[ADMIN ? 'adminPageSummary' : 'repSummary'](k, p, data.now);
         renderSum();
       }
       function sumUnsent() { // also when the queue changes
@@ -1591,16 +1619,20 @@
         $('sumUnsent').hidden = !n;
       }
       function renderSum() {
-        var v = sumView(), bad = sum.bad[sum.p], box = $('sumBody'), m = $('sumMsg');
+        var v = sumView(), bad = sum.bad[sum.p], box = $('sumBody'), m = $('sumMsg'), L = sum.l;
         [].forEach.call($('sumTabs').children, function (b) { b.setAttribute('aria-selected', b.value === sum.p); });
         m.textContent = sum.busy[sum.p] ? 'Getting your summary…' : bad;
-        m.hidden = !m.textContent;
-        $('sumRetry').hidden = !bad || sum.busy[sum.p];
+        m.hidden = !m.textContent || L;
+        $('sumRetry').hidden = !bad || sum.busy[sum.p] || L;
+        $('sumTabs').hidden = L;
+        if (ADMIN) aSumNav();
         sumUnsent();
         box.textContent = '';
-        box.hidden = $('sumShare').hidden = !v;
+        box.hidden = !v;
+        $('sumShare').hidden = !v || L;
         $('sumHold').hidden = $('sumCopy').hidden = true;
         if (!v) return;
+        if (L) return sumList(box, L);
         // Spec 010: heading, six tiles, target bar (months), tables, NOW. All text, never HTML.
         [['h2', v.title], ['div', v.sub], ['div', v.logged], ['div', bad && 'As of ' + sum.got[sum.p].at]].forEach(function (x) {
           if (x[1]) box.appendChild(el(x[0], x[1], x[0] === 'div' ? 'note' : ''));
@@ -1611,6 +1643,7 @@
           d.appendChild(el('b', t.n));
           d.appendChild(el('div', t.l));
           if (t.rs) d.appendChild(el('div', t.rs, 'rs'));
+          if (t.ids && (t.ids.length || t.x)) tapOn(d, function () { sumOpen(t); });
         });
         if (g) {
           var c = box.appendChild(el('div', '', 'goal'));
@@ -1650,10 +1683,35 @@
             if (r.s && !i) td.appendChild(el('small', ' ' + r.s, 'note'));
             if (r.c.length === 1 && t.cols) td.colSpan = t.cols.length;
           });
-          if (ADMIN && r.rep) aSumTap(tr, r.rep);
+          if (r.lh && r.ids.length) tapOn(tr, function () { sumOpen(r); });
+          if (r.id) tapOn(tr, function () { if (siteById(r.id)) { showSite(r.id); sum.o = 1; } });
+          if (ADMIN && (r.rep || r.reg)) aSumTap(tr, r.rep || '@' + r.reg);
         });
         if (t.more) tb.insertRow().appendChild(el('td', t.more, 'extra')).colSpan = 2;
         c.appendChild(tb);
+      }
+      // Spec 011: anything that counts sites can be tapped (or reached with Enter / Space).
+      function tapOn(n, fn) {
+        n.className += ' tap';
+        n.setAttribute('role', 'button');
+        n.tabIndex = 0;
+        n.onclick = fn;
+        n.onkeydown = function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn(); } };
+      }
+      function sumOpen(L) { sum.y = window.scrollY; sum.l = L; renderSum(); window.scrollTo(0, 0); }
+      // The sites a count counted, as they are now; "+ N" for those not shown, so they add up.
+      function sumList(box, L) {
+        var today = todayKey(), x = L.x || 0, n = L.ids.length + x;
+        box.appendChild(el('h2', L.lh + ' · ' + n + (n === 1 ? ' site' : ' sites')));
+        var list = box.appendChild(el('div', '', 'list'));
+        list.onclick = function () { sum.o = screen !== 'summary'; }; // a card opened its site
+        L.ids.forEach(function (id, i) {
+          var s = siteById(id);
+          if (!s) return x++;
+          var c = list.appendChild(cardFor(s, today, 1));
+          if (L.p) c.insertBefore(el('div', L.p[i], 'value pl'), c.querySelector('.name').nextSibling);
+        });
+        if (x) box.appendChild(el('div', '+ ' + x + (ADMIN ? ' not in the sheet any more' : ' no longer in your list'), 'note'));
       }
       // In Google's frame: the clipboard, else select-and-copy, else he copies it by hand.
       function copySum() {
@@ -1671,10 +1729,12 @@
         b.value = name.toLowerCase().replace(' ', '-');
         b.onclick = function () { getSum(b.value); };
       });
-      $('summary').onclick = function () { showOnly('summary'); getSum('this-week'); };
+      $('summary').onclick = function () { sum.l = 0; showOnly('summary'); getSum('this-week'); };
       $('sumRetry').onclick = function () { getSum(sum.p); };
       $('sumCopyBtn').onclick = copySum;
-      $('sumBack').onclick = function () { if (!ADMIN || !aSumBack()) showList(true); };
+      $('sumBack').onclick = function () {
+        if (sum.l) { sum.l = 0; renderSum(); window.scrollTo(0, sum.y); } else if (!ADMIN || !aSumBack()) showList(true);
+      };
 
       // A new day while the app was left open: redraw for today when he comes back to it.
       function newDayCheck() { if (screen === 'list' && renderedDay && todayKey() !== renderedDay) renderList(); }

@@ -206,7 +206,7 @@ test('salesmen: this month\'s target, a working link yes/no, snoozes this month'
   const data = world().screen();
   assert.deepEqual(data.salesmen.map((s) => s.rep), ['RIA', 'AUR', 'WAK', 'SH', 'SJ', 'SM', 'IB']);
   const ria = data.salesmen.find((s) => s.rep === 'RIA');
-  assert.deepEqual(ria, { rep: 'RIA', region: 'North', target: fakeTarget('RIA', '2026-11'), linked: true, snoozes: 3 });
+  assert.deepEqual(ria, { rep: 'RIA', region: 'North', target: fakeTarget('RIA', '2026-11'), linked: true, snoozes: 3, last: '2026-11-04' });
   assert.equal(data.salesmen.find((s) => s.rep === 'AUR').linked, false);
   assert.deepEqual(data.regionTargets, {
     North: fakeTarget('North', '2026-11'), Center: fakeTarget('Center', '2026-11'), South: fakeTarget('South', '2026-11'),
@@ -214,6 +214,19 @@ test('salesmen: this month\'s target, a working link yes/no, snoozes this month'
   });
   assert.equal(data.houseRegion, 'UNASSIGNED');
   assert.equal(byId(data).S000002.snoozes, 3, 'per site, this month');
+});
+
+test('Plan (spec 011): each salesman\'s last save day this month, of any action; none this month is blank', () => {
+  activityId = 100;
+  const w = world({ activity: [...standardActivity(),
+    act(pk(2026, 10, 30), 'WAK', 'S000001', 'update', { note: 'last month only' }),
+    act(pk(2026, 11, 2, 9), 'SJ', 'S000001', 'snooze', { next_followup: pk(2026, 11, 9, 0) }),
+    act(pk(2026, 11, 1, 9), 'SJ', 'S000001', 'details', { note: 'Area' }),
+    act(pk(2026, 11, 4, 11), 'admin', 'S000014', 'update', { note: 'Admin: not a salesman\'s save' }),
+  ] });
+  const last = Object.fromEntries(w.screen().salesmen.map((s) => [s.rep, s.last]));
+  assert.deepEqual(last, { RIA: '2026-11-04', AUR: '', WAK: '', SH: '2026-11-04', SJ: '2026-11-02', SM: '', IB: '' },
+    'a snooze counts (P7-2); rows a few seconds out of order never move it back; last month is not this month');
 });
 
 test('a missing or doubled target shows as none', () => {

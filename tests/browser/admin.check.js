@@ -1,7 +1,7 @@
 'use strict';
 // End to end for spec 008: the admin's (owner's) screen on the real doGet + server code against
-// fake sheets, in Chromium at a cheap-phone size: the four tabs, tap-through lists, an admin
-// Update through the save queue, a failed save, "two people, one site", and Refresh. Dates are
+// fake sheets, in Chromium at a cheap-phone size: the five tabs (Plan: spec 011), tap-through lists,
+// an admin Update through the save queue, a failed save, "two people, one site", and Refresh. Dates are
 // built around the real "today" in Pakistan time. Amounts are made up.
 // Usage: node tests/browser/admin.check.js [screenshot-folder]
 
@@ -90,6 +90,8 @@ function buildWorld() {
     act(dayCell(0, 9.5), 'RIA', 'S000005', 'stage_change', { from_stage: 'Rate Quoted', to_stage: 'Lost / Dead', lost_reason: 'Price Too High', note: 'too dear' }),
     act(dayCell(0, 10), 'admin', 'S000003', 'update', { note: 'Admin: push him', next_followup: dayCell(1) }),
   ];
+  // AUR's last save, two days ago (spec 011, Plan): only counts when that is still this month.
+  activity.unshift(act(dayCell(-2, 10), 'AUR', 'S000006', 'details', { note: 'Area' }));
   const lists = [['list', 'value', 'region', 'added_by', 'active', 'sort']];
   ['Tile Adhesives'].forEach((v, i) => lists.push(['product_category', v, '', 'owner', true, (i + 1) * 10]));
   ['Dealer'].forEach((v, i) => lists.push(['buyer_type', v, '', 'owner', true, (i + 1) * 10]));
@@ -182,7 +184,9 @@ let browser;
   assert.equal(await page.textContent('#target div:nth-child(2)'), `${MONTH}: Won Rs. 500,000 logged, not invoiced`);
   assert.equal(await page.isHidden('#newSite'), true);
   assert.equal(await page.isHidden('#tabs'), true, "the salesman's tabs are not shown");
-  assert.deepEqual(await texts('#adminTabs .tab'), ['Today', 'Team', 'Late & cold4', 'This month']);
+  assert.deepEqual(await texts('#adminTabs .tab'), ['Today', 'Plan', 'Team', 'Late & cold4', 'This month']);
+  const tabBoxes = await page.$$eval('#adminTabs .tab', (els) => els.map((e) => e.getBoundingClientRect().right));
+  assert.ok(tabBoxes.every((r) => r <= 360), `five tabs fit at 360 px: ${tabBoxes}`);
   assert.equal(await page.getAttribute('#atab-late .count', 'class'), 'count late');
   assert.ok(!/owner/i.test(await page.evaluate(() => document.body.innerText)), 'the word on screen is Admin');
 
@@ -202,6 +206,34 @@ let browser;
   assert.equal((await texts('#sites .feed')).length, 6);
   await noSideways('Today');
   if (shots) await page.screenshot({ path: path.join(shots, 'admin-today.png'), fullPage: true });
+
+  // ---- Plan (spec 011): Today / Tomorrow per salesman, from the page's data (no trip). ----
+  const before = (await calls()).length;
+  await tab('plan');
+  assert.equal(await page.getAttribute('#plan-today', 'aria-pressed'), 'true');
+  const auSaved = TODAY.slice(0, 7) === dayKey(-2).slice(0, 7) ? 'last saved 2 days ago' : 'no saves yet this month';
+  assert.deepEqual(await texts('#sites .rep-row'), ['RIADue 0 · late 2 · done 2', `AURnothing planned · ${auSaved}`, 'SHDue 0 · late 0 · done 1'],
+    'done: his own new site / Update saves today (snoozes and the admin\'s never); late: open, before today or no date');
+  await noSideways('Plan');
+  if (shots) await page.screenshot({ path: path.join(shots, 'admin-plan.png'), fullPage: true });
+  await page.click('#sites .rep-row[data-rep="RIA"]');
+  assert.equal(await page.textContent('#sites .a-h'), 'RIA · Plan · Today · 4 sites');
+  assert.deepEqual(await names(), ['Lost Plaza', 'Fresh Lead', 'No Date', 'Late Quote'], 'done first, then due, then late (oldest first)');
+  assert.deepEqual(await texts('#sites .card .tag.won:has-text("Done")'), ['✓ Done today', '✓ Done today']);
+  assert.equal(await card('No Date').locator('.tag:has-text("Done")').count(), 0);
+  await page.click('#drillBack');
+  assert.equal(await page.getAttribute('#atab-plan', 'aria-selected'), 'true', 'Back: the Plan tab');
+  await page.click('#plan-tomorrow');
+  assert.deepEqual(await texts('#sites .rep-row'), ['RIAnothing planned', 'AURnothing planned', 'SHDue 1']);
+  await page.click('#sites .rep-row[data-rep="SH"]');
+  assert.deepEqual(await names(), ['Big Cold']);
+  await page.click('#drillBack');
+  await page.click('#plan-today');
+  // After midnight: the same banner as Today.
+  await page.evaluate(() => { window.__realToday = data.today; data.today = addDays(data.today, -1); renderList(); });
+  assert.match(await page.textContent('#sites .banner'), /^This is \d+ \w+\. Tap Refresh\.$/);
+  await page.evaluate(() => { data.today = window.__realToday; renderList(); });
+  assert.equal((await calls()).length, before, 'Plan makes no trip to Google');
 
   // ---- Team: targets next to Won Rs. (A7), regions, house / office sales (A6), tap-through. ----
   await tab('team');

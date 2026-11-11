@@ -255,6 +255,11 @@ const lines = (summary, h) => {
   const t = summary.tables.find((x) => x.h === h);
   return t ? t.rows.map(rowText).concat(t.more ? [t.more] : []) : null;
 };
+/**
+ * A summary part without what spec 011 added for taps (site lists `ids` / `x` / `p` / `lh`, a named
+ * row's `id`, a region row's `reg`), so the spec 009 / 010 shapes can be compared as they were.
+ */
+const bare = (x) => JSON.parse(JSON.stringify(x, (k, v) => (['ids', 'x', 'p', 'lh', 'id', 'reg'].includes(k) ? undefined : v)));
 /** One row of the admin's team table, as text. */
 const teamRow = (t, name) => {
   const r = t.tables[0].rows.find((x) => x.c[0] === name);
@@ -524,7 +529,7 @@ test('team side by side: Rep_Mapping order, "nothing logged", lost reasons most 
   const t = team(w, 'this-week');
   const table = t.tables[0];
   assert.deepEqual([table.h, table.n, table.cols], ['Salesmen', 'tap a name', ['Name', 'Worked', 'Quotes', 'Won Rs.', 'Lost']]);
-  assert.deepEqual(table.rows, [
+  assert.deepEqual(bare(table.rows), [
     { c: ['North', '10', '3', '0.58M', '2'], k: 'reg' },
     { c: ['RIA', '9', '2', '0.51M', '2'], rep: 'RIA' },
     { c: ['AUR', '2', '1', '0.07M', '0'], rep: 'AUR' },
@@ -625,7 +630,7 @@ test('NOW: hot sites and their Rs. (Rate Quoted), follow-ups due today and the 6
     site('S000008', 'RIA', 'Won Not Open', { stage: WON, value_rs: 5000000, payment_terms: 'Cash', next_followup: day(2026, 11, 5) }),
   ];
   const now = ria(world({ sites }), 'this-week').now;
-  assert.deepEqual(now.rows, [{ c: ['Hot sites', '6 · Rs. 1,900,000'] }, { c: ['Follow-ups next 7 days', '6'] },
+  assert.deepEqual(bare(now.rows), [{ c: ['Hot sites', '6 · Rs. 1,900,000'] }, { c: ['Follow-ups next 7 days', '6'] },
     { c: ['Late', '0'], k: 'none' }, { c: ['Going cold', '0'], k: 'none' }], 'due: today 4 Nov to 10 Nov (not 11 Nov, not the Won site)');
 });
 
@@ -641,7 +646,7 @@ test('NOW, named (owner S9-7): his top 5 hot sites in Hot Pipeline order; the 3 
     site('S000008', 'RIA', 'Won Not Open', { stage: WON, value_rs: 5000000, payment_terms: 'Cash', next_followup: day(2026, 11, 5) }),
   ];
   const hot = ria(world({ sites }), 'this-week').now.tables;
-  assert.deepEqual(hot, [{ h: 'Hot sites', n: '6', rows: [
+  assert.deepEqual(bare(hot), [{ h: 'Hot sites', n: '6', rows: [
     { c: ['Quote Big', 'Rs. 900,000'] }, { c: ['Quote Late Date', 'Rs. 500,000'] }, { c: ['Quote Soon Date', 'Rs. 500,000'] },
     { c: ['Sample Soon', SAMPLE], k: 'm' }, { c: ['Sample New', SAMPLE], k: 'm' },
   ] }], 'Rs. biggest, then soonest follow-up, then newest; 5 of 6; nothing late or cold: no second table');
@@ -652,7 +657,7 @@ test('NOW, named (owner S9-7): his top 5 hot sites in Hot Pipeline order; the 3 
     site('S000004', 'RIA', 'Lead Late', { next_followup: day(2026, 11, 3) }),
   ];
   const w = world({ sites: behind });
-  assert.deepEqual(ria(w, 'this-week').now.tables[1], { h: 'Late & going cold', n: 'Late 3 · Cold 1', rows: [
+  assert.deepEqual(bare(ria(w, 'this-week').now.tables[1]), { h: 'Late & going cold', n: 'Late 3 · Cold 1', rows: [
     { c: ['Big Cold', 'no update for 9 days'], k: 'cold w' }, { c: ['Mid Late', '5 days late'], k: 'late w' },
     { c: ['Small Late', '1 day late'], k: 'late w' },
   ] }, 'the 3 biggest by Rs.');
@@ -681,9 +686,9 @@ test('NOW: the Late and Going cold counts follow the Late & cold tab\'s rules; n
     site('S000003', 'RIA', 'Mid Late', { stage: RQ, value_rs: 500000, payment_terms: 'Cash', next_followup: day(2026, 10, 30) }),
     site('S000004', 'RIA', 'Lead Late', { next_followup: day(2026, 11, 3) }),
   ];
-  assert.deepEqual(ria(world({ sites }), 'this-week').now.rows, [{ c: ['Hot sites', '3 · Rs. 1,500,000'] },
+  assert.deepEqual(bare(ria(world({ sites }), 'this-week').now.rows), [{ c: ['Hot sites', '3 · Rs. 1,500,000'] },
     { c: ['Follow-ups next 7 days', '0'] }, { c: ['Late', '3'], k: 'late' }, { c: ['Going cold', '1'], k: 'cold' }]);
-  assert.deepEqual(ria(world({ sites: [site('S000001', 'RIA', 'Fine')] }), 'this-week').now.rows.slice(2),
+  assert.deepEqual(bare(ria(world({ sites: [site('S000001', 'RIA', 'Fine')] }), 'this-week').now.rows.slice(2)),
     [{ c: ['Late', '0'], k: 'none' }, { c: ['Going cold', '0'], k: 'none' }]);
 });
 
@@ -1023,8 +1028,8 @@ test("the admin's view of a salesman: exactly his summary plus his days logged",
     assert.equal(view.logged, 'Logged on 5 days');
     const { title, logged, text, rep, ...parts } = view;
     const { title: t2, text: x2, ...hisParts } = his;
-    assert.deepEqual(parts, Object.fromEntries(Object.entries(hisParts).filter(([key]) => !['ok', 'period', 'at'].includes(key))),
-      'the same tiles, target, tables and NOW');
+    assert.deepEqual(bare(parts), bare(Object.fromEntries(Object.entries(hisParts).filter(([key]) => !['ok', 'period', 'at'].includes(key)))),
+      'the same tiles, target, tables and NOW (their lists: see spec 011 below)');
     assert.ok(!his.text.includes('Days logged') && his.logged === undefined, 'never on his own summary (S9-9)');
   }
 });
@@ -1189,4 +1194,168 @@ test('a row a few seconds out of time order at a block edge never hides a row of
   assert.equal(sheet._rowsRead - before, 1 + 500 + 101, 'one more block, read because the stop row was inside the margin');
   const n = numbers(w, ['RIA'], 'last-week');
   assert.deepEqual([n.worked, n.quotes], [1, 0], 'the Friday row counts last week, never this week');
+});
+
+// ------------------------------------------------------- Spec 011: tappable summaries
+
+/** Every tappable part of a summary: [where, count, list] for the six tiles and the four NOW rows. */
+const tappable = (summary, where) => [
+  ...summary.tiles.map((t) => [`${where} ${t.l}`, Number(t.n), t]),
+  ...summary.now.rows.map((r) => [`${where} now ${r.c[0]}`, Number(r.c[1].split(' ')[0]), r]),
+];
+/** Every site ID a summary sends: its lists and its named rows. */
+const sentIds = (summary) => [...summary.tiles, ...summary.now.rows].flatMap((x) => x.ids)
+  .concat([...summary.tables, ...(summary.now.tables || [])].flatMap((t) => t.rows.map((r) => r.id).filter(Boolean)));
+
+test('spec 011: every tile and NOW row lists exactly what it counts (cards + "+ N" = the number), all periods, every view', () => {
+  const w = summaryWorld();
+  for (const period of ['this-week', 'last-week', 'this-month', 'last-month']) {
+    const t = team(w, period);
+    const views = [['RIA own', ria(w, period)], ['team', t], ...t.salesmen.map((x) => [x.rep, x]), ...t.regions.map((x) => [x.reg, x])];
+    for (const [who, view] of views) {
+      for (const [where, count, list] of tappable(view, `${period} ${who}`)) {
+        assert.equal(list.ids.length + (list.x || 0), count, where);
+        assert.equal(new Set(list.ids).size, list.ids.length, `${where}: each site once`);
+        if (list.p) assert.equal(list.p.length, list.ids.length, `${where}: a period line per site`);
+        assert.ok(list.lh.startsWith(view.title) || list.lh.startsWith(`${view.title.split(' · ')[0]} · Now, 4 Nov · `)
+          || list.lh.startsWith('Now, 4 Nov · '), `${where}: ${list.lh}`);
+      }
+    }
+  }
+});
+
+test('spec 011: list order, headings and the period lines (as counted, not as the card is now)', () => {
+  const w = summaryWorld();
+  const week = ria(w, 'this-week');
+  const tile = (s, l) => s.tiles.find((x) => x.l === l);
+  assert.deepEqual(plain(tile(week, 'Won')), { n: '2', l: 'Won', c: 'won', rs: 'Rs. 510,000', lh: 'This week so far · Won',
+    ids: ['S000001', 'S000011'], p: ['Won Rs. 450,000 · Cash', 'Won Rs. 60,000 · Credit'] });
+  assert.deepEqual(plain(tile(week, 'Quotes')).p, ['Quoted Rs. 800,000', 'Quoted Rs. 200,000'], 'biggest first');
+  assert.deepEqual(plain(tile(week, 'Lost')).p, ['Lost · Price Too High', 'Lost · Site Delayed']);
+  assert.deepEqual(plain(tile(week, 'Sites worked')).ids, ['S000007', 'S000002', 'S000001', 'S000008', 'S000006', 'S000003', 'S000005'],
+    'other lists: the card\'s Rs. biggest first, then soonest follow-up');
+  const october = plain(tile(ria(w, 'last-month'), 'Won'));
+  assert.deepEqual([october.ids, october.p], [['S000007', 'S000006'], ['Won Rs. 500,000 · Cash', 'Won Rs. 300,000 · Cash']],
+    'Repriced After shows the Rs. it was won at in October (its card now says 999,000); Won 29 Oct Lost 3 Nov is October\'s win');
+  assert.deepEqual(plain(week.now.rows).map((r) => [r.lh, r.ids]), [
+    ['Now, 4 Nov · Hot sites', ['S000004', 'S000002', 'S000008', 'S000005']],
+    ['Now, 4 Nov · Follow-ups next 7 days', ['S000002', 'S000008', 'S000005']],
+    ['Now, 4 Nov · Late', ['S000004', 'S000016']],
+    ['Now, 4 Nov · Going cold', ['S000004']],
+  ]);
+  const t = team(w, 'this-week');
+  assert.equal(tile(t, 'Won').lh, 'Team · This week so far · Won');
+  assert.equal(t.now.rows[2].lh, 'Team · Now, 4 Nov · Late');
+  assert.equal(t.salesmen[0].now.rows[2].lh, 'RIA · Now, 4 Nov · Late');
+  assert.deepEqual(plain(week.tables.find((x) => x.h === 'Won').rows.map((r) => r.id)), ['S000001', 'S000011'], 'named rows open their site');
+  assert.deepEqual(plain(week.now.tables.map((x) => x.rows.map((r) => r.id))), [['S000004', 'S000002', 'S000008', 'S000005'], ['S000004', 'S000016']]);
+});
+
+test('spec 011 privacy: his own summary never sends a site that is no longer his; the admin\'s view shows it', () => {
+  const w = summaryWorld();
+  // This week RIA worked S000010 (now AUR's: handed over) and created S000099 (its row deleted by hand).
+  const mine = ria(w, 'this-week');
+  const worked = mine.tiles.find((x) => x.l === 'Sites worked');
+  assert.deepEqual([worked.n, worked.ids.length, worked.x], ['9', 7, 2], '+ 2 no longer in your list');
+  assert.deepEqual([mine.tiles[0].n, mine.tiles[0].ids, mine.tiles[0].x], ['2', ['S000005'], 1]);
+  const his = new Set(summarySites().filter((r) => r[1] === 'RIA').map((r) => r[0]));
+  for (const period of ['this-week', 'last-week', 'this-month', 'last-month']) {
+    const r = ria(w, period);
+    for (const id of sentIds(r)) assert.ok(his.has(id), `${period}: ${id} is his`);
+    const json = JSON.stringify(r);
+    for (const other of ['S000010', 'S000012', 'S000013', 'S000014', 'S000099', '"cards"', '"regions"']) assert.ok(!json.includes(other), `${period}: ${other}`);
+  }
+  const view = team(w, 'this-week').salesmen.find((x) => x.rep === 'RIA').tiles.find((x) => x.l === 'Sites worked');
+  assert.deepEqual([view.ids.length, view.x], [8, 1], 'the admin sees the handed-over site (with AUR on its card); only the deleted one is "+ 1"');
+  assert.ok(view.ids.includes('S000010'));
+});
+
+test('spec 011: a region\'s summary is built as a salesman\'s, for its current salesmen, and equals its team-table row', () => {
+  const w = summaryWorld();
+  for (const period of ['this-week', 'last-week', 'this-month', 'last-month']) {
+    const t = team(w, period);
+    assert.deepEqual(t.regions.map((x) => x.reg), ['North', 'Center', 'South']);
+    for (const region of t.regions) {
+      const row = t.tables[0].rows.find((r) => r.reg === region.reg);
+      assert.equal(row.k, 'reg');
+      const n = (l) => region.tiles.find((x) => x.l === l).n;
+      assert.deepEqual([row.c[1], row.c[2]], [n('Sites worked'), n('Quotes')], `${period} ${region.reg}`);
+      if (!period.endsWith('month')) assert.equal(row.c[4], n('Lost'), `${period} ${region.reg}`);
+      assert.equal(region.title, `${region.reg} · ${t.title.replace('Team · ', '')}`);
+      assert.ok(region.text.startsWith(`*${region.reg} · `), 'its own WhatsApp text');
+      assert.equal(region.logged, undefined, 'no "Logged on"');
+    }
+  }
+  const north = team(w, 'this-month').regions[0];
+  const numbersNorth = numbers(w, ['RIA', 'AUR', 'WAK'], 'this-month');
+  assert.deepEqual(north.tiles.map((x) => Number(x.n)), [numbersNorth.created, numbersNorth.worked, numbersNorth.samples,
+    numbersNorth.quotes, numbersNorth.won, numbersNorth.lost]);
+  assert.deepEqual(plain(north.target), { h: 'Target', pct: Math.floor(numbersNorth.wonRs * 100 / fakeTarget('North', '2026-11')),
+    won: `Won ${w.s.formatRs_(numbersNorth.wonRs)}`, of: `of ${w.s.formatRs_(fakeTarget('North', '2026-11'))}` }, 'the region\'s target');
+  assert.equal(north.now.rows[0].c[1], '5 · Rs. 2,977,000', 'NOW: open sites of its salesmen (AUR Secret Tower too), never MUB\'s');
+  assert.deepEqual(plain(north.now.tables[0].rows.map((r) => r.c[0])), ['Gulberg Heights', 'Bahria Villas', 'AUR Secret Tower', 'Reopened',
+    'Askari Sample'], 'named, as a salesman\'s');
+  assert.ok(!team(w, 'this-month').regions[1].now.rows[0].ids.includes('S000013'), 'Center: MUB has left, so his site is in no region');
+});
+
+test('spec 011: the admin\'s reply carries the cards of listed sites now at Won / Lost (with their day), and sites newer than his page', () => {
+  const w = summaryWorld();
+  const t = team(w, 'last-month');
+  assert.deepEqual(plain(t.cards.map((c) => [c.id, c.rep, c.region, c.stage, c.closed])), [
+    ['S000007', 'RIA', 'North', WON, '2026-10-28'], ['S000006', 'RIA', 'North', LOST, '2026-11-03']]);
+  assert.equal(t.cards[0].name, 'Repriced After');
+  assert.equal(t.cards[0].value, 999000, 'the card as it is now');
+  const week = team(w, 'this-week');
+  assert.ok(week.cards.every((c) => [WON, LOST].includes(c.stage)), 'open sites are on his page already');
+  assert.equal(week.cards.find((c) => c.id === 'S000007').closed, '', 'won before the rows read: no day');
+  assert.equal(week.cards.find((c) => c.id === 'S000010').rep, 'AUR');
+  const fresh = plain(w.s.teamSummaryFor_(w.diary, 'this-week', NOW, LONG_AGO.getTime() - 1));
+  assert.ok(fresh.cards.some((c) => c.id === 'S000002' && c.closed === ''), 'added after his page loaded: its card comes too');
+  assert.deepEqual(plain(w.s.teamSummaryFor_(w.diary, 'this-week', NOW, NOW.getTime()).cards.map((c) => c.id)), ['S000007'],
+    'a page loaded today holds the sites closed this month before today: only the one won before the rows read comes');
+  assert.deepEqual(plain(w.s.teamSummaryFor_(w.diary, 'this-week', NOW, pk(2026, 11, 3, 8).getTime()).cards.map((c) => c.id)).sort(),
+    ['S000003', 'S000006', 'S000007', 'S000011'], 'loaded on 3 Nov: what closed on 3 Nov comes too (the same day: it may be after)');
+  assert.equal(plain(w.s.teamSummaryFor_(w.diary, 'this-week', NOW, 'junk')).cards.length, week.cards.length, 'a junk time is ignored');
+  assert.equal(ria(w, 'this-week').cards, undefined, 'never on a salesman\'s');
+});
+
+test('spec 011: the admin\'s summary reply for three times a busy month stays under 150 KB', () => {
+  // About three times the live sheet as it is filling up: 450 sites of 7 salesmen added over two
+  // months (two thirds moved on to Sample / Trial, Rate Quoted, Won or Lost), 2,400 Updates of open
+  // sites this month by their own salesmen; long names and notes. Late November, his page loaded 10
+  // minutes ago.
+  activityId = 0;
+  const now = pk(2026, 11, 27, 18);
+  const reps = ['RIA', 'AUR', 'WAK', 'SH', 'SJ', 'SM', 'IB'];
+  const stages = [LEAD, LEAD, SAMPLE, RQ, WON, LOST];
+  const sites = [];
+  const activity = [];
+  const idOf = (i) => `S${String(i).padStart(6, '0')}`;
+  for (let i = 1; i <= 450; i++) {
+    const stage = stages[i % stages.length];
+    const rep = reps[i % reps.length];
+    const money = [RQ, WON].includes(stage);
+    const added = new Date(pk(2026, 10, 1).getTime() + Math.floor(i * 56 / 450) * 86400000);
+    const moved = new Date(Math.min(added.getTime() + 5 * 86400000, now.getTime() - 3600000));
+    sites.push(site(idOf(i), rep, `Site ${i} Defence Housing Authority Phase ${i % 8} Commercial Block`, {
+      stage, value_rs: money ? i * 10000 : '', payment_terms: money ? 'Cash' : '', lost_reason: stage === LOST ? 'Price Too High' : '',
+      next_followup: [WON, LOST].includes(stage) ? '' : day(2026, 11, 15 + (i % 20)), worked_at: moved,
+      last_note: 'Met the site engineer, he wants a sample of the tile adhesive next week', created_at: added }));
+    activity.push(act(added, rep, idOf(i), 'created', { to_stage: LEAD }));
+    if (stage !== LEAD) {
+      activity.push(act(moved, rep, idOf(i), 'stage_change', { from_stage: LEAD, to_stage: stage, value_rs: money ? i * 10000 : '',
+        payment_terms: money ? 'Cash' : '', lost_reason: stage === LOST ? 'Price Too High' : '' }));
+    }
+  }
+  const open = sites.filter((r) => ![WON, LOST].includes(r[9])).map((r) => r[0]);
+  for (let i = 0; i < 2400; i++) {
+    const id = open[(i * 7) % open.length];
+    activity.push(act(new Date(pk(2026, 11, 1).getTime() + i * 15 * 60 * 1000), reps[Number(id.slice(1)) % 7], id, 'update', { note: 'called' }));
+  }
+  activity.sort((a, b) => a[1] - b[1]);
+  const w = world({ sites, activity });
+  for (const period of ['this-week', 'last-week', 'this-month', 'last-month']) {
+    const size = Buffer.byteLength(JSON.stringify(w.s.teamSummaryFor_(w.diary, period, now, now.getTime() - 10 * 60 * 1000)));
+    assert.ok(size <= 150 * 1024, `${period}: ${size} bytes`);
+  }
 });

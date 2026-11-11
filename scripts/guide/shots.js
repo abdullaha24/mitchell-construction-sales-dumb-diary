@@ -436,7 +436,7 @@ function stub() {
     document.querySelector('#sumBody .nowcap').id = 'guide-now';
     document.querySelectorAll('#guide-team tr.reg')[1].id = 'guide-reg';
   });
-  await tall('23-admin-team', [[1, '#guide-reg', 'g'], [2, '#guide-team tr.tap', 'g'], [3, '#guide-team tr.tot', 'g'],
+  await tall('23-admin-team', [[1, '#guide-reg', 'g'], [2, '#guide-team tr.tap:not(.reg)', 'g'], [3, '#guide-team tr.tot', 'g'],
     [4, '#guide-lost tr', 'g']], '#guide-team', '#guide-now');
   info._texts.team = await waText();
   await page.click(`#guide-team tr.tap:has(td:text-is("${REP}"))`);

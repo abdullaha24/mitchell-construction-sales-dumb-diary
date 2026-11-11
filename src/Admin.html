@@ -1,6 +1,6 @@
 <!-- The admin's screen (spec 008): inserted by doGet into App.html ONLY for a working admin link,
      so a salesman's page never carries any of it. App.html keeps the site screen, the Update form
-     and the save queue (one copy for both); this part draws the four tabs, the tap-through lists
+     and the save queue (one copy for both); this part draws the five tabs, the tap-through lists
      and the admin's extras on cards. Every value goes on screen with textContent, never as HTML.
      Words on screen say "Admin", never "owner" (owner P7-7). -->
 <style>
@@ -13,7 +13,7 @@
   .banner.ok { background: #e3f5ec; color: var(--green); }
   .who-line { font-size: 13px; font-weight: 700; color: var(--blue); }
   .card.team, .card.region, .card.feed, .card.rep-row { cursor: default; }
-  .card.region { background: #eef3fb; }
+  .card.region { background: #eef5f7; }
   .card .big-name { font-weight: 700; font-size: 18px; }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
   .chip { min-height: 40px; padding: 6px 10px; border-radius: 10px; border: 1px solid var(--line); background: #f5f7fa;
@@ -21,7 +21,7 @@
   .chip b { font-weight: 700; }
   .rep-row { display: flex; width: 100%; align-items: baseline; gap: 10px; text-align: left; min-height: 44px; cursor: pointer;
              font: inherit; color: var(--ink); }
-  .rep-row[aria-pressed=true] { border-color: var(--blue); background: #e6effb; }
+  .rep-row[aria-pressed=true] { border-color: var(--blue); background: #e3f1f4; }
   .rep-row .code { font-weight: 700; min-width: 40px; }
   .rep-row .what { font-size: 14px; color: var(--soft); }
   .rep-row.idle .what { color: var(--orange); font-weight: 600; }
@@ -29,23 +29,24 @@
   .feed .when { font-size: 14px; font-weight: 600; }
   .feed .what { font-size: 14px; margin-top: 2px; }
   .back { margin-bottom: 10px; }
-  /* Spec 010: on his summary, each salesman's row of the team table opens that salesman's own. */
-  .sumt .tap { cursor: pointer; }
-  .sumt .tap td:first-child { color: var(--blue); font-weight: 600; }
+  #aNav { margin: 10px 0 0; }
+  #aNav span { flex: 1; }
 </style>
 <script>
   // ---- The admin's screen (spec 008). Called from App.html when data.admin is set. ----
   var A = { tab: 'today', drill: null, todayRep: '', lateKind: 'late', lateRep: '', lostReason: '', loadedAt: Date.now(),
     tabScroll: 0 };
-  var A_TABS = [['today', 'Today'], ['team', 'Team'], ['late', 'Late & cold'], ['month', 'This month']];
+  var A_TABS = [['today', 'Today'], ['plan', 'Plan'], ['team', 'Team'], ['late', 'Late & cold'], ['month', 'This month']];
   var A_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   var A_REFRESH_MS = 10 * 60 * 1000; // coming back after 10 minutes refreshes by itself
 
   function aWon() { var r = rules(); return r.closedStages.filter(function (s) { return s !== r.lostStage; })[0]; }
   function aOpenStages() { var r = rules(); return r.stages.filter(function (s) { return !has(r.closedStages, s); }); }
   function aMonthName() { return MONTH_NAMES[Number(String(data.month).slice(5)) - 1]; }
-  function aWonMonth(s) { return !!s.closed && s.stage === aWon(); }
-  function aLostMonth(s) { return !!s.closed && s.stage === rules().lostStage; }
+  // Won / lost this month: its day is this month's (a card a summary brought can be older, spec 011).
+  function aThisMonth(s) { return String(s.closed).slice(0, 7) === data.month; }
+  function aWonMonth(s) { return aThisMonth(s) && s.stage === aWon(); }
+  function aLostMonth(s) { return aThisMonth(s) && s.stage === rules().lostStage; }
   function aNoNumber(s) { return isOpenSite(s) && !s.phone; }
   function aLate(s, today) { return isOpenSite(s) && (!s.followUp || s.followUp < today); }
   function aRegions() { return Object.keys(data.regionTargets || {}).filter(function (k) { return k !== data.houseRegion; }); }
@@ -74,24 +75,36 @@
       nav.appendChild(b);
     });
     $('tabs').parentNode.insertBefore(nav, $('tabs').nextSibling);
+    var step = el('div', '', 'btnrow'); // ‹ Prev / Next › on a salesman's or region's summary (spec 011)
+    step.id = 'aNav';
+    $('sumView').insertBefore(step, $('sumTabs'));
     document.addEventListener('visibilitychange', function () {
       if (!document.hidden && Date.now() - A.loadedAt >= A_REFRESH_MS) adminRefresh(true);
     });
   }
   // ---- Summary (spec 009): his reply holds the team and each salesman's own; tapping a salesman's
-  // line shows that one (no trip), Back returns to the team where he was. ----
+  // line shows that one (no trip), Back returns to the team where he was. Spec 011: a region's
+  // line shows the region's ('@North'), and ‹ Prev / Next › step to the next one in the table. ----
   var A_SUM = { rep: '', y: 0 };
+  function aSumKey(x) { return x.rep || '@' + x.reg; }
   function aSumView() {
     var r = sum.got[sum.p];
-    return r && A_SUM.rep ? r.salesmen.filter(function (x) { return x.rep === A_SUM.rep; })[0] : r;
+    return r && A_SUM.rep ? r.salesmen.concat(r.regions || []).filter(function (x) { return aSumKey(x) === A_SUM.rep; })[0] : r;
   }
-  function aSumTap(row, rep) {
-    row.className += ' tap';
-    row.setAttribute('role', 'button');
-    row.tabIndex = 0; // reachable without a finger too: Enter or Space opens it
-    row.addEventListener('click', function () { A_SUM.y = window.scrollY; A_SUM.rep = rep; renderSum(); window.scrollTo(0, 0); });
-    row.addEventListener('keydown', function (e) {
-      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); row.click(); }
+  function aSumGo(key) { A_SUM.rep = key; renderSum(); window.scrollTo(0, 0); }
+  function aSumTap(row, key) { tapOn(row, function () { A_SUM.y = window.scrollY; aSumGo(key); }); }
+  function aSumNav() {
+    var r = sum.got[sum.p], nav = $('aNav'), key = A_SUM.rep;
+    nav.textContent = '';
+    nav.hidden = !r || !key || !!sum.l;
+    if (nav.hidden) return;
+    var keys = (key[0] === '@' ? r.regions || [] : r.salesmen).map(aSumKey), at = keys.indexOf(key);
+    [[keys[at - 1], 'aPrev'], [keys[at + 1], 'aNext']].forEach(function (x) {
+      if (!x[0] || at < 0) return nav.appendChild(el('span'));
+      var name = x[0].replace('@', ''), b = el('button', x[1] === 'aPrev' ? '‹ ' + name : name + ' ›');
+      b.id = x[1];
+      b.onclick = function () { aSumGo(x[0]); };
+      nav.appendChild(b);
     });
   }
   function aSumBack() {
@@ -102,7 +115,7 @@
     return true;
   }
   function adminShowOnly(name) {
-    if (name === 'summary') A_SUM.rep = ''; // Summary always opens on the team
+    if (name === 'summary' && !sum.o) A_SUM.rep = ''; // Summary opens on the team (not back from a site)
     $('adminTabs').hidden = name !== 'list';
     $('refresh').hidden = name !== 'list';
     $('editDetails').hidden = true;
@@ -129,9 +142,9 @@
     renderList();
     window.scrollTo(0, 0);
   }
-  function adminDrill(title, test) {
+  function adminDrill(title, test, plan) {
     A.tabScroll = window.scrollY || 0;
-    A.drill = { title: title, test: test };
+    A.drill = { title: title, test: test, plan: plan };
     shownCount = PAGE_SIZE;
     renderList();
     window.scrollTo(0, 0);
@@ -164,8 +177,12 @@
       lostReason: s.lostReason, note: note ? 'Admin: ' + note : '', followUp: s.followUp });
   }
 
+  // Oldest follow-up first (none first); biggest Rs. first, then that.
+  function aByDay(a, b) { var x = a.followUp || '', y = b.followUp || ''; return x < y ? -1 : x > y ? 1 : 0; }
+  function aByRs(a, b) { return shownValue(b) - shownValue(a) || aByDay(a, b); }
   // ---- Cards: the salesman's card, plus whose it is, when it was won / lost, snoozes ----
   function adminCardExtras(card, s) {
+    if (screen === 'list' && A.drill && A.done && A.done[s.id]) card.appendChild(el('span', '✓ Done today', 'tag won'));
     card.insertBefore(el('div', s.rep + (s.region ? ' · ' + s.region : ''), 'who-line'), card.firstChild);
     if (s.closed) {
       var lost = s.stage === rules().lostStage;
@@ -208,6 +225,7 @@
     data.sites.forEach(function (s) { if (isFailed(s)) frag.appendChild(cardFor(s, today)); });
     if (A.drill) aDrillView(frag, today);
     else if (A.tab === 'today') aToday(frag, today);
+    else if (A.tab === 'plan') aPlan(frag, today);
     else if (A.tab === 'team') aTeam(frag);
     else if (A.tab === 'late') aLateCold(frag, today);
     else aMonth(frag, today);
@@ -234,9 +252,9 @@
       A.drill = null; shownCount = PAGE_SIZE; renderList(); window.scrollTo(0, A.tabScroll);
     });
     frag.appendChild(back);
-    var list = data.sites.filter(A.drill.test).sort(function (a, b) {
-      return shownValue(b) - shownValue(a) || ((a.followUp || '') < (b.followUp || '') ? -1 : (a.followUp || '') > (b.followUp || '') ? 1 : 0);
-    });
+    var p = A.drill.plan && aPlanOf(A.drill.plan[0], A.drill.plan[1]);
+    A.done = p && p.ids;
+    var list = p ? p.done.concat(p.due, p.late) : data.sites.filter(A.drill.test).sort(aByRs);
     frag.appendChild(el('div', A.drill.title + ' · ' + aPlural(list.length, 'site', 'sites'), 'a-h'));
     aCards(frag, list, today, 'No sites.');
   }
@@ -298,6 +316,54 @@
         if (siteById(f.site)) showSite(f.site); else toast("This site isn't on this screen.");
       });
       frag.appendChild(card);
+    });
+  }
+
+  // ---- Plan (spec 011): each salesman's day from the page's data (no trip). done = sites his own
+  // new site / Update saves touched today; due = his open sites with a follow-up that day; late =
+  // before it or none (Today only); neither counts a done site. ----
+  function aPlanOf(rep, tmr) {
+    var day = tmr ? addDays(data.today, 1) : data.today, p = { done: [], due: [], late: [], ids: {} };
+    if (!tmr) data.feed.forEach(function (f) {
+      var s = f.by === rep && !p.ids[f.site] && has(['created', 'stage_change', 'update'], f.action) && siteById(f.site);
+      if (s) { p.ids[s.id] = 1; p.done.push(s); }
+    });
+    data.sites.forEach(function (s) {
+      if (s.rep !== rep || !isOpenSite(s) || p.ids[s.id]) return;
+      if (s.followUp === day) p.due.push(s);
+      else if (!tmr && aLate(s, day)) p.late.push(s);
+    });
+    p.due.sort(aByRs);
+    p.late.sort(aByDay);
+    return p;
+  }
+  function aPlan(frag, today) {
+    var tmr = A.plan === 'tomorrow', row = el('div', '', 'pills');
+    row.style.marginBottom = '10px';
+    [['today', 'Today'], ['tomorrow', 'Tomorrow']].forEach(function (k) {
+      var b = pill(k[1], (A.plan || 'today') === k[0], function () { A.plan = k[0]; renderList(); });
+      b.id = 'plan-' + k[0];
+      row.appendChild(b);
+    });
+    frag.appendChild(row);
+    if (today !== data.today) frag.appendChild(el('div', 'This is ' + shortDay(data.today) + '. Tap Refresh.', 'banner'));
+    aRegions().forEach(function (region) {
+      data.salesmen.forEach(function (s) {
+        if (s.region !== region) return;
+        var p = aPlanOf(s.rep, tmr), n = p.due.length + p.late.length + p.done.length;
+        var what = !n ? 'nothing planned' : 'Due ' + p.due.length + (tmr ? '' : ' · late ' + p.late.length + ' · done ' + p.done.length);
+        if (!tmr && !data.feed.some(function (f) { return f.by === s.rep; })) {
+          what += ' · ' + (s.last ? 'last saved ' + aPlural(dayNumber(data.today) - dayNumber(s.last), 'day', 'days') + ' ago'
+            : 'no saves yet this month');
+        }
+        var b = el('button', undefined, 'card rep-row');
+        b.type = 'button';
+        b.setAttribute('data-rep', s.rep);
+        b.appendChild(el('span', s.rep, 'code'));
+        b.appendChild(el('span', what, 'what'));
+        b.addEventListener('click', function () { adminDrill(s.rep + ' · Plan · ' + (tmr ? 'Tomorrow' : 'Today'), null, [s.rep, tmr]); });
+        frag.appendChild(b);
+      });
     });
   }
 
@@ -397,8 +463,7 @@
   // ---- Late & cold across the team ----
   function aLateCold(frag, today) {
     var late = data.sites.filter(function (s) { return aLate(s, today); }).sort(function (a, b) {
-      if ((a.followUp || '') !== (b.followUp || '')) return (a.followUp || '') < (b.followUp || '') ? -1 : 1;
-      return shownValue(b) - shownValue(a);
+      return aByDay(a, b) || shownValue(b) - shownValue(a);
     });
     var cold = data.sites.filter(function (s) { return coldDays(s, today); }).sort(function (a, b) {
       return shownValue(b) - shownValue(a) || coldDays(b, today) - coldDays(a, today);

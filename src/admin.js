@@ -142,7 +142,8 @@ function shownTarget_(amounts, key, month) {
  * Everything the admin's screen needs (spec 008): every salesman's open sites, the sites won or
  * lost this month (with the day: the last move to that stage this month, owner P7-1) and those
  * in today's saves; salesmen with this month's target, a working link yes/no and snoozes this
- * month; region and house / office targets; today's saves, newest first. Read: `Sites`, `Lists`
+ * month and the day of his last save this month (spec 011); region and house / office targets;
+ * today's saves, newest first. Read: `Sites`, `Lists`
  * once, `Activity` this month only, Meta-Data through the kept copy.
  * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} diary
  * @param {string[]} linked salesmen with a working link
@@ -163,9 +164,13 @@ function adminDataFor_(diary, linked, now) {
   const siteSnoozes = {};
   /** @type {Object<string, number>} */
   const repSnoozes = {};
+  /** @type {Object<string, string>} each salesman's last save day this month (spec 011, Plan) */
+  const lastSave = {};
   /** @type {MonthMove[]} */
   const todays = [];
   for (const m of moves) {
+    const day = dayKey_(m.when);
+    if (!(lastSave[m.by] >= day)) lastSave[m.by] = day;
     if ((m.action === 'created' || m.action === 'stage_change') && m.to) {
       (movedTo[m.site] = movedTo[m.site] || {})[m.to] = dayKey_(m.when);
     }
@@ -173,7 +178,7 @@ function adminDataFor_(diary, linked, now) {
       siteSnoozes[m.site] = (siteSnoozes[m.site] || 0) + 1;
       repSnoozes[m.by] = (repSnoozes[m.by] || 0) + 1;
     }
-    if (dayKey_(m.when) === today) todays.push(m);
+    if (day === today) todays.push(m);
   }
   const inFeed = new Set(todays.map((m) => m.site));
 
@@ -204,7 +209,7 @@ function adminDataFor_(diary, linked, now) {
     month,
     salesmen: kept.salesmen.map((s) => ({
       rep: s.rep, region: s.region, target: shownTarget_(kept.repTargets, s.rep, month),
-      linked: linked.includes(s.rep), snoozes: repSnoozes[s.rep] || 0,
+      linked: linked.includes(s.rep), snoozes: repSnoozes[s.rep] || 0, last: lastSave[s.rep] || '',
     })),
     regionTargets: Object.fromEntries(REGIONS.concat([HOUSE_REGION])
       .map((key) => [key, shownTarget_(kept.regionTargets, key, month)])),
