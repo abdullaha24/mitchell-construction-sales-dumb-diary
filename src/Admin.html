@@ -162,6 +162,7 @@
   // His own save shows at once on Today as "You" (it never counts as a salesman's work, P7-2).
   // Rs. shows on a stage change, and on an Update only when he changed it (spec 009, S9-13), as
   // the history row says.
+  // Spec 011: a contact-only Update writes no update row (r.only); a new contact writes its own row (r.contact).
   function adminSaved(entry, r) {
     if (entry.fn !== 'adminPageUpdateSite' || !r.site) return;
     var s = r.site;
@@ -171,10 +172,13 @@
     var changed = entry.input.touched ? has(entry.input.touched, 'money')
       : !was || was.value !== (s.value || null) || was.terms !== (s.terms || '');
     var money = has(rules().valueStages, s.stage) && (moved || changed);
-    data.feed.unshift({ time: aClock(), by: 'admin', site: s.id, name: s.name,
-      action: moved ? 'stage_change' : 'update', from: entry.fromStage, to: s.stage,
-      value: money ? s.value : null, terms: money ? s.terms : '',
-      lostReason: s.lostReason, note: note ? 'Admin: ' + note : '', followUp: s.followUp });
+    if (!r.only) {
+      data.feed.unshift({ time: aClock(), by: 'admin', site: s.id, name: s.name,
+        action: moved ? 'stage_change' : 'update', from: entry.fromStage, to: s.stage,
+        value: money ? s.value : null, terms: money ? s.terms : '',
+        lostReason: s.lostReason, note: note ? 'Admin: ' + note : '', followUp: s.followUp });
+    }
+    if (r.contact) data.feed.unshift({ time: aClock(), by: 'admin', site: s.id, name: s.name, action: 'contact', note: r.contact });
   }
 
   // Oldest follow-up first (none first); biggest Rs. first, then that.
@@ -261,7 +265,7 @@
 
   // ---- Today: who worked today (P7-2: any save counts; the admin's never) ----
   var A_KINDS = [['created', 'new site', 'new sites'], ['update', 'update', 'updates'], ['details', 'details change', 'details changes'],
-    ['snooze', 'snooze', 'snoozes']];
+    ['snooze', 'snooze', 'snoozes'], ['contact', 'contact change', 'contact changes']];
   function aKind(action) { return action === 'stage_change' ? 'update' : action; }
   function aFeedWhat(f) {
     var money = f.value ? ' · ' + rs(f.value) + (f.terms ? ' ' + f.terms : '') : '';
@@ -270,16 +274,20 @@
     if (f.action === 'stage_change') return f.from + ' → ' + f.to + money + lost;
     if (f.action === 'details') return 'Details changed: ' + f.note;
     if (f.action === 'snooze') return 'Snoozed to ' + shortDay(f.followUp);
+    if (f.action === 'contact') return f.note; // "New contact: …" (spec 011)
     return 'Update' + money + (f.followUp ? ' · follow up ' + shortDay(f.followUp) : '');
   }
   function aToday(frag, today) {
     frag.appendChild(el('div', 'Today, ' + aDayName(data.today) + ' ' + shortDay(data.today), 'a-h'));
     if (today !== data.today) frag.appendChild(el('div', 'This is ' + shortDay(data.today) + '. Tap Refresh.', 'banner'));
     var counts = {};
-    data.feed.forEach(function (f) {
+    data.feed.forEach(function (f, i) {
       if (f.by === 'admin') return;
       var c = counts[f.by] || (counts[f.by] = { total: 0 });
-      c.total++;
+      // An Update (or Edit details) and its contact row are one save (spec 011): written together, the
+      // contact row just after it (the feed is newest first).
+      var g = data.feed[i + 1];
+      if (!(f.action === 'contact' && g && g.action !== 'contact' && g.by === f.by && g.site === f.site && g.time === f.time)) c.total++;
       c[aKind(f.action)] = (c[aKind(f.action)] || 0) + 1;
     });
     var idle = data.salesmen.filter(function (s) { return !counts[s.rep]; })
@@ -311,7 +319,7 @@
       card.setAttribute('role', 'button');
       card.appendChild(el('div', f.time + ' · ' + (f.by === 'admin' ? 'You' : f.by) + ' · ' + f.name, 'when'));
       card.appendChild(el('div', aFeedWhat(f), 'what'));
-      if (f.note && f.action !== 'details') card.appendChild(el('div', f.note, 'said'));
+      if (f.note && f.action !== 'details' && f.action !== 'contact') card.appendChild(el('div', f.note, 'said'));
       card.addEventListener('click', function () {
         if (siteById(f.site)) showSite(f.site); else toast("This site isn't on this screen.");
       });

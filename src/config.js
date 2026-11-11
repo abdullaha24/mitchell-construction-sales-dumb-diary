@@ -56,6 +56,7 @@ const DIARY_HEADERS = {
     'site_id', 'rep', 'region', 'site_name', 'buyer_type', 'area', 'contact_name',
     'contact_phone', 'products', 'stage', 'value_rs', 'payment_terms', 'lost_reason',
     'next_followup', 'last_note', 'created_at', 'updated_at', 'worked_at', 'note_at',
+    'earlier_contacts',
   ],
   Activity: [
     'activity_id', 'timestamp', 'rep', 'site_id', 'action', 'from_stage', 'to_stage',
@@ -129,6 +130,9 @@ const FOLLOW_UP_DAYS = { tomorrow: 1, '3days': 3, '1week': 7 };
 
 /** Limits on typed text, dates and Rs. values (specs 003, 004). */
 const LIMITS = { siteName: 80, contactName: 60, area: 40, note: 200, followUpDays: 365, valueRs: 1000000000 };
+
+/** How many earlier contacts a site keeps (spec 011, ADR-0011): the oldest drops off the list. */
+const EARLIER_CONTACTS_MAX = 20;
 
 /** Stages that need a Rs. value and Cash / Credit (spec 004, owner P4-2). */
 const VALUE_STAGES = ['Rate Quoted', 'Won (Order)'];

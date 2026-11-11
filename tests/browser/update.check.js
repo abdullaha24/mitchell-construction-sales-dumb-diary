@@ -28,7 +28,7 @@ const META_DATA_ID = '11rcjx1eZA9BqwSTIoK66hrs7M8rYisL12GirSzLyrkc';
 const SALES_DIARY_ID = '1tuyVPDB33x1Vw8JQYashM4PRQSjGjQq8MBs7l4cJn5Y';
 const SITES = ['site_id', 'rep', 'region', 'site_name', 'buyer_type', 'area', 'contact_name',
   'contact_phone', 'products', 'stage', 'value_rs', 'payment_terms', 'lost_reason',
-  'next_followup', 'last_note', 'created_at', 'updated_at', 'worked_at', 'note_at'];
+  'next_followup', 'last_note', 'created_at', 'updated_at', 'worked_at', 'note_at', 'earlier_contacts'];
 const ACTIVITY = ['activity_id', 'timestamp', 'rep', 'site_id', 'action', 'from_stage', 'to_stage',
   'value_rs', 'payment_terms', 'lost_reason', 'note', 'next_followup'];
 const RIA = 'a'.repeat(64);
@@ -219,6 +219,10 @@ function stub() {
   await page.fill('#f-phone', '0321 5556666');
   await page.fill('#f-name', 'Blue Area Plaza');
   await save();
+  // Spec 011: a changed number may be a new person: one extra tap, only then.
+  await page.waitForSelector('#snoozeSheet:not([hidden])');
+  assert.equal(await page.textContent('#snoozeTitle'), 'Is this a new person?');
+  await page.click('#snoozeChoices button:has-text("No, fix the number")');
   await page.waitForSelector('#toast:has-text("Saved")');
   assert.equal(await page.isVisible('#siteView'), true, 'back on the site screen');
   assert.equal(await page.textContent('#siteHead h2'), 'Blue Area Plaza');

@@ -33,6 +33,8 @@
       .card .meta.late { color: var(--red); font-weight: 600; }
       .card .meta.nodate { color: var(--orange); font-weight: 600; }
       .more { display: block; width: 100%; margin-top: 4px; }
+      #u-addC { margin-top: 16px; }
+      .site-head .ec { margin-top: 12px; }
       main { padding: 12px 16px 96px; max-width: 640px; margin: 0 auto; }
       button { font: inherit; cursor: pointer; }
       .big { min-height: 48px; padding: 10px 16px; border-radius: 10px; border: 0; background: var(--blue);
@@ -234,6 +236,17 @@
       <label for="u-note">Quick note <span class="opt" id="u-noteOpt">(optional)</span></label>
       <input id="u-note" type="text" maxlength="200" autocomplete="off" placeholder="e.g. Quoted WP-100 @ 1,450">
 
+      <!-- Spec 011: a new main contact person, saved with the Update; the old one is kept. -->
+      <button class="plain more" id="u-addC" type="button">+ New contact person</button>
+      <div id="u-cBox" hidden>
+        <div class="label two">New contact person<button class="plain" id="u-cX" type="button" aria-label="No new contact">×</button></div>
+        <label for="u-cName">Name</label>
+        <input id="u-cName" type="text" maxlength="60" autocomplete="off" placeholder="e.g. Bilal (site engineer)">
+        <label for="u-cPhone">Phone (WhatsApp)</label>
+        <input id="u-cPhone" type="tel" inputmode="tel" maxlength="24" autocomplete="off" placeholder="e.g. 0300 1234567">
+        <div id="u-cNote" class="note" hidden></div>
+      </div>
+
       <div id="u-problem" class="note error" hidden></div>
     </main>
 
@@ -342,6 +355,8 @@
       var upd = null;
       var confirmNoNumber = false;
       var phoneCheck = { valid: true };
+      // Earlier contacts opened on the site screen (spec 011).
+      var openEarlier = false;
       // Saves waiting to be sent or confirmed, oldest first (spec 005). Each:
       // { id, fn, siteId, input, card (what the list shows meanwhile), state, form | upd (to reopen),
       //   status: 'saving' | 'failed', message }
@@ -618,6 +633,9 @@
                 confirmed[fresh.id] = snap(fresh);
                 // His changes stay; the rest now shows the site as it is (spec 008).
                 if (entry.state && entry.state.seen) entry.state = rebased(entry.state, fresh);
+                // Edit details: the main contact as it is now (spec 011).
+                if (entry.fn === 'repEditSite') Object.assign(entry.state, { contactName: fresh.contactName,
+                  phone: showPhone(fresh.phone), saw: { name: fresh.contactName, phone: fresh.phone }, newPerson: null });
               }
               dropIfCarried(entry);
               saveQueue();
@@ -700,7 +718,8 @@
 
       function renderSave() {
         var save = $('save');
-        var asking = screen === 'form' && mode.kind === 'new' && confirmNoNumber && !form.phone.trim();
+        var c = screen === 'site' && upd.contact;
+        var asking = confirmNoNumber && (c ? !c.phone.trim() : screen === 'form' && mode.kind === 'new' && !form.phone.trim());
         save.textContent = asking ? 'Save without a number?' : 'Save';
         save.className = 'big' + (asking ? ' warn' : '');
         save.disabled = false;
@@ -883,14 +902,17 @@
       }
 
       // Search: capitals, spaces and dashes don't matter; every word must match; a number matches
-      // however he types it (0300 123, 92300123). Each site's text is worked out once.
+      // however he types it (0300 123, 92300123). Each site's text is worked out once. Spec 011: earlier
+      // contacts' names and numbers are searched too.
       var searchCache = typeof WeakMap === 'function' ? new WeakMap() : null;
       function squash(text) { return String(text || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, ''); }
       function searchText(s) {
         var t = searchCache ? searchCache.get(s) : undefined;
         if (t === undefined) {
           t = [s.name, s.contactName, s.phone, showPhone(s.phone), s.area, s.buyerType,
-            (s.products || []).join(' '), s.stage, s.note].map(squash).join('|');
+            (s.products || []).join(' '), s.stage, s.note].concat((s.earlier || []).map(function (e) {
+            return e.name + ' ' + e.phone + ' ' + showPhone(e.phone);
+          })).map(squash).join('|');
           if (searchCache) searchCache.set(s, t);
         }
         return t;
@@ -1072,6 +1094,27 @@
         head.appendChild(el('div', [s.contactName, showPhone(s.phone)].filter(Boolean).join(' · ') || ' ', 'line'));
         var buttons = buttonRow(s, false); // no Snooze here: the Update form has the dates (spec 007)
         if (buttons) head.appendChild(buttons);
+        // Spec 011: earlier contacts, collapsed; each with Call, WhatsApp and Make main.
+        var past = s.earlier || [];
+        if (past.length) {
+          var t = head.appendChild(el('button', 'Earlier contacts (' + past.length + ') ' + (openEarlier ? '▴' : '▾'), 'plain more'));
+          t.id = 'earlier';
+          t.onclick = function () { openEarlier = !openEarlier; renderSiteHead(s); };
+        }
+        if (openEarlier) past.forEach(function (p) {
+          head.appendChild(el('div', [p.name, showPhone(p.phone), p.till && 'till ' + dayLabel(p.till, todayKey())]
+            .filter(Boolean).join(' · '), 'line ec'));
+          var row = buttonRow(p) || el('div', undefined, 'btnrow');
+          // A person without a number can't be main at a stage that needs one (P3-4).
+          if (p.till && (p.phone || !has(rules().numberStages, s.stage))) {
+            row.appendChild(el('button', 'Make main')).onclick = function () {
+              upd.contact = { name: p.name, phone: showPhone(p.phone), again: true };
+              updChanged();
+              $('u-cBox').scrollIntoView();
+            };
+          }
+          if (row.firstChild) head.appendChild(row);
+        });
         if (!s.phone) head.appendChild(el('span', 'No number yet', 'tag nonum'));
         head.appendChild(el('span', s.stage, 'tag' + stageClass(s.stage)));
         var cold = coldDays(s, todayKey());
@@ -1099,7 +1142,12 @@
         data.lostReasons.forEach(function (reason) {
           lost.appendChild(pill(reason, upd.lostReason === reason, function () { upd.lostReason = reason; updChanged(); }));
         });
-        var needsNumber = has(r.numberStages, upd.stage) && !s.phone;
+        // Spec 011: + New contact person; while it is open his number does the "add the number" job.
+        var c = upd.contact;
+        $('u-addC').hidden = !!c;
+        $('u-cBox').hidden = !c;
+        if (c) { $('u-cName').value = c.name; $('u-cPhone').value = c.phone; }
+        var needsNumber = has(r.numberStages, upd.stage) && !s.phone && !c;
         $('u-phoneBox').hidden = !needsNumber;
         $('u-phoneLabel').textContent = "Add the contact's number to move this site to " + upd.stage;
         $('u-phone').value = upd.phone;
@@ -1120,7 +1168,7 @@
       }
       // Any change makes it a new save: a corrected resend is saved, not taken for a repeat.
       function updTouched() {
-        upd.saveId = newSaveId(); clearProblem();
+        upd.saveId = newSaveId(); clearProblem(); confirmNoNumber = false;
         if (retrying) { retrying.state = clone(upd); saveQueue(); } else store(updKey(openId), upd);
       }
       function updChanged() { updTouched(); renderUpdate(); }
@@ -1142,14 +1190,14 @@
       }
       // ---- Two people, one site (spec 008) ----
       // ---- BEGIN update rules (spec 008; loaded as they are by tests/interleave.test.js) ----
-      // The five things an Update can change, as a site has them.
+      // The five things an Update can change, as a site has them, and its main contact (spec 011).
       function snap(x) {
         return { stage: x.stage, value: x.value ? Number(x.value) : null, terms: x.terms || '', lostReason: x.lostReason || '',
-          followUp: x.followUp || '' };
+          followUp: x.followUp || '', contact: { name: x.contactName || '', phone: x.phone || '' } };
       }
       function sameSnap(a, b) {
         return a.stage === b.stage && a.value === b.value && a.terms === b.terms && a.lostReason === b.lostReason &&
-          a.followUp === b.followUp;
+          a.followUp === b.followUp && (!a.contact || JSON.stringify(a.contact) === JSON.stringify(b.contact));
       }
       // What an Update form would save, as a site would have it. "Keep" is the date the form showed.
       function intendedOf(u, today) {
@@ -1231,9 +1279,17 @@
         var r = rules();
         var box = $('u-problem');
         function problem(text) { box.textContent = text; box.hidden = false; toast(text, true); }
+        var mine = upd.contact;
         var trouble = stageProblem(upd.stage, upd.value, upd.terms, upd.lostReason, upd.note, upd.followUp, upd.date,
-          !!s.phone || !!upd.phone.trim(), "Add the contact's number to move this site to " + upd.stage + '.');
+          !!mine || !!s.phone || !!upd.phone.trim(), "Add the contact's number to move this site to " + upd.stage + '.');
         if (trouble) return problem(trouble);
+        if (mine) {
+          var cp = mine.phone.trim();
+          if (!mine.name.trim() && !cp) return problem("Type the new contact's name or number.");
+          if (cp && !tidyPhone(cp)) return problem('Check the number.');
+          if (!cp && has(r.numberStages, upd.stage)) return problem("Type the new contact's number: a site at " + upd.stage + ' needs one.');
+          if (!cp && !confirmNoNumber) { confirmNoNumber = true; clearProblem(); return renderSave(); }
+        }
         clearProblem();
         var followUp = has(r.closedStages, upd.stage) ? '' : followKey(upd.followUp, upd.date, s.followUp);
         var input = {
@@ -1247,10 +1303,18 @@
         var earlier = retrying ? (retrying.carries || []).concat([retrying.id]) : queue.filter(function (q) {
           return q.card.id === s.id && (q.fn === 'repUpdateSite' || q.fn === 'adminPageUpdateSite' || q.fn === 'repSnoozeSite');
         }).map(function (q) { return q.id; });
+        // A new contact of a save it carries goes again, so a later save never drops it (spec 011).
+        var c = mine;
+        queue.forEach(function (q) { if (!mine && has(earlier, q.id) && q.input.contact) c = q.input.contact; });
+        if (c) input.contact = { name: c.name.trim(), phone: c.phone.trim(), again: !!c.again };
         // What Google had when the form opened, and what he changes: Google writes only that.
         if (upd.seen) {
           input.seen = clone(upd.seen);
           input.touched = touchedOf(upd, todayKey());
+          // Only a new contact: a late follow-up he didn't pick stays as it is (spec 011: not work).
+          if (c && s.followUp && !upd.note.trim() && input.touched.join() === 'followUp' && !choseFollowUp(upd, todayKey())) {
+            input.touched = []; input.followUp = followUp = s.followUp;
+          }
         }
         var card = clone(s);
         card.stage = upd.stage;
@@ -1259,8 +1323,10 @@
         card.followUp = followUp;
         if (upd.note.trim()) { card.note = (ADMIN ? 'Admin: ' : '') + upd.note.trim(); card.noteDay = todayKey(); }
         if (tidyPhone(upd.phone)) card.phone = tidyPhone(upd.phone);
+        if (c) moveMain(card, c);
         // A salesman's Update is real work: no longer going cold (P6-2). The admin's never is (P7-5).
-        if (!ADMIN) card.worked = todayKey();
+        // A contact-only one isn't (spec 011).
+        if (!ADMIN && !(c && input.touched && !input.touched.length && !upd.note.trim())) card.worked = todayKey();
         if (ADMIN && card.stage !== s.stage) card.closed = has(r.closedStages, card.stage) ? todayKey() : '';
         var replaces = retrying;
         enqueue({ id: upd.saveId, fn: ADMIN ? 'adminPageUpdateSite' : 'repUpdateSite', siteId: openId, input: input, card: card,
@@ -1269,13 +1335,28 @@
         retrying = null;
         showList(true);
       }
-      function checkUpdPhone() {
+      // c: the new contact person's number (spec 011), else the "add the number" box. This site never matches itself.
+      function checkUpdPhone(c) {
         if (ADMIN) return; // the admin's save checks the number itself (no salesman's check here)
-        var typed = upd.phone.trim();
-        var note = $('u-phoneNote');
+        function now() { return String((c ? upd.contact || {} : upd).phone || '').trim(); }
+        var typed = now();
+        var note = $(c ? 'u-cNote' : 'u-phoneNote');
         if (!typed) { note.hidden = true; return; }
-        google.script.run.withSuccessHandler(function (r) { showPhoneNote(note, r, typed === upd.phone.trim()); })
-          .withFailureHandler(function () { /* no signal: the save will check again */ }).repCheckPhone(k, typed);
+        google.script.run.withSuccessHandler(function (r) { showPhoneNote(note, r, typed === now()); })
+          .withFailureHandler(function () { /* no signal: the save will check again */ }).repCheckPhone(k, typed, openId);
+      }
+      // The new main contact; the old one on top of Earlier contacts, as Google will do it (spec 011).
+      function moveMain(card, c) {
+        var p = tidyPhone(c.phone), n = squash(c.name);
+        // The same person: nothing moves.
+        if (p ? p === card.phone : !card.phone && n === squash(card.contactName)) return;
+        var list = (card.earlier || []).filter(function (e) {
+          return p ? e.phone !== p : !(c.again && !e.phone && squash(e.name) === n);
+        });
+        if (card.contactName || card.phone) list.unshift({ name: card.contactName, phone: card.phone, till: todayKey() });
+        card.earlier = list.slice(0, 20);
+        card.contactName = c.name.trim();
+        card.phone = p;
       }
       function showPhoneNote(note, r, current) {
         if (!current) return; // he typed more meanwhile
@@ -1415,7 +1496,7 @@
           phoneCheck = r;
           showPhoneNote(note, r, true);
         }).withFailureHandler(function () { /* no signal: the save will check again */ })
-          .repCheckPhone(k, typed);
+          .repCheckPhone(k, typed, mode.siteId);
       }
 
       function saveForm() {
@@ -1430,6 +1511,10 @@
         var site = isNew ? null : siteById(mode.siteId);
         if (!isNew) {
           if (site && site.phone && !form.phone.trim()) return problem("A site's number can be changed, not removed.");
+          // Spec 011: a changed number (or a changed name without one) may be a new person: ask once.
+          var newP = tidyPhone(form.phone);
+          if (form.newPerson == null && (site.phone ? newP && newP !== site.phone
+            : site.contactName && squash(form.contactName) !== squash(site.contactName))) return askNewPerson();
         } else {
           var trouble = stageProblem(form.stage, form.value, form.terms, form.lostReason, form.note, form.followUp, form.date,
             !!form.phone.trim(), "Type the contact's number: a site at " + form.stage + ' needs one.');
@@ -1443,6 +1528,8 @@
           name: form.name, buyerType: form.buyerType, contactName: form.contactName, phone: form.phone,
           products: form.products, area: area, saveId: form.saveId,
         };
+        if (form.saw) input.seen = { contact: form.saw };
+        if (form.newPerson) input.newPerson = true;
         var card;
         if (isNew) {
           input.followUp = form.followUp === 'date' ? form.date : form.followUp;
@@ -1466,6 +1553,7 @@
         } else {
           var id = mode.siteId;
           card = clone(site);
+          if (form.newPerson) moveMain(card, { name: form.contactName, phone: form.phone });
           card.name = form.name.trim(); card.buyerType = form.buyerType; card.contactName = form.contactName.trim();
           card.phone = tidyPhone(form.phone) || site.phone; card.products = form.products.slice(); card.area = area;
           var editReplaces = retrying;
@@ -1474,6 +1562,16 @@
           phoneCheck = { valid: true }; retrying = null;
           showSite(id);
         }
+      }
+
+      // "Is this a new person?" (spec 011): Yes keeps the old one as an earlier contact.
+      function askNewPerson() {
+        openSnooze(openId);
+        $('snoozeTitle').textContent = 'Is this a new person?';
+        var box = $('snoozeChoices'); box.textContent = '';
+        [['Yes, keep the old one', true], ['No, fix the number', false]].forEach(function (a) {
+          box.appendChild(el('button', a[0], 'big')).onclick = function () { closeSnooze(); form.newPerson = a[1]; saveDraft(); saveForm(); };
+        });
       }
 
       // ---- Screens ----
@@ -1506,12 +1604,13 @@
         if (!s) return showList();
         openId = id;
         retrying = retryEntry || null;
+        openEarlier = confirmNoNumber = false;
         var draft = retryEntry ? clone(retryEntry.state) : fetchStored(updKey(id));
         upd = draft ? Object.assign(emptyUpdate(s), draft) : emptyUpdate(s);
         // A form kept from before spec 008 has no 'seen': it saves as it always did.
         if (draft && !draft.seen) upd.seen = null;
         if (!upd.saveId) upd.saveId = newSaveId();
-        $('u-phoneNote').hidden = true;
+        $('u-phoneNote').hidden = $('u-cNote').hidden = true;
         showOnly('site');
         renderSiteHead(s);
         renderUpdate();
@@ -1526,7 +1625,7 @@
         } else if (editId) {
           var s = siteById(editId);
           form = Object.assign(emptyForm(), { name: s.name, buyerType: s.buyerType, contactName: s.contactName,
-            phone: showPhone(s.phone), products: s.products.slice(), area: s.area });
+            phone: showPhone(s.phone), products: s.products.slice(), area: s.area, saw: { name: s.contactName, phone: s.phone } });
         } else {
           form = emptyForm();
         }
@@ -1552,9 +1651,9 @@
       $('save').addEventListener('click', function () { if (screen === 'site') saveUpdate(); else saveForm(); });
 
       $('f-name').addEventListener('input', function (e) { form.name = e.target.value; confirmNoNumber = false; clearProblem(); touched(); renderSave(); });
-      $('f-contact').addEventListener('input', function (e) { form.contactName = e.target.value; clearProblem(); touched(); });
+      $('f-contact').addEventListener('input', function (e) { form.contactName = e.target.value; form.newPerson = null; clearProblem(); touched(); });
       $('f-phone').addEventListener('input', function (e) {
-        form.phone = e.target.value; confirmNoNumber = false; phoneCheck = { valid: true };
+        form.phone = e.target.value; confirmNoNumber = false; phoneCheck = { valid: true }; form.newPerson = null;
         $('phoneNote').hidden = true; clearProblem(); touched(); renderSave();
         // Check once he pauses, when it could be a whole number (10+ digits).
         clearTimeout(checkPhone.timer);
@@ -1574,6 +1673,20 @@
         $('u-phoneNote').hidden = true;
         clearTimeout(checkUpdPhone.timer);
         if (upd.phone.replace(/\D/g, '').length >= 10) checkUpdPhone.timer = setTimeout(checkUpdPhone, 700);
+      });
+      // + New contact person (spec 011): × drops it; a typed change makes it a new person, not Make main.
+      $('u-addC').onclick = function () { upd.contact = { name: '', phone: '' }; updChanged(); $('u-cName').focus(); };
+      $('u-cX').onclick = function () { upd.contact = null; updChanged(); };
+      ['u-cName', 'u-cPhone'].forEach(function (id, i) {
+        $(id).addEventListener('input', function (e) {
+          var c = upd.contact;
+          c[i ? 'phone' : 'name'] = e.target.value; c.again = false;
+          updTouched(); renderSave();
+          if (!i) return;
+          $('u-cNote').hidden = true;
+          clearTimeout(checkUpdPhone.timer);
+          if (c.phone.replace(/\D/g, '').length >= 10) checkUpdPhone.timer = setTimeout(checkUpdPhone, 700, 1);
+        });
       });
 
       ['chase', 'hot', 'all'].forEach(function (name) {

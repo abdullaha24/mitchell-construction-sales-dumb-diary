@@ -243,7 +243,7 @@ test('a Meta-Data problem row is listed under Check these', () => {
 
 const SITES_HEADER = ['site_id', 'rep', 'region', 'site_name', 'buyer_type', 'area', 'contact_name',
   'contact_phone', 'products', 'stage', 'value_rs', 'payment_terms', 'lost_reason',
-  'next_followup', 'last_note', 'created_at', 'updated_at', 'worked_at', 'note_at'];
+  'next_followup', 'last_note', 'created_at', 'updated_at', 'worked_at', 'note_at', 'earlier_contacts'];
 const siteWith = (rep, phone) => SITES_HEADER.map((h) => ({ site_id: 'S1', rep, site_name: 'x', contact_phone: phone })[h] ?? '');
 
 test('Check setup lists sites with no phone number per salesman, North to South', () => {

@@ -1,6 +1,7 @@
 # Data model (Google Sheets)
 
-> Status: **v0.8** (2026-11-05). v0.8: an `Activity` `update` row carries `value_rs` /
+> Status: **v0.9** (2026-11-11). v0.9: `Sites.earlier_contacts` and the `Activity` action `contact`
+> (spec 011, ADR-0011: a new main contact person keeps the old one). v0.8: an `Activity` `update` row carries `value_rs` /
 > `payment_terms` only when they changed; the kept copy also holds last month, with a `months` part
 > (spec 009, owner S9-13). v0.7: `Activity.rep` can be `admin`, region and house targets kept
 > (spec 008, ADR-0010). v0.6: `worked_at`, `note_at` and the `snooze` action (spec 007, ADR-0009). v0.5: targets kept with the salesmen list (spec 006). v0.3 came from the owner interview and session 2 answers; v0.4
@@ -107,6 +108,7 @@ salesman's link works only while his `rep` is still in Meta-Data `Rep_Mapping`.
 | `updated_at` | | Server timestamp: the last change of any kind (Update, Edit details, Snooze). |
 | `worked_at` | | Server timestamp: when the site was added or last saved from the salesman's **Update** screen (spec 007, ADR-0009). **Drives "going cold"** (Sample / Trial or Rate Quoted, 7 days). Not written by Edit details, Snooze (owner P6-2) or the admin's Update (P7-5). Blank (a row typed by hand) → `created_at` is used. |
 | `note_at` | | Server timestamp: when `last_note` was written (adding a site or an Update with a note). The day on the card's last-spoken line. Blank → the note shows without a day. |
+| `earlier_contacts` | `923331112222 · Asif · 2026-11-11` | The site's **earlier contacts** (spec 011, ADR-0011): plain text, one person per line, **newest first**, `<phone or -> · <name> · <yyyy-MM-dd>` (the day they stopped being main; phone first and date last, so a name with " · " still parses). At most **20** (the oldest drops off; the history keeps it). Written by an Update with + New contact person or Make main, and by Edit details' "Yes, keep the old one"; written as text (`asText_`). A line that doesn't parse (typed by hand) is shown as typed and kept unchanged. A main number that isn't a real number moves, as typed, into the name with phone `-`. The new main contact's number is never also kept here. Blank = none. A salesman's page gets them only for his own sites (ADR-0004); the duplicate check reads them as yes/no. |
 
 ### Tab `Activity`: history, append-only
 One row per change. **Never edited or deleted by the app.**
@@ -117,7 +119,7 @@ One row per change. **Never edited or deleted by the app.**
 | `timestamp` | | Server time. |
 | `rep` | RIA | Who made the change: a salesman's code, or **`admin`** for an Update the owner made from his admin screen (spec 008, ADR-0010; the site's salesman is in `Sites.rep`). Admin rows never count as a salesman's work. |
 | `site_id` | `S000123` | |
-| `action` | stage_change | `created` (new site; since spec 005 with the stage it started at and its value, terms, reason and note), `stage_change` (with `from_stage` / `to_stage`), `update` (same stage: value, note or follow-up; since spec 009 its `value_rs` / `payment_terms` are filled **only when the Rs. or Cash / Credit changed**, so a revised price can be told from a plain note (owner S9-13); rows saved before keep the value either way), `details` (Edit details: `note` lists what changed, with the old → new number), `snooze` (spec 007: the follow-up pushed from the card; `next_followup` = the new date, other detail columns blank; not counted as work). |
+| `action` | stage_change | `created` (new site; since spec 005 with the stage it started at and its value, terms, reason and note), `stage_change` (with `from_stage` / `to_stage`), `update` (same stage: value, note or follow-up; since spec 009 its `value_rs` / `payment_terms` are filled **only when the Rs. or Cash / Credit changed**, so a revised price can be told from a plain note (owner S9-13); rows saved before keep the value either way), `details` (Edit details: `note` lists what changed, with the old → new number), `snooze` (spec 007: the follow-up pushed from the card; `next_followup` = the new date, other detail columns blank; not counted as work), `contact` (spec 011: a new main contact person; `note` = *"New contact: Bilal · 923001234567 (was Asif · 923331112222)"* or *"Main contact again: …"*, other detail columns blank; a save but never work, like `details`). An Update with a new contact and other changes writes its `update` / `stage_change` row and then the `contact` row (ID one more) in one write; a contact-only Update writes only the `contact` row (no `worked_at`, no `note_at`). Edit details' "Yes, keep the old one" writes a `contact` row, plus a `details` row only if other fields changed. |
 | `from_stage` | Sample / Trial | Blank if not a stage change. |
 | `to_stage` | Rate Quoted | |
 | `value_rs` | 450000 | On `created` and `stage_change` rows at Rate Quoted / Won (Order); on an `update` row only when it changed (spec 009). |
@@ -156,6 +158,6 @@ Starting contents (filled in by phase 1 setup, only when a list has no rows yet)
 | Script cache | `save:<rep>:<saveId>` | What a save did, for 6 hours, so a repeat after a lost reply isn't saved twice (specs 003–005). The admin's saves use `save:admin:<saveId>` (spec 008). |
 
 ## Not modelled yet
-- Multiple contacts per site (v1: one).
+- Contact roles (site engineer / thekedar / procurement) for earlier contacts (spec 011: later, if wanted).
 - Dealer repeat orders (later phase).
 - Payment recovery / ugrahi (later phase).

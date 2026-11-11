@@ -66,7 +66,7 @@ Code rules that tests enforce (the tests are the source of truth; keep this list
 - A salesman call opens Sales Diary once and a save reads each tab once, inside the lock
   (`tests/speed.test.js`); replies carry only the changed card. `Activity` is never read whole
   (bottom-up blocks, `activitySince_`). Pages are served through `servedHtml_` (comments and
-  indentation removed, no build step); the served salesman's page stays ≤ 75,000 bytes and the
+  indentation removed, no build step); the served salesman's page stays ≤ 84,000 bytes (spec 011) and the
   admin's has its own pin (`tests/served.test.js`).
 - Link codes never go into git, logs or errors, and onto no page except the owner's Links
   window and the code holder's own page.

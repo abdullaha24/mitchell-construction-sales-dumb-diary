@@ -86,17 +86,22 @@ function repLoad(k) {
 
 /**
  * Checks a number as he types it: is it a real number, does someone else in the team have it
- * (yes/no only), and which of his own sites have it.
+ * (yes/no only), and which of his own sites have it, as a main or an earlier contact (spec 011).
+ * The site he is changing (`siteId`, one of his own) is never matched.
  * @param {any} k his link code
  * @param {any} phone
+ * @param {any} [siteId]
  */
-function repCheckPhone(k, phone) {
+function repCheckPhone(k, phone, siteId) {
   return forSalesman_(() => {
     const tidy = tidyPhone_(phone);
     const { salesman, diary } = requireRep_(k);
     if (!tidy.ok) return { ok: true, valid: false, team: false, mine: [] };
     if (!tidy.phone) return { ok: true, valid: true, team: false, mine: [] };
-    const owners = phoneOwners_(readTab_(diary, DIARY_TABS.sites), tidy.phone, salesman.rep);
+    const sites = readTab_(diary, DIARY_TABS.sites);
+    // Only one of his own sites can be skipped: skipping another salesman's would tell him its number.
+    const skip = findHisRow_(sites, siteId, salesman.rep) ? String(siteId) : '';
+    const owners = phoneOwners_(sites, tidy.phone, salesman.rep, skip);
     return { ok: true, valid: true, team: owners.team, mine: owners.mine };
   });
 }

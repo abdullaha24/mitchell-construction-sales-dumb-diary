@@ -53,6 +53,7 @@ test('Rate Quoted and Won need a total Rs. value (1 to 1,000,000,000) and Cash /
   const quoted = update({ stage: 'Rate Quoted', value: 'Rs. 450,000', terms: 'Credit', followUp: '3days' });
   assert.deepEqual(quoted.update, {
     stage: 'Rate Quoted', value: 450000, terms: 'Credit', lostReason: '', followUp: '2026-11-07', note: '', phone: '',
+    contact: null, contactOnly: false,
   });
 });
 
@@ -72,6 +73,7 @@ test('Lost needs a reason from the list; Other needs a note', () => {
   const lost = update({ stage: 'Lost / Dead', lostReason: 'Other', note: ' went with local brand ' });
   assert.deepEqual(lost.update, {
     stage: 'Lost / Dead', value: null, terms: '', lostReason: 'Other', followUp: '', note: 'went with local brand', phone: '',
+    contact: null, contactOnly: false,
   });
 });
 

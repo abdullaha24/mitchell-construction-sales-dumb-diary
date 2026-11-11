@@ -17,13 +17,15 @@ const META_DATA_ID = '11rcjx1eZA9BqwSTIoK66hrs7M8rYisL12GirSzLyrkc';
 const SALES_DIARY_ID = '1tuyVPDB33x1Vw8JQYashM4PRQSjGjQq8MBs7l4cJn5Y';
 const SITES = ['site_id', 'rep', 'region', 'site_name', 'buyer_type', 'area', 'contact_name',
   'contact_phone', 'products', 'stage', 'value_rs', 'payment_terms', 'lost_reason',
-  'next_followup', 'last_note', 'created_at', 'updated_at', 'worked_at', 'note_at'];
+  'next_followup', 'last_note', 'created_at', 'updated_at', 'worked_at', 'note_at', 'earlier_contacts'];
 const RIA = 'a'.repeat(64);
 const ADMIN = 'c'.repeat(64);
 const D = new Date('2026-11-04T05:00:00Z');
 /** The served-size pins (bytes of the page as served, before the page data is filled in). */
-const SALESMAN_PIN = 84000; // spec 011: the logo, tappable summaries, the wide screen, new contact person
-const ADMIN_PIN = 104000; // spec 011: the same, and the Plan tab and region summaries
+// Spec 011's budget: the logo (once in App.html), tappable summaries, the wide screen and the new
+// contact person on both pages; the admin's page also the Plan tab and region summaries.
+const SALESMAN_PIN = 84000;
+const ADMIN_PIN = 110000; // his own page (laptop or phone): spec 011 together served ~107.7 KB
 
 const { s } = (() => {
   const src = loadSrc({ HtmlService: makeHtmlService(), Utilities: makeUtilities() });

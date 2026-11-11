@@ -13,7 +13,7 @@ const META_DATA_ID = '11rcjx1eZA9BqwSTIoK66hrs7M8rYisL12GirSzLyrkc';
 const SALES_DIARY_ID = '1tuyVPDB33x1Vw8JQYashM4PRQSjGjQq8MBs7l4cJn5Y';
 const SITES = ['site_id', 'rep', 'region', 'site_name', 'buyer_type', 'area', 'contact_name',
   'contact_phone', 'products', 'stage', 'value_rs', 'payment_terms', 'lost_reason',
-  'next_followup', 'last_note', 'created_at', 'updated_at', 'worked_at', 'note_at'];
+  'next_followup', 'last_note', 'created_at', 'updated_at', 'worked_at', 'note_at', 'earlier_contacts'];
 const ACTIVITY = ['activity_id', 'timestamp', 'rep', 'site_id', 'action', 'from_stage', 'to_stage',
   'value_rs', 'payment_terms', 'lost_reason', 'note', 'next_followup'];
 const LISTS = ['list', 'value', 'region', 'added_by', 'active', 'sort'];
@@ -191,7 +191,7 @@ test('repAddSite: the exact Sites and Activity rows, who and where from the link
     area: 'DHA', contact_name: 'Bilal', contact_phone: '923331112222',
     products: 'Waterproofing Job | Mortars, Plasters & Putties', stage: 'Visited / Lead', value_rs: '',
     payment_terms: '', lost_reason: '', next_followup: 'D', last_note: '', created_at: 'D', updated_at: 'D',
-    worked_at: 'D', note_at: '', // no note, so no note_at
+    worked_at: 'D', note_at: '', earlier_contacts: '', // no note, so no note_at
   });
   assert.equal(w.diary.getSheetByName('Sites')._numberFormat(5, 8), '@', 'phone cell set to text first');
 

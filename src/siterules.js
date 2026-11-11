@@ -243,7 +243,7 @@ function checkNewSite_(input, choices, todayKey) {
     name: fields.name, buyerType: fields.buyerType, contactName: fields.contactName,
     products: fields.products, area: fields.area,
   };
-  const staged = checkUpdate_({ ...input, stage, phone: '' }, nothingYet,
+  const staged = checkUpdate_({ ...input, stage, phone: '', contact: undefined }, nothingYet,
     { lostReasons: choices.lostReasons || [] }, todayKey);
   if (!staged.ok) return staged;
   const u = staged.update;
@@ -283,16 +283,17 @@ function nextId_(used, prefix, digits) {
  */
 /**
  * An update, checked: what the site becomes. `phone` is a number added through the gate ('' if
- * none); `value` and `terms` carry over when the new stage doesn't ask for them.
+ * none); `value` and `terms` carry over when the new stage doesn't ask for them. `contact` is a
+ * new main contact person (spec 011); `contactOnly` says nothing else changes.
  * @typedef {{
  *   stage: string, value: number | null, terms: string, lostReason: string, followUp: string,
- *   note: string, phone: string,
+ *   note: string, phone: string, contact: NewContact | null, contactOnly: boolean,
  * }} SiteUpdate
  */
 
 /**
  * Checks an Update (spec 004) against the site as it is now. Never trusts the page.
- * @param {any} input { stage, value, terms, lostReason, followUp, note, phone }
+ * @param {any} input { stage, value, terms, lostReason, followUp, note, phone, contact }
  * @param {CurrentSite} current
  * @param {{ lostReasons: string[] }} choices
  * @param {string} todayKey
@@ -307,9 +308,14 @@ function checkUpdate_(input, current, choices, todayKey) {
   const note = tidyText_(input.note, LIMITS.note);
   if (note === null) return fail(`The note is too long (${LIMITS.note} letters at most).`);
 
+  const added = checkNewContact_(input.contact);
+  if (!added.ok) return added;
+  const contact = added.contact;
+
   /** @type {SiteUpdate} */
   const update = {
-    stage, value: current.value, terms: current.terms, lostReason: '', followUp: '', note, phone: '',
+    stage, value: current.value, terms: current.terms, lostReason: '', followUp: '', note, phone: '', contact,
+    contactOnly: false,
   };
 
   if (VALUE_STAGES.includes(stage)) {
@@ -336,7 +342,11 @@ function checkUpdate_(input, current, choices, todayKey) {
     update.followUp = followUp;
   }
 
-  if (NUMBER_STAGES.includes(stage) && !current.phone) {
+  // A new contact person replaces the "add the number" gate: his number does that job (spec 011).
+  if (NUMBER_STAGES.includes(stage) && contact && !contact.phone) {
+    return fail(`Type the new contact's number: a site at ${stage} needs one.`);
+  }
+  if (NUMBER_STAGES.includes(stage) && !current.phone && !contact) {
     const phone = tidyPhone_(input.phone);
     if (!phone.ok) return fail('Check the number.');
     if (!phone.phone) return fail(`Add the contact's number to move this site to ${stage}.`);
@@ -346,7 +356,8 @@ function checkUpdate_(input, current, choices, todayKey) {
   const unchanged = stage === current.stage && !note && !update.phone &&
     update.followUp === current.followUp && update.value === current.value &&
     update.terms === current.terms && update.lostReason === current.lostReason;
-  if (unchanged) return fail('Nothing to save.');
+  if (unchanged && !contact) return fail('Nothing to save.');
+  update.contactOnly = unchanged;
   return { ok: true, update };
 }
 
@@ -424,7 +435,8 @@ function mergeTouched_(input, current, todayKey) {
  * @param {any} input { name, buyerType, contactName, phone, products, area }
  * @param {CurrentSite} current
  * @param {{ buyerTypes: string[], categories: string[], areas: string[] }} choices
- * @returns {{ ok: true, fields: SiteFields, changes: string[] } | Failure}
+ * @returns {{ ok: true, fields: SiteFields, changes: string[], other: string[] } | Failure} `other`:
+ *   the changes apart from the contact person's name and number (spec 011)
  */
 function checkDetails_(input, current, choices) {
   // What the site already has stays allowed even if the owner has since turned it off in Lists
@@ -443,14 +455,17 @@ function checkDetails_(input, current, choices) {
   const changes = [];
   if (fields.name !== current.name) changes.push('Site name');
   if (fields.buyerType !== current.buyerType) changes.push('Buyer type');
+  const contactAt = changes.length;
   if (fields.contactName !== current.contactName) changes.push('Contact name');
   if (fields.phone !== current.phone) {
     changes.push(current.phone ? `Phone ${current.phone} → ${fields.phone}` : `Phone added ${fields.phone}`);
   }
+  const contactEnd = changes.length;
   if (fields.products.join(PRODUCTS_SEPARATOR) !== current.products.join(PRODUCTS_SEPARATOR)) changes.push('Products');
   if (fields.area !== current.area) changes.push('Area');
   if (changes.length === 0) return fail_('Nothing to save.');
-  return { ok: true, fields, changes };
+  const other = changes.slice(0, contactAt).concat(changes.slice(contactEnd));
+  return { ok: true, fields, changes, other };
 }
 
 /**
@@ -480,4 +495,140 @@ function checkSnooze_(input, current, todayKey) {
   if (CLOSED_STAGES.includes(current.stage)) return fail_('Won and Lost sites have no follow-up.');
   const followUp = addDays_(todayKey, FOLLOW_UP_DAYS[choice]);
   return { ok: true, followUp, already: !!current.followUp && current.followUp >= followUp };
+}
+
+// ---- Earlier contacts (spec 011, ADR-0011) ----
+
+/**
+ * A new main contact person sent with an Update (spec 011), checked: `again` when it is an
+ * earlier contact made main again (Make main).
+ * @typedef {{ name: string, phone: string, again: boolean }} NewContact
+ */
+/**
+ * One line of `Sites.earlier_contacts`: `<phone or -> · <name> · <yyyy-MM-dd>`. `line` is the
+ * line as it is in the cell (kept unchanged when the app rewrites the cell). A line that doesn't
+ * parse has `till` '' and the whole line as its name (no number, so no Call).
+ * @typedef {{ name: string, phone: string, till: string, line: string }} EarlierContact
+ */
+/** @typedef {{ name: string, phone: string }} Person */
+
+/**
+ * The earlier contacts in a cell, newest first, as the owner may have left them.
+ * @param {any} cell
+ * @returns {EarlierContact[]}
+ */
+function earlierContacts_(cell) {
+  if (isBlank_(cell)) return [];
+  return String(cell).split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((line) => {
+    const first = line.indexOf('·');
+    const last = line.lastIndexOf('·');
+    const phoneText = line.slice(0, first).trim();
+    const till = line.slice(last + 1).trim();
+    const tidy = phoneText === '-' ? { ok: true, phone: '' } : tidyPhone_(phoneText);
+    const phone = tidy.ok ? tidy.phone : '';
+    const parses = first >= 0 && first < last && tidy.ok && (phoneText === '-' || !!phone) &&
+      /^\d{4}-\d{2}-\d{2}$/.test(till) && addDays_(till, 0) === till;
+    return parses ? { name: line.slice(first + 1, last).trim(), phone, till, line } : { name: line, phone: '', till: '', line };
+  });
+}
+
+/**
+ * A name compared loosely: capitals and spaces don't matter.
+ * @param {string} name
+ */
+function looseName_(name) {
+  return String(name || '').toLowerCase().replace(/\s+/g, '');
+}
+
+/**
+ * The same person (spec 011): the same number; or both without a number and the same name.
+ * @param {Person} a
+ * @param {Person} b
+ */
+function samePerson_(a, b) {
+  return a.phone || b.phone ? a.phone === b.phone : looseName_(a.name) === looseName_(b.name);
+}
+
+/**
+ * The same main contact, as a page saw it: the same number and the same name.
+ * @param {Person} a
+ * @param {Person} b
+ */
+function sameMain_(a, b) {
+  return a.phone === b.phone && looseName_(a.name) === looseName_(b.name);
+}
+
+/**
+ * The main contact a page saw when its form opened (`seen.contact`), or null if it sent none (a
+ * page from before spec 011).
+ * @param {any} seen
+ * @returns {Person | null}
+ */
+function seenMain_(seen) {
+  const c = seen && typeof seen === 'object' ? seen.contact : null;
+  if (!c || typeof c !== 'object') return null;
+  return { name: typeof c.name === 'string' ? c.name : '', phone: phoneText_(c.phone) };
+}
+
+/**
+ * A `Sites` row's main contact, as it moves to Earlier contacts: a number that isn't a real one
+ * goes, as typed, into the name.
+ * @param {Object<string, any>} r
+ * @returns {Person}
+ */
+function mainPerson_(r) {
+  const phone = phoneText_(r.contact_phone);
+  return { name: tidyText_(`${text_(r.contact_name)} ${phone ? '' : text_(r.contact_phone)}`, Infinity) || '', phone };
+}
+
+/**
+ * Checks a new contact person sent with an Update (spec 011): the same name and number rules as
+ * a new site; a name or a number. None sent: null.
+ * @param {any} raw { name, phone, again }
+ * @returns {{ ok: true, contact: NewContact | null } | Failure}
+ */
+function checkNewContact_(raw) {
+  if (raw === undefined || raw === null) return { ok: true, contact: null };
+  if (typeof raw !== 'object' || Array.isArray(raw)) return fail_('Something went wrong. Try again.');
+  const name = tidyText_(raw.name, LIMITS.contactName);
+  if (name === null) return fail_(`Contact name is too long (${LIMITS.contactName} letters at most).`);
+  const phone = tidyPhone_(raw.phone);
+  if (!phone.ok) return fail_('Check the number.');
+  if (!name && !phone.phone) return fail_("Type the new contact's name or number.");
+  return { ok: true, contact: { name, phone: phone.phone, again: raw.again === true } };
+}
+
+/**
+ * The earlier contacts cell after `next` becomes the main contact in place of `main`: the old one
+ * on top with today's date (if it has a name or a number); the new one's number is never kept as
+ * an earlier one (Make main without a number: the first entry with its name goes); at most
+ * EARLIER_CONTACTS_MAX lines. Every other line stays exactly as it is.
+ * @param {any} cell
+ * @param {Person} main
+ * @param {Person & { again?: boolean }} next
+ * @param {string} todayKey
+ */
+function earlierAfter_(cell, main, next, todayKey) {
+  let list = earlierContacts_(cell);
+  if (next.phone) {
+    list = list.filter((e) => e.phone !== next.phone);
+  } else if (next.again) {
+    const at = list.findIndex((e) => e.till && !e.phone && looseName_(e.name) === looseName_(next.name));
+    if (at >= 0) list.splice(at, 1);
+  }
+  const lines = list.map((e) => e.line);
+  if (main.name || main.phone) lines.unshift(`${main.phone || '-'} · ${main.name} · ${todayKey}`);
+  return lines.slice(0, EARLIER_CONTACTS_MAX).join('\n');
+}
+
+/**
+ * The `contact` row's note (spec 011): "New contact: Bilal · 923001234567 (was Asif ·
+ * 923331112222)", or "Main contact again: …" for Make main.
+ * @param {Person} next
+ * @param {Person} main
+ * @param {boolean} again
+ */
+function contactNote_(next, main, again) {
+  const who = (/** @type {Person} */ p) => [p.name, p.phone].filter(Boolean).join(' · ');
+  return `${again ? 'Main contact again' : 'New contact'}: ${who(next)}${who(main) ? ` (was ${who(main)})` : ''}`;
 }
