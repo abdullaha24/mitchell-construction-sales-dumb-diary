@@ -539,6 +539,8 @@
       // Puts a save in the queue (replacing the failed one it retries) and shows it at once.
       function enqueue(entry, replaces) {
         if (replaces) removeEntry(replaces);
+        // Spec 011: its site only the admin's summary brought (kept with the save, for a reload).
+        if (sum.c[entry.card.id]) entry.sumOnly = 1;
         entry.status = 'saving';
         entry.message = '';
         queue.push(entry);
@@ -551,7 +553,7 @@
         for (var i = 0; i < data.sites.length; i++) if (data.sites[i].id === card.id) at = i;
         if (at >= 0) data.sites[at] = clone(card);
         // A site only the admin's summary brought (spec 011) stays out of his page's sites.
-        else if (sum.c[card.id]) sum.c[card.id] = clone(card);
+        else if (sum.c[card.id] || (entryFor(card.id) || {}).sumOnly) sum.c[card.id] = clone(card);
         else data.sites.unshift(clone(card));
       }
       function entryFor(siteId) {
@@ -1309,6 +1311,7 @@
           !!mine || !!s.phone || !!upd.phone.trim(), "Add the contact's number to move this site to " + upd.stage + '.');
         if (trouble) return problem(trouble);
         var only = mine && !upd.note.trim();
+        if (mine && mine.phone.trim() && !tidyPhone(mine.phone)) return problem('Check the number.');
         if (mine && !mine.phone.trim()) {
           if (has(r.numberStages, upd.stage)) return problem("Type the new contact's number: a site at " + upd.stage + ' needs one.');
           if (!confirmNoNumber) { confirmNoNumber = true; clearProblem(); return renderSave(); }
@@ -1346,7 +1349,7 @@
         card.followUp = followUp;
         if (upd.note.trim()) { card.note = (ADMIN ? 'Admin: ' : '') + upd.note.trim(); card.noteDay = todayKey(); }
         if (mine) moveMain(card, mine);
-        else if (tidyPhone(upd.phone)) card.phone = tidyPhone(upd.phone);
+        else if (tidyPhone(upd.phone)) { card.phone = tidyPhone(upd.phone); dropEarlier(card); }
         // A salesman's Update is real work: no longer going cold (P6-2). The admin's never is (P7-5).
         // A contact-only one isn't (spec 011).
         if (!ADMIN && !(only && input.touched && !input.touched.length)) card.worked = todayKey();
@@ -1386,15 +1389,30 @@
         card.contactName = c.name.trim();
         card.phone = p;
       }
-      // Spec 011: 'via' = the main contact Google last confirmed and the contacts his saves of this
-      // site still on their way set, and what those knew (Google having one of them is no change under him). A new form
-      // shows the last one's new contact in the box (× drops it, then it is never sent) unless it
-      // already has its own; a retry keeps its own.
+      // Spec 011: 'via' = the main contacts his saves of this site still on their way set (an Edit
+      // details' contact too), what those knew (a retry keeps what the save it replaced set) and the one
+      // Google last confirmed: newest first, each person once, at most 20. Google having one of them is
+      // no change under him. A new form shows the newest Update's new contact in the box (× drops it,
+      // then it is never sent) unless it already has its own; a retry keeps its own.
       function carryContact(u, id, list, known, retry) {
-        var last;
-        u.via = [known];
-        list.forEach(function (q) { if (q.card.id === id && 'contact' in q.state) u.via = u.via.concat(q.state.via, last = q.state.contact); });
-        if (!retry && u.contact === undefined && u.via.length > 1) u.contact = clone(last);
+        var last, seen = {};
+        u.via = [];
+        function add(c) {
+          var key = c && tidyPhone(c.phone) + '|' + loose(c.name);
+          if (key && !seen[key] && u.via.length < 20) { seen[key] = 1; u.via.push({ name: c.name, phone: c.phone }); }
+        }
+        list.slice().reverse().forEach(function (q) {
+          var st = q.state, ed = q.fn === 'repEditSite';
+          if (q.card.id !== id || !(ed || 'contact' in st)) return;
+          if (!ed && last === undefined) last = st.contact;
+          [ed ? { name: st.contactName, phone: st.phone } : st.contact].concat(st.via).forEach(add);
+        });
+        add(known);
+        if (!retry && u.contact === undefined && last !== undefined) u.contact = clone(last);
+      }
+      // The main number is never also an earlier one (spec 011), whatever changed it.
+      function dropEarlier(card) {
+        if (card.earlier) card.earlier = card.earlier.filter(function (e) { return !card.phone || e.phone !== card.phone; });
       }
       function setContact(c) { upd.contact = c; upd.phone = ''; $('u-cNote').hidden = true; updChanged(); }
       function showPhoneNote(note, r, current) {
@@ -1595,6 +1613,7 @@
           if (form.newPerson) moveMain(card, { name: form.contactName, phone: form.phone });
           card.name = form.name.trim(); card.buyerType = form.buyerType; card.contactName = form.contactName.trim();
           card.phone = tidyPhone(form.phone) || site.phone; card.products = form.products.slice(); card.area = area;
+          dropEarlier(card);
           var editReplaces = retrying;
           store(formKey(), null); // the queue carries it now
           enqueue({ id: form.saveId, fn: 'repEditSite', siteId: id, input: input, card: card, state: clone(form) }, editReplaces);

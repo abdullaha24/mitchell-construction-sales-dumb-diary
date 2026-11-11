@@ -95,6 +95,8 @@
   // move to Won / Lost keeps the day another one found.
   function aSumCards(r) {
     (r.cards || []).forEach(function (c) {
+      // A site with his own save still on its way keeps the newer card he has (spec 011 review).
+      if (entryFor(c.id)) return;
       var o = sum.c[c.id];
       if (o && o.stage === c.stage && !c.closed) c.closed = o.closed;
       sum.c[c.id] = c;

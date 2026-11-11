@@ -349,13 +349,44 @@ let browser;
   assert.deepEqual([r.contact_name, r.next_followup, r.worked_at.getTime()], ['Imran', '', D.getTime()]);
   assert.deepEqual(activity().slice(-1).map((a) => a.action), ['contact']);
 
+  // ---- Review: a new contact's number that isn't one stops the save on the form (nothing queued). ----
+  await openSite(page, 'F-11 Tower');
+  const queued = await page.evaluate(() => queue.length);
+  await page.click('#u-addC');
+  await page.fill('#u-cName', 'Shorty');
+  await page.fill('#u-cPhone', '0300 12');
+  await page.click('#save');
+  assert.equal(await page.textContent('#u-problem'), 'Check the number.');
+  assert.equal(await page.isVisible('#siteView'), true, 'still on the form');
+  assert.equal(await page.evaluate(() => queue.length), queued, 'nothing queued');
+  await page.click('#cancel');
+
+  // ---- Review probe: his own Edit details still on its way is no change under his next Update. ----
+  await page.evaluate(() => { window.__hold = new Promise((resolve) => { window.__release = resolve; }); });
+  await openSite(page, 'Quiet Site');
+  await page.click('#editDetails');
+  await page.fill('#f-contact', 'Nadeem Khan');
+  await page.click('#save');
+  await page.waitForSelector('#snoozeSheet:not([hidden])');
+  await page.click('#snoozeChoices button:has-text("No, fix the number")');
+  await page.waitForSelector('#siteView:not([hidden])');
+  await page.click('#u-stage .pill:has-text("Sample / Trial")');
+  await page.fill('#u-phone', '0300 7778888');
+  await page.click('#save');
+  await page.evaluate(() => { window.__hold = null; window.__release(); });
+  await page.waitForFunction(() => !document.querySelector('.card .tag.saving'));
+  assert.equal(await page.locator('.card.failed').count(), 0, 'not refused as "changed"');
+  r = row('S000004');
+  assert.deepEqual([r.contact_name, r.contact_phone, r.stage], ['Nadeem Khan', '923007778888', 'Sample / Trial']);
+
   // ---- The admin: sees Earlier contacts, + New contact person, his feed at once. ----
   const admin = await open(ADMIN, 'admin.html');
   await admin.waitForSelector('#adminTabs');
   const riaLine = await admin.textContent('.rep-row:has(.code:text-is("RIA")) .what');
-  // Bilal, Make main Asif, Zafar, Edit details "Yes", Rafiq: contact changes; Kamal with its Update: one
-  // save; the × Update and the note: two more.
-  assert.equal(riaLine, '9 saves: 3 updates (1 new contact), 6 contact changes', 'an Update with its contact row is one save');
+  // Bilal, Make main Asif, Zafar, Edit details "Yes", Rafiq, Imran: contact changes; Kamal with its Update:
+  // one save; the × Update, the note and the Quiet Site Update: three more; the Edit details "No".
+  assert.equal(riaLine, '11 saves: 4 updates (1 new contact), 1 details change, 6 contact changes',
+    'an Update with its contact row is one save');
   const feed = await admin.$$eval('.card.feed .what', (els) => els.map((e) => e.textContent));
   const kamal = feed.findIndex((f) => f.startsWith('New contact: Kamal · 923002223344 (was Zafar)'));
   assert.ok(kamal >= 0 && feed[kamal + 1].startsWith('Update'), `the update itself is its own feed row: ${feed[kamal + 1]}`);

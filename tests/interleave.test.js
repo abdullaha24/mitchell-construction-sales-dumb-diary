@@ -455,6 +455,82 @@ test(`two people, one site: ${SEEDS.length} random interleavings keep the five p
   for (const seed of SEEDS) run(seed);
 });
 
+test('spec 011 review: seen.via stays small along a chain of 30 queued Updates, newest first, and still works', () => {
+  freshDiary();
+  const queue = [];
+  const known = { name: 'Start', phone: '923001234567' };
+  let u;
+  for (let i = 0; i < 30; i++) {
+    u = {};
+    page.carryContact(u, SITE, queue, known);
+    assert.ok(u.via.length <= 20, `form ${i}: ${u.via.length}`);
+    u.contact = { name: `P${i}`, phone: `0300 00${String(i).padStart(5, '0')}` };
+    queue.push({ id: `q${i}`, card: { id: SITE }, state: u });
+  }
+  u = {};
+  page.carryContact(u, SITE, queue, known);
+  assert.equal(u.via.length, 20);
+  assert.equal(u.via[0].name, 'P29', 'the newest first');
+  assert.equal(u.contact.name, 'P29', 'the newest new contact is carried');
+  assert.ok(JSON.stringify(queue).length < 60000, 'no growth to fill phone storage');
+  // Google has his newest own contact (P29) and an older one's reply never came: no change under him.
+  s.repUpdateSite(RIA, SITE, { stage: 'Rate Quoted', value: '300000', terms: 'Credit', followUp: page.addDays(TODAY, 2),
+    contact: { name: 'P29', phone: '0300 0000029' } });
+  const seen = { stage: 'Rate Quoted', value: 300000, terms: 'Credit', lostReason: '', followUp: page.addDays(TODAY, 2),
+    contact: known, via: u.via };
+  const r = plain(s.repUpdateSite(RIA, SITE, { stage: 'Rate Quoted', value: '300000', terms: 'Credit', followUp: seen.followUp,
+    seen, touched: [], contact: { name: 'Bilal', phone: '0300 1110001' } }));
+  assert.equal(r.ok, true, r.message);
+});
+
+test("spec 011 review: his own queued Edit details' contact is in via (no false \"changed\" on his next Update)", () => {
+  const u = {};
+  const queue = [{ id: 'e1', fn: 'repEditSite', card: { id: SITE }, state: { contactName: 'Nadeem Khan', phone: '' } },
+    { id: 's1', fn: 'repSnoozeSite', card: { id: SITE }, state: { followUp: '3days' } }];
+  page.carryContact(u, SITE, queue, { name: 'Nadeem', phone: '' });
+  assert.deepEqual(u.via, [{ name: 'Nadeem Khan', phone: '' }, { name: 'Nadeem', phone: '' }]);
+  assert.equal(u.contact, undefined, 'an Edit details is not carried into the new contact box');
+});
+
+// The page's queue and card helpers, loaded as they are (spec 011 review: the admin's summary cards).
+const APP_QUEUE = ['clone', 'entryFor', 'removeEntry', 'showCard', 'enqueue', 'dropEarlier'].map(pageFunction).join('\n');
+const ADMIN_HTML = fs.readFileSync(path.join(SRC_DIR, 'Admin.html'), 'utf8');
+const aSumCardsSource = ADMIN_HTML.slice(ADMIN_HTML.indexOf('  function aSumCards('), ADMIN_HTML.indexOf('\n  }\n', ADMIN_HTML.indexOf('  function aSumCards(')) + 4);
+function queuePage() {
+  const world = { data: { sites: [{ id: 'S000001', name: 'On the page' }] }, sum: { c: {} }, queue: [] };
+  const fns = new Function('data', 'sum', 'queue', 'saveQueue', 'sendNext', `${APP_QUEUE}\n${aSumCardsSource}\n` +
+    'return { enqueue: enqueue, showCard: showCard, aSumCards: aSumCards, dropEarlier: dropEarlier };')(
+    world.data, world.sum, world.queue, () => {}, () => {});
+  return { ...world, ...fns };
+}
+
+test('spec 011 review: a save of a site only the summary brought stays out of his sites, after a reload too', () => {
+  const p = queuePage();
+  p.aSumCards({ cards: [{ id: 'S000009', name: 'Old Win', stage: 'Won (Order)' }] });
+  p.enqueue({ id: 'x1', card: { id: 'S000009', name: 'Old Win', stage: 'Won (Order)', note: 'mine' }, state: {} });
+  assert.equal(p.queue[0].sumOnly, 1);
+  assert.deepEqual(p.data.sites.map((x) => x.id), ['S000001']);
+  // A reload: the summary's lookup is empty; the stored save puts its card back there, never in his sites.
+  const after = queuePage();
+  after.queue.push(JSON.parse(JSON.stringify(p.queue[0])));
+  after.showCard(after.queue[0].card);
+  assert.deepEqual(after.data.sites.map((x) => x.id), ['S000001']);
+  assert.equal(after.sum.c.S000009.note, 'mine');
+  // The summary fetched again never overwrites the newer card while his save is on its way.
+  after.aSumCards({ cards: [{ id: 'S000009', name: 'Old Win', stage: 'Won (Order)', note: 'older' }] });
+  assert.equal(after.sum.c.S000009.note, 'mine');
+  // A save of a site on his page still goes to his page.
+  after.enqueue({ id: 'x2', card: { id: 'S000001', name: 'Changed' }, state: {} });
+  assert.deepEqual([after.data.sites[0].name, after.queue[1].sumOnly], ['Changed', undefined]);
+});
+
+test('spec 011 review: the waiting card never keeps an earlier line with its new main number', () => {
+  const card = { phone: '923007778888', earlier: [{ name: 'Old', phone: '923007778888', till: '2026-09-01' },
+    { name: 'Other', phone: '923001112222', till: '2026-08-01' }, { name: 'typed', phone: '', till: '' }] };
+  queuePage().dropEarlier(card);
+  assert.deepEqual(card.earlier.map((e) => e.name), ['Other', 'typed']);
+});
+
 test("spec 011: the page's moveMain gives the waiting card exactly the Earlier contacts Google will write", () => {
   const people = [['Asif', '923331112222'], ['a sif', ''], ['ASIF', ''], ['Bilal', '923001234567'], ['Kamran', ''], ['', '923004445555']];
   const lists = [

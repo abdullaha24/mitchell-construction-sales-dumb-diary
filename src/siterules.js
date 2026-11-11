@@ -574,14 +574,15 @@ function seenMain_(c) {
 
 /**
  * Has the main contact changed under his form (spec 011)? His form says what Google had when it
- * opened (`seen.contact`) and the contacts his own saves still on their way set (`seen.via`); the
+ * opened (`seen.contact`) and the contacts his own saves still on their way set (`seen.via`, newest
+ * first: the first 20 are read); the
  * main contact now is none of them. A page from before spec 011 (no `seen.contact`): no.
  * @param {any} seen
  * @param {Person} now
  */
 function contactMovedUnder_(seen, now) {
   const saw = seen && typeof seen === 'object'
-    ? [seen.contact].concat(Array.isArray(seen.via) ? seen.via.slice(0, 50) : []).map(seenMain_) : [];
+    ? [seen.contact].concat(Array.isArray(seen.via) ? seen.via.slice(0, 20) : []).map(seenMain_) : [];
   return !!saw[0] && !saw.some((x) => !!x && sameMain_(x, now));
 }
 
