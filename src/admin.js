@@ -56,7 +56,7 @@ function requireAdminLink_(k) {
  * One `Activity` row (of this month, or of a summary's period), tidied.
  * @typedef {{
  *   when: Date, by: string, site: string, action: string, from: string, to: string,
- *   value: number | null, terms: string, lostReason: string, note: string, followUp: string,
+ *   value: number | null, terms: string, lostReason: string, note: string, followUp: string, id?: string,
  * }} MonthMove
  */
 
@@ -108,6 +108,7 @@ function activitySince_(diary, start) {
       const value = parseRs_(typeof line[c.value_rs] === 'number' ? line[c.value_rs] : text_(line[c.value_rs]));
       block.push({
         when,
+        id: text_(line[c.activity_id]),
         by: looseText_(line[c.rep]) === ADMIN_ACTOR ? ADMIN_ACTOR : tidyCode_(line[c.rep]),
         site: text_(line[c.site_id]),
         action: looseText_(line[c.action]),
@@ -215,14 +216,28 @@ function adminDataFor_(diary, linked, now) {
       .map((key) => [key, shownTarget_(kept.regionTargets, key, month)])),
     houseRegion: HOUSE_REGION,
     sites: cards,
-    feed: todays.reverse().map((m) => ({
+    // A `contact` row written with an Update or Edit details (the row just before it, its ID one
+    // less) is `paired`: one save with it (spec 011).
+    feed: todays.map((m, i) => ({
       time: Utilities.formatDate(m.when, APP_TIME_ZONE, 'HH:mm'), by: m.by, site: m.site, name: names[m.site] || m.site,
       action: m.action, from: m.from, to: m.to, value: m.value, terms: m.terms, lostReason: m.lostReason,
-      note: m.note, followUp: m.followUp,
-    })),
+      note: m.note, followUp: m.followUp, ...(pairedContact_(todays[i - 1], m) ? { paired: true } : {}),
+    })).reverse(),
     lostReasons: choicesFor_(lists, '').lostReasons,
     rules: pageRules_(),
   };
+}
+
+/**
+ * Is `m` the `contact` row of the save that wrote `before` (spec 011)? Written together: the same
+ * person and site, `before` not itself a contact row, and IDs one apart.
+ * @param {MonthMove | undefined} before the row just above it in the sheet
+ * @param {MonthMove} m
+ */
+function pairedContact_(before, m) {
+  const n = (/** @type {string | undefined} */ id) => Number(String(id || '').slice(1)) || 0;
+  return !!before && m.action === 'contact' && before.action !== 'contact' && before.by === m.by && before.site === m.site &&
+    n(m.id) > 0 && n(m.id) === n(before.id) + 1;
 }
 
 /**

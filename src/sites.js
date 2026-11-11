@@ -468,14 +468,16 @@ function saveUpdate_(diary, saver, siteId, input, now, saveId) {
     const update = checked.update;
     // A new contact person (spec 011): refused if the main contact changed since his form opened
     // (unless it is already his own new one: a repeat); nothing moves if it is the main one now.
+    // The "add the number" gate is checked the same way: a number is never given to someone else.
     const next = update.contact;
-    const seenContact = seenMain_(input && input.seen);
     const nowMain = { name: before.contactName, phone: before.phone };
-    if (next && seenContact && !sameMain_(seenContact, nowMain) && !samePerson_(next, nowMain)) {
+    if ((next || update.phone) && contactMovedUnder_(input.seen, nowMain) && !(next && samePerson_(next, nowMain))) {
       return { ok: false, changed: true, message: CHANGED_MESSAGE, site: replyCard_(saver, row) };
     }
     const moves = !!next && !samePerson_(next, nowMain);
-    if (update.contactOnly && !moves) return { ok: true, site: replyCard_(saver, row), warning: { team: false, mine: [] } };
+    if (update.contactOnly && !moves) {
+      return { ok: true, site: replyCard_(saver, row), warning: { team: false, mine: [] }, only: true };
+    }
     const newPhone = update.phone || (moves && next ? next.phone : '');
     const warning = newPhone ? phoneOwners_(sites, newPhone, rep, text_(row.site_id)) : { team: false, mine: [] };
     const followUp = update.followUp ? dayStart_(update.followUp) : '';
@@ -500,7 +502,11 @@ function saveUpdate_(diary, saver, siteId, input, now, saveId) {
       cells.last_note = note;
       cells.note_at = now;
     }
-    if (update.phone) cells.contact_phone = update.phone;
+    if (update.phone) {
+      cells.contact_phone = update.phone;
+      const earlier = earlierWithout_(row.earlier_contacts, update.phone);
+      if (earlier !== null) cells.earlier_contacts = earlier;
+    }
     const main = mainPerson_(row);
     const contactNote = moves && next ? contactNote_(next, main, next.again) : '';
     if (moves && next) {
@@ -579,8 +585,7 @@ function saveDetails_(diary, salesman, siteId, input, now, saveId) {
     const fields = checked.fields;
     const next = { name: fields.contactName, phone: fields.phone };
     const nowMain = { name: before.contactName, phone: before.phone };
-    const seenContact = seenMain_(input.seen);
-    if (seenContact && !sameMain_(seenContact, nowMain) && !sameMain_(next, nowMain)) {
+    if (contactMovedUnder_(input.seen, nowMain) && !sameMain_(next, nowMain)) {
       return { ok: false, changed: true, message: CHANGED_MESSAGE, site: cardOf_(row) };
     }
     let warning = { team: false, mine: /** @type {string[]} */ ([]) };
@@ -595,7 +600,12 @@ function saveDetails_(diary, salesman, siteId, input, now, saveId) {
       site_name: fields.name, buyer_type: fields.buyerType, contact_name: fields.contactName,
       contact_phone: fields.phone, products: fields.products.join(PRODUCTS_SEPARATOR), area, updated_at: now,
     };
-    if (newPerson) cells.earlier_contacts = earlierAfter_(row.earlier_contacts, main, next, dayKey_(now));
+    if (newPerson) {
+      cells.earlier_contacts = earlierAfter_(row.earlier_contacts, main, next, dayKey_(now));
+    } else if (fields.phone !== before.phone) {
+      const earlier = earlierWithout_(row.earlier_contacts, fields.phone);
+      if (earlier !== null) cells.earlier_contacts = earlier;
+    }
     setCells_(sites, row._row, textify_(cells), ['contact_phone']);
     const firstId = nextId_(activity.rows.map((r) => r.activity_id), 'A', 7);
     const by = asText_(salesman.rep);

@@ -56,7 +56,10 @@ function buildWorld() {
         contact_phone: '923007654321', earlier_contacts: '923006667777 · Hidden Person · 2026-08-01' }),
       site({ site_id: 'S000003', rep: 'RIA', site_name: 'Blue Area', contact_name: 'Tariq', contact_phone: '923331112222',
         stage: 'Rate Quoted', value_rs: 450000, payment_terms: 'Credit',
-        earlier_contacts: `- · NoNum Guy · ${THIS_YEAR}-10-01\n923009998888 · Has Num · ${THIS_YEAR}-10-01` })],
+        earlier_contacts: `- · NoNum Guy · ${THIS_YEAR}-10-01\n923009998888 · Has Num · ${THIS_YEAR}-10-01` }),
+      site({ site_id: 'S000004', rep: 'RIA', site_name: 'Quiet Site', contact_name: 'Nadeem', contact_phone: '' }),
+      site({ site_id: 'S000005', rep: 'RIA', site_name: 'Undated Site', contact_name: 'Imtiaz', contact_phone: '923001231230',
+        next_followup: '' })],
     Activity: [ACTIVITY],
     Lists: lists,
     Links: [['role', 'rep', 'token', 'active', 'issued_at'], ['rep', 'RIA', RIA, true, D], ['owner', '', ADMIN, true, D]],
@@ -251,6 +254,8 @@ let browser;
   await page.waitForSelector('.card:has-text("F-11 Tower") .tag.saving');
   await openSite(page, 'F-11 Tower');
   assert.ok((await page.textContent('#siteHead')).includes('Kamal · 0300 2223344'), 'his queued change shows');
+  assert.equal(await page.isVisible('#u-cBox'), true, 'the carried new contact shows in the box');
+  assert.deepEqual([await page.inputValue('#u-cName'), await page.inputValue('#u-cPhone')], ['Kamal', '0300 2223344']);
   await page.fill('#u-note', 'met Kamal');
   await page.click('#save');
   // The first never reaches Google (no signal); the second carries Kamal and lands.
@@ -266,28 +271,111 @@ let browser;
   assert.deepEqual(sent.contact, { name: 'Kamal', phone: '0300 2223344', again: false });
   assert.deepEqual(sent.seen.contact, { name: 'Zafar', phone: '' }, 'what Google had when the form opened');
 
+  // ---- × on a carried new contact: never sent, even though the first save is dropped. ----
+  await page.evaluate(() => { window.__hold = new Promise((resolve) => { window.__release = resolve; }); });
+  await openSite(page, 'F-11 Tower');
+  await page.click('#u-addC');
+  await page.fill('#u-cName', 'Pervez');
+  await page.fill('#u-cPhone', '0300 3334455');
+  await page.click('#save');
+  await page.waitForSelector('.card:has-text("F-11 Tower") .tag.saving');
+  await openSite(page, 'F-11 Tower');
+  assert.equal(await page.inputValue('#u-cName'), 'Pervez');
+  await page.click('#u-cX');
+  assert.equal(await page.isHidden('#u-cBox'), true);
+  await page.fill('#u-note', 'no new person after all');
+  await page.click('#save');
+  await page.evaluate(() => { window.__drop = 1; window.__hold = null; window.__release(); });
+  await page.waitForSelector('#toast:has-text("Saved")');
+  await page.waitForFunction(() => !document.querySelector('.card .tag.saving'));
+  r = row('S000001');
+  assert.deepEqual([r.contact_name, r.last_note], ['Kamal', 'no new person after all'], '× really dropped Pervez');
+  assert.deepEqual(activity().slice(-1).map((a) => a.action), ['update']);
+  const dropped = await page.evaluate(() => window.__calls.filter((c) => c.fn === 'repUpdateSite').slice(-1)[0].args[2]);
+  assert.equal(dropped.contact, undefined);
+  assert.equal(await page.locator('.card.failed').count(), 0);
+
+  // ---- Refused (the admin changed the contact meanwhile): the retry shows the contact it sends. ----
+  await openSite(page, 'F-11 Tower');
+  await page.click('#u-addC');
+  await page.fill('#u-cName', 'Rafiq');
+  await page.fill('#u-cPhone', '0300 6660000');
+  assert.equal(world.s.adminPageUpdateSite(ADMIN, 'S000001', { stage: 'Visited / Lead', followUp: 'tomorrow', note: 'his boss',
+    contact: { name: 'Zubair', phone: '0300 5550000' } }).ok, true);
+  await page.click('#save');
+  await page.waitForSelector('.card.failed');
+  assert.equal(row('S000001').contact_name, 'Zubair');
+  await page.click('.card.failed');
+  await page.waitForSelector('#siteView:not([hidden])');
+  assert.ok((await page.textContent('#siteHead')).includes('Zubair · 0300 5550000'), 'the site as it is now');
+  assert.deepEqual([await page.isVisible('#u-cBox'), await page.inputValue('#u-cName')], [true, 'Rafiq'], 'his new contact still shows');
+  await page.click('#save');
+  await saved(page);
+  r = row('S000001');
+  assert.deepEqual([r.contact_name, r.earlier_contacts.split('\n')[0]], ['Rafiq', `923005550000 · Zubair · ${TODAY}`]);
+
+  // ---- A number typed in the "add the number" box never rides along with a new contact. ----
+  await openSite(page, 'Quiet Site');
+  await page.click('#u-stage .pill:has-text("Sample / Trial")');
+  await page.fill('#u-phone', '0300 7778888');
+  await page.click('#u-addC');
+  assert.equal(await page.isHidden('#u-phoneBox'), true);
+  await page.click('#u-cX');
+  assert.equal(await page.inputValue('#u-phone'), '', 'cleared when + New contact person opened');
+  // The duplicate note starts hidden on +, ×, Make main.
+  await page.click('#u-stage .pill:has-text("Visited / Lead")');
+  await page.click('#u-addC');
+  await page.fill('#u-cPhone', '0300 6667777');
+  await page.waitForSelector('#u-cNote:not([hidden])');
+  await page.click('#u-cX');
+  await page.click('#u-addC');
+  assert.equal(await page.isHidden('#u-cNote'), true);
+  await page.fill('#u-cPhone', '');
+  // An empty, open box is no new contact: the Update saves as usual.
+  await page.fill('#u-note', 'just a note');
+  await page.click('#save');
+  await saved(page);
+  assert.deepEqual([row('S000004').contact_name, row('S000004').last_note], ['Nadeem', 'just a note']);
+  assert.deepEqual(activity().slice(-1).map((a) => a.action), ['update']);
+
+  // ---- Only a new contact on a site with no follow-up: no date is made up; contact-only, not work. ----
+  await openSite(page, 'Undated Site');
+  await page.click('#u-addC');
+  await page.fill('#u-cName', 'Imran');
+  await page.fill('#u-cPhone', '0300 1231231');
+  await page.click('#save');
+  await saved(page);
+  r = row('S000005');
+  assert.deepEqual([r.contact_name, r.next_followup, r.worked_at.getTime()], ['Imran', '', D.getTime()]);
+  assert.deepEqual(activity().slice(-1).map((a) => a.action), ['contact']);
+
   // ---- The admin: sees Earlier contacts, + New contact person, his feed at once. ----
   const admin = await open(ADMIN, 'admin.html');
   await admin.waitForSelector('#adminTabs');
   const riaLine = await admin.textContent('.rep-row:has(.code:text-is("RIA")) .what');
-  assert.equal(riaLine, '5 saves: 1 update, 5 contact changes', 'an Update with its contact row is one save');
+  // Bilal, Make main Asif, Zafar, Edit details "Yes", Rafiq: contact changes; Kamal with its Update: one
+  // save; the × Update and the note: two more.
+  assert.equal(riaLine, '9 saves: 3 updates (1 new contact), 6 contact changes', 'an Update with its contact row is one save');
   const feed = await admin.$$eval('.card.feed .what', (els) => els.map((e) => e.textContent));
-  assert.ok(feed[0].startsWith('New contact: Kamal · 923002223344 (was Zafar)'), feed[0]);
-  assert.ok(feed[1].startsWith('Update'), `the update itself is its own feed row: ${feed[1]}`);
-  await admin.click('.card.feed:has-text("Kamal")');
+  const kamal = feed.findIndex((f) => f.startsWith('New contact: Kamal · 923002223344 (was Zafar)'));
+  assert.ok(kamal >= 0 && feed[kamal + 1].startsWith('Update'), `the update itself is its own feed row: ${feed[kamal + 1]}`);
+  await admin.click('.card.feed:has-text("Rafiq")');
   await admin.waitForSelector('#siteView:not([hidden])');
-  assert.equal(await admin.textContent('#earlier'), 'Earlier contacts (6) ▾');
+  assert.equal(await admin.textContent('#earlier'), `Earlier contacts (${row('S000001').earlier_contacts.split('\n').length}) ▾`);
+  const adminRows = activity().filter((a) => a.rep === 'admin').length;
   await admin.click('#u-addC');
   await admin.fill('#u-cName', 'Admin Pick');
   await admin.fill('#u-cPhone', '0300 9990000');
+  const feedBefore = await admin.evaluate(() => data.feed.length);
   await admin.click('#save');
   await admin.waitForSelector('#toast:has-text("Saved")');
   await admin.waitForSelector('.card.feed');
   const first = await admin.textContent('.card.feed .when');
   assert.ok(first.includes('You · F-11 Tower'), first);
-  assert.equal(await admin.textContent('.card.feed .what'), 'New contact: Admin Pick · 923009990000 (was Kamal · 923002223344)');
+  assert.equal(await admin.textContent('.card.feed .what'), 'New contact: Admin Pick · 923009990000 (was Rafiq · 923006660000)');
   assert.equal(activity().slice(-1)[0].rep, 'admin');
-  assert.equal(activity().filter((a) => a.rep === 'admin').length, 1, 'contact-only: no update row');
+  assert.equal(activity().filter((a) => a.rep === 'admin').length, adminRows + 1, 'contact-only: no update row');
+  assert.equal(await admin.evaluate(() => data.feed.length), feedBefore + 1, 'one feed row: no made-up Update');
   await noSideways(admin, 'admin feed');
   if (shots) await admin.screenshot({ path: path.join(shots, 'contacts-admin-feed.png') });
 
