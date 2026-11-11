@@ -86,13 +86,13 @@
       .section { font-size: 18px; font-weight: 700; margin: 20px 0 0; }
       #formTitle { font-size: 20px; margin: 4px 0 0; }
       /* Spec 007: last-spoken line, going cold, Call / WhatsApp / Snooze, area filter. */
-      :root { --yellow-bg: #fff8db; --yellow-line: #e2bd3c; --yellow-ink: #6b4e00; }
       .card .said { font-size: 14px; margin-top: 4px; overflow-wrap: anywhere; display: -webkit-box;
                     -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-      .card.cold { background: var(--yellow-bg); border-color: var(--yellow-line); }
+      .card.cold { background: #fff8db; border-color: #e2bd3c; }
       .card.cold.late { border-left-color: var(--red); }
-      .tag.cold { background: #fbe9a6; color: var(--yellow-ink); font-weight: 700; }
-      .card.cold.failed { border-color: var(--orange); } /* a save that didn't go through shows first */
+      .tag.cold { background: #fbe9a6; color: #6b4e00; font-weight: 700; }
+      /* a save that didn't go through shows first */
+      .card.cold.failed { border-color: var(--orange); }
       .btnrow { display: flex; gap: 8px; margin-top: 10px; }
       .btnrow > a, .btnrow > button { flex: 1 1 0; min-width: 0; min-height: 44px; display: flex; align-items: center;
                justify-content: center; padding: 6px 4px; border-radius: 10px; border: 1px solid var(--line);
@@ -148,8 +148,9 @@
       .sumt .late { color: var(--red); }
       .sumt .cold { color: var(--orange); }
       .sumt .b .num { font-weight: 700; }
-      .sumt .w .num { white-space: normal; width: 50%; } /* a late / cold reason may wrap; Rs. never does */
-      .sumt .w td:first-child { color: var(--ink); } /* a named site: only its reason is red / amber */
+      /* a late / cold reason may wrap (Rs. never does); a named site: only its reason is red / amber */
+      .sumt .w .num { white-space: normal; width: 50%; }
+      .sumt .w td:first-child { color: var(--ink); }
       .nowcap { font-size: 12px; font-weight: 700; color: var(--soft); text-transform: uppercase; letter-spacing: .04em; margin: 14px 2px 6px; }
       #sumWa { background: #1fa855; border-color: #1fa855; color: #fff; }
       #sumCopy { width: 100%; height: 50vh; font: inherit; }
@@ -179,13 +180,13 @@
           <h1 id="who"></h1>
           <div id="target" class="target" hidden></div>
         </div>
-        <button class="plain" id="summary" type="button">Summary</button>
-        <button class="big" id="newSite" type="button">+ New Site</button>
+        <button class="plain" id="summary">Summary</button>
+        <button class="big" id="newSite">+ New Site</button>
       </header>
       <nav class="tabs" id="tabs" role="tablist">
-        <button class="tab" id="tab-chase" type="button" role="tab">Today's Chase<span class="count"></span></button>
-        <button class="tab" id="tab-hot" type="button" role="tab">Hot Pipeline<span class="count"></span></button>
-        <button class="tab" id="tab-all" type="button" role="tab">All My Parties<span class="count"></span></button>
+        <button class="tab" id="tab-chase" role="tab">Today's Chase<span class="count"></span></button>
+        <button class="tab" id="tab-hot" role="tab">Hot Pipeline<span class="count"></span></button>
+        <button class="tab" id="tab-all" role="tab">All My Parties<span class="count"></span></button>
       </nav>
     </div>
 
@@ -195,7 +196,7 @@
       <div id="searchBox" class="search" hidden>
         <input id="search" type="search" maxlength="60" autocomplete="off" enterkeyhint="search"
                placeholder="Search name, phone, area…" aria-label="Search your parties">
-        <button class="plain" id="clearSearch" type="button" aria-label="Clear search" hidden>✕</button>
+        <button class="plain" id="clearSearch" aria-label="Clear search" hidden>✕</button>
       </div>
       <div id="areaRow" class="areas" role="group" aria-label="Show one area" hidden></div>
       <div id="sites"></div>
@@ -320,18 +321,18 @@
     </main>
 
     <div class="actions" id="formActions" hidden>
-      <button class="plain" id="cancel" type="button">Back</button>
-      <button class="big" id="save" type="button">Save</button>
+      <button class="plain" id="cancel">Back</button>
+      <button class="big" id="save">Save</button>
     </div>
     <div id="snoozeBack" class="sheet-back" hidden></div>
     <div id="snoozeSheet" class="sheet" role="dialog" aria-modal="true" aria-labelledby="snoozeTitle" hidden>
       <div id="snoozeTitle" class="sheet-title"></div>
       <div id="snoozeProblem" class="note error" hidden></div>
       <div class="sheet-choices" id="snoozeChoices"></div>
-      <button class="plain" id="snoozeCancel" type="button">Cancel</button>
+      <button class="plain" id="snoozeCancel">Cancel</button>
       <div class="btnrow" id="snoozeRetry" hidden>
-        <button id="snoozeOpen" type="button">Open site</button>
-        <button id="snoozeDrop" type="button">Don't snooze</button>
+        <button id="snoozeOpen">Open site</button>
+        <button id="snoozeDrop">Don't snooze</button>
       </div>
     </div>
     <div id="toast" role="status"></div>
@@ -348,9 +349,12 @@
       var FOLLOW = [['tomorrow', 'Tomorrow'], ['3days', '3 days'], ['1week', '1 week'], ['date', 'Pick date']];
       var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       var SAVE_WAIT_MS = 30000;
-      var screen = 'list';        // 'list' | 'form' | 'site'
-      var mode = { kind: 'new' }; // the details form: { kind: 'new' } or { kind: 'edit', siteId }
-      var openId = '';            // the site on the site screen
+      // 'list' | 'form' | 'site'
+      var screen = 'list';
+      // the details form: { kind: 'new' } or { kind: 'edit', siteId }
+      var mode = { kind: 'new' };
+      // the site on the site screen
+      var openId = '';
       var form = emptyForm();
       var upd = null;
       var confirmNoNumber = false;
@@ -365,16 +369,25 @@
       // The three tabs (spec 006). All work on the phone from data.sites: no trip to Google.
       var MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August',
         'September', 'October', 'November', 'December'];
-      var PK_OFFSET_MS = 5 * 60 * 60 * 1000; // Pakistan time: UTC+5, no daylight saving
-      var PAGE_SIZE = 50;    // cards per tab before "Show more", so a long list stays fast
-      var tab = 'chase';     // 'chase' | 'hot' | 'all'; the app always opens on Today's Chase
+      // Pakistan time: UTC+5, no daylight saving
+      var PK_OFFSET_MS = 5 * 60 * 60 * 1000;
+      // cards per tab before "Show more", so a long list stays fast
+      var PAGE_SIZE = 50;
+      // 'chase' | 'hot' | 'all'; the app always opens on Today's Chase
+      var tab = 'chase';
       var shownCount = PAGE_SIZE;
-      var query = '';        // the All My Parties search
-      var areaPick = '';     // the All My Parties area filter (spec 007): an area key, '' = all areas
-      var snoozing = null;   // the open Snooze panel: { id, entry (a failed snooze it retries) }
-      var listScroll = 0;    // where he was in the list, for coming back to it
-      var renderedDay = '';  // the day the list was last drawn for
-      var clockGap = 0;      // Google's clock minus the phone's, so a wrong phone clock doesn't matter
+      // the All My Parties search
+      var query = '';
+      // the All My Parties area filter (spec 007): an area key, '' = all areas
+      var areaPick = '';
+      // the open Snooze panel: { id, entry (a failed snooze it retries) }
+      var snoozing = null;
+      // where he was in the list, for coming back to it
+      var listScroll = 0;
+      // the day the list was last drawn for
+      var renderedDay = '';
+      // Google's clock minus the phone's, so a wrong phone clock doesn't matter
+      var clockGap = 0;
       function setClock() { clockGap = typeof data.now === 'number' ? data.now - Date.now() : 0; }
       setClock();
       // Today in Pakistan time, worked out from Google's clock, so it rolls over by itself.
@@ -396,7 +409,8 @@
       function clone(x) { return JSON.parse(JSON.stringify(x)); }
       function siteById(id) {
         for (var i = 0; i < data.sites.length; i++) if (data.sites[i].id === id) return data.sites[i];
-        return sum.c[id] || null; // the admin's summary brought it (spec 011)
+        // the admin's summary brought it (spec 011)
+        return sum.c[id] || null;
       }
       // A one-time ID per form, so a save repeated after a lost reply is saved only once.
       function newSaveId() {
@@ -462,15 +476,15 @@
       }
       function pill(text, pressed, onTap) {
         var b = el('button', text, 'pill');
-        b.type = 'button';
         b.setAttribute('aria-pressed', pressed ? 'true' : 'false');
-        b.addEventListener('click', onTap);
+        b.onclick = onTap;
         return b;
       }
 
       // ---- Drafts kept on the phone until saved (specs 003-005, no signal) ----
       function store(key, value) {
-        try { if (value === null) localStorage.removeItem(key); else localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* storage blocked */ }
+        // (storage blocked: nothing kept)
+        try { if (value === null) localStorage.removeItem(key); else localStorage.setItem(key, JSON.stringify(value)); } catch (e) {}
       }
       function fetchStored(key) {
         try { var d = JSON.parse(localStorage.getItem(key) || 'null'); return d && typeof d === 'object' ? d : null; } catch (e) { return null; }
@@ -490,12 +504,17 @@
       // on phone storage and entries can't overwrite each other. Statuses: 'saving' (waiting or
       // being sent), 'checking' (after reopening: asking whether it landed), 'failed'.
       // (A browser check may shorten these through window.__timing; nothing else sets it.)
-      var SLOW_MS = (window.__timing && window.__timing.slow) || 30000;      // then "Still sending…"
-      var GIVE_UP_MS = (window.__timing && window.__timing.giveUp) || 120000; // then "not saved" and the next goes
-      var retrying = null;      // the failed entry the open form / update is bound to
-      function saveQueue() {
-        store(QUEUE_KEY, queue); sumUnsent();
-        if (sum.l && screen === 'summary') { var y = window.scrollY; renderSum(); window.scrollTo(0, y); } // a list shows saves too
+      // then "Still sending…"
+      var SLOW_MS = (window.__timing && window.__timing.slow) || 30000;
+      // then "not saved" and the next goes
+      var GIVE_UP_MS = (window.__timing && window.__timing.giveUp) || 120000;
+      // the failed entry the open form / update is bound to
+      var retrying = null;
+      function saveQueue() { store(QUEUE_KEY, queue); sumUnsent(); sumRedraw(); }
+      // What is on screen again: the list, or a summary's site list (spec 011) where he is in it.
+      function redraw() { if (screen === 'list') renderList(); else sumRedraw(); }
+      function sumRedraw() {
+        if (sum.l && screen === 'summary') { var y = scrollY; renderSum(); scrollTo(0, y); }
       }
       function readable(error) {
         var message = (error && error.message) || String(error || '');
@@ -530,7 +549,10 @@
       function showCard(card) {
         var at = -1;
         for (var i = 0; i < data.sites.length; i++) if (data.sites[i].id === card.id) at = i;
-        if (at >= 0) data.sites[at] = clone(card); else data.sites.unshift(clone(card));
+        if (at >= 0) data.sites[at] = clone(card);
+        // A site only the admin's summary brought (spec 011) stays out of his page's sites.
+        else if (sum.c[card.id]) sum.c[card.id] = clone(card);
+        else data.sites.unshift(clone(card));
       }
       function entryFor(siteId) {
         for (var i = queue.length - 1; i >= 0; i--) if (queue[i].card.id === siteId) return queue[i];
@@ -547,9 +569,10 @@
       function applySuccess(entry, r) {
         removeEntry(entry);
         // A late reply of a save that a later, confirmed save already carried says nothing new.
-        if (superseded[entry.id]) { saveQueue(); if (screen === 'list') renderList(); return; }
+        if (superseded[entry.id]) { saveQueue(); redraw(); return; }
         (entry.carries || []).forEach(function (id) { superseded[id] = true; });
-        if (r.site) confirmed[r.site.id] = snap(r.site); // what Google has now (spec 008)
+        // what Google has now (spec 008)
+        if (r.site) confirmed[r.site.id] = snap(r.site);
         if (ADMIN && r.site) r.site = adminMerge(r.site);
         // Older failed saves of the same site are replaced by this newer one. An Update also
         // replaces a failed snooze: it set the follow-up itself (spec 007). An Update replaces only
@@ -561,7 +584,8 @@
           if (q.status === 'failed' && replaced && q.card.id === entry.card.id) queue.splice(i, 1);
         }
         if (!r.site) {
-          refreshAll(); // a reply from before this version: just reload his list
+          // a reply from before this version: just reload his list
+          refreshAll();
         } else if (!laterPending(entry)) {
           // The server's card replaces what he saw (a new site gets its real ID), unless a later
           // change of the same site is still on its way.
@@ -571,7 +595,8 @@
             if (data.sites[j].id === entry.card.id) at = j;
             else if (data.sites[j].id === r.site.id) real = j;
           }
-          if (at >= 0 && real >= 0) data.sites.splice(at, 1); // already reloaded under its real ID
+          // already reloaded under its real ID
+          if (at >= 0 && real >= 0) data.sites.splice(at, 1);
           if (at >= 0 && real < 0) data.sites[at] = clone(r.site); else showCard(r.site);
         }
         if (r.areas) data.areas = r.areas;
@@ -579,7 +604,7 @@
         // A snooze already said "Snoozed to …" when he tapped it; only a notice is worth a word.
         if (entry.fn !== 'repSnoozeSite' || r.notice) savedToast(r);
         if (ADMIN) adminSaved(entry, r);
-        if (screen === 'list') renderList();
+        redraw();
       }
       // Reloads the page's data (onFail: no signal or refused; the list stays as it is).
       function refreshAll(onFail) {
@@ -589,7 +614,7 @@
           confirmAll(data.sites);
           queue.forEach(function (e) { showCard(e.card); });
           if (ADMIN) adminLoaded();
-          if (screen === 'list') renderList();
+          redraw();
           rebaseOpenForm();
         }).withFailureHandler(function () { if (onFail) onFail(); });
         if (ADMIN) run.adminPageLoad(k); else run.repLoad(k);
@@ -609,20 +634,21 @@
           sending = false;
           return true;
         }
-        var slow = setTimeout(function () { entry.slow = true; if (screen === 'list') renderList(); }, SLOW_MS);
+        var slow = setTimeout(function () { entry.slow = true; redraw(); }, SLOW_MS);
         var giveUp = setTimeout(function () {
           if (!release()) return;
           entry.status = 'failed'; entry.message = 'Not saved: no signal.';
           dropIfCarried(entry);
           saveQueue();
-          if (screen === 'list') renderList();
+          redraw();
           sendNext();
         }, GIVE_UP_MS);
         var run = google.script.run
           .withSuccessHandler(function (r) {
             var mine = release();
             if (r && r.ok) {
-              applySuccess(entry, r); // honoured even if it arrives after the give-up
+              // honoured even if it arrives after the give-up
+              applySuccess(entry, r);
             } else if (mine) {
               entry.status = 'failed'; entry.message = (r && r.message) || 'Something went wrong.';
               // Changed by someone else since the form was opened (spec 008): show it as it is now.
@@ -639,7 +665,7 @@
               }
               dropIfCarried(entry);
               saveQueue();
-              if (screen === 'list') renderList();
+              redraw();
             }
             if (mine) sendNext();
           })
@@ -648,7 +674,7 @@
             entry.status = 'failed'; entry.message = readable(error);
             dropIfCarried(entry);
             saveQueue();
-            if (screen === 'list') renderList();
+            redraw();
             sendNext();
           });
         if (entry.fn === 'repAddSite') run.repAddSite(k, entry.input);
@@ -708,7 +734,7 @@
           });
           saveQueue();
           if (landed && landed.length) refreshAll();
-          if (screen === 'list') renderList();
+          redraw();
         }
         var ask = google.script.run.withSuccessHandler(function (r) { settle(r && r.ok ? r.landed : null); })
           .withFailureHandler(function () { settle(null); });
@@ -784,7 +810,6 @@
         }
         if (withSnooze) {
           var b = el('button', 'Snooze', 'snooze');
-          b.type = 'button';
           row.appendChild(ownTap(b, function () { openSnooze(s.id); }));
         }
         return row.childNodes.length ? row : null;
@@ -806,9 +831,8 @@
         var box = $('snoozeChoices'); box.textContent = '';
         SNOOZE.forEach(function (c) {
           var b = el('button', c[1], 'big');
-          b.type = 'button';
           b.appendChild(el('small', shortDay(followKey(c[0]))));
-          b.addEventListener('click', function () { pickSnooze(c[0]); });
+          b.onclick = function () { pickSnooze(c[0]); };
           box.appendChild(b);
         });
         $('snoozeBack').hidden = false;
@@ -833,7 +857,7 @@
         enqueue({ id: saveId, fn: 'repSnoozeSite', siteId: s.id, input: { followUp: choice, saveId: saveId }, card: card,
           state: { followUp: choice }, before: replaces && replaces.before ? replaces.before : clone(s) }, replaces);
         toast('Snoozed to ' + shortDay(card.followUp));
-        if (screen === 'list') renderList();
+        redraw();
       }
 
       // Don't snooze: a failed snooze leaves the queue (it is cheap to redo). The site gets its old
@@ -847,7 +871,7 @@
         var s = siteById(entry.siteId);
         if (s && entry.before && s.followUp === entry.card.followUp) s.followUp = entry.before.followUp;
         toast('Not snoozed');
-        if (screen === 'list') renderList();
+        redraw();
         refreshAll();
       }
       // Open site: the site screen, as for any card; the failed snooze stays until he decides.
@@ -960,7 +984,7 @@
         }
         return el('div', 'Follow up: ' + (s.followUp === today ? 'Today' : shortDay(s.followUp)), 'meta');
       }
-      function cardFor(s, today, noSnooze) {
+      function cardFor(s, today) {
         var entry = entryFor(s.id);
         var late = isOpenSite(s) && !!s.followUp && s.followUp < today;
         var cold = coldDays(s, today);
@@ -990,7 +1014,7 @@
           card.appendChild(el('div', entry.message, 'meta'));
         }
         if (ADMIN) adminCardExtras(card, s);
-        var buttons = buttonRow(s, !ADMIN && !noSnooze && canSnooze(s, today));
+        var buttons = buttonRow(s, !ADMIN && canSnooze(s, today));
         if (buttons) card.appendChild(buttons);
         return card;
       }
@@ -1060,16 +1084,15 @@
         if (!own.length) frag.appendChild(emptyFor(tab, today));
         if (rows.length > shownCount) {
           var more = el('button', 'Show more', 'plain more');
-          more.type = 'button';
           more.id = 'showMore';
-          more.addEventListener('click', function () { shownCount += PAGE_SIZE; renderList(); });
+          more.onclick = function () { shownCount += PAGE_SIZE; renderList(); };
           frag.appendChild(more);
         }
         box.appendChild(frag);
       }
       function pickTab(name) {
         if (tab !== name) { tab = name; shownCount = PAGE_SIZE; renderList(); }
-        window.scrollTo(0, 0);
+        scrollTo(0, 0);
       }
       function stageClass(stage) {
         if (stage === rules().lostStage) return ' lost';
@@ -1237,7 +1260,8 @@
       // never a card still saving or not saved. An Update form records it when it opens ('seen'),
       // so a form opened over his own unconfirmed save carries that save's changes as his.
       var confirmed = {};
-      var superseded = {}; // saves whose changes a later confirmed save carried (their late replies are ignored)
+      // saves whose changes a later confirmed save carried (their late replies are ignored)
+      var superseded = {};
       // A save a later, confirmed save already carried that then fails anyway (e.g. a retry sent
       // just before) is not shown as not saved: what it changed is saved.
       function dropIfCarried(entry) { if (superseded[entry.id]) removeEntry(entry); }
@@ -1576,8 +1600,8 @@
 
       // ---- Screens ----
       function showOnly(name) {
-        if (screen === 'list' && name !== 'list') listScroll = window.scrollY || 0;
-        if (screen === 'summary') sum.ly = window.scrollY;
+        if (screen === 'list' && name !== 'list') listScroll = scrollY || 0;
+        if (screen === 'summary') sum.ly = scrollY;
         screen = name;
         $('tabs').hidden = name !== 'list';
         $('listView').hidden = name !== 'list';
@@ -1588,16 +1612,16 @@
         $('newSite').hidden = $('summary').hidden = name !== 'list';
         if (ADMIN) adminShowOnly(name);
         clearProblem();
-        window.scrollTo(0, 0);
+        scrollTo(0, 0);
       }
       // back: return to where he was in the list (after Back or an Update), not the top; or to the
       // summary he opened the site from (spec 011), where he was.
       function showList(back) {
-        if (back && sum.o) { showOnly('summary'); sum.o = 0; renderSum(); return window.scrollTo(0, sum.ly); }
+        if (back && sum.o) { showOnly('summary'); sum.o = 0; renderSum(); return scrollTo(0, sum.ly); }
         sum.o = 0;
         showOnly('list');
         renderList();
-        if (back) window.scrollTo(0, listScroll);
+        if (back) scrollTo(0, listScroll);
       }
       function showSite(id, retryEntry) {
         var s = siteById(id);
@@ -1690,17 +1714,17 @@
       });
 
       ['chase', 'hot', 'all'].forEach(function (name) {
-        $('tab-' + name).addEventListener('click', function () { pickTab(name); });
+        $('tab-' + name).onclick = function () { pickTab(name); };
       });
       $('search').addEventListener('input', function (e) {
         query = e.target.value; shownCount = PAGE_SIZE;
         clearTimeout(renderList.timer);
-        renderList.timer = setTimeout(renderList, 120); // one redraw once he pauses, not per letter
+        // one redraw once he pauses, not per letter
+        renderList.timer = setTimeout(renderList, 120);
       });
-      $('snoozeCancel').addEventListener('click', closeSnooze);
-      $('snoozeDrop').addEventListener('click', dropSnooze);
-      $('snoozeOpen').addEventListener('click', openSnoozedSite);
-      $('snoozeBack').addEventListener('click', closeSnooze);
+      $('snoozeCancel').onclick = $('snoozeBack').onclick = closeSnooze;
+      $('snoozeDrop').onclick = dropSnooze;
+      $('snoozeOpen').onclick = openSnoozedSite;
       $('clearSearch').addEventListener('click', function () {
         query = ''; $('search').value = ''; shownCount = PAGE_SIZE;
         renderList();
@@ -1709,12 +1733,13 @@
       // ---- Summary (spec 009): built on the server, shown as text, fetched only when asked ----
       // Spec 011: a tapped count shows its sites (l) instead; a site opened from the summary (o)
       // comes back to it. c: cards the admin's summary brought (sites his page doesn't hold).
-      var sum = { p: '', got: {}, busy: {}, bad: {}, c: {}, l: 0, o: 0, y: 0, ly: 0 };
+      var sum = { p: '', got: {}, busy: {}, bad: {}, c: {} };
       function sumView() { return ADMIN ? aSumView() : sum.got[sum.p]; }
       function getSum(p) {
         function done(r, bad) {
           sum.busy[p] = 0; sum.bad[p] = bad;
-          if (r) { sum.got[p] = r; (r.cards || []).forEach(function (c) { sum.c[c.id] = c; }); }
+          if (r) sum.got[p] = r;
+          if (r && ADMIN) aSumCards(r);
           renderSum();
         }
         sum.p = p; sum.busy[p] = 1; sum.bad[p] = '';
@@ -1726,7 +1751,8 @@
         })[ADMIN ? 'adminPageSummary' : 'repSummary'](k, p, data.now);
         renderSum();
       }
-      function sumUnsent() { // also when the queue changes
+      // also when the queue changes
+      function sumUnsent() {
         var n = queue.length;
         $('sumUnsent').textContent = n + (n > 1 ? ' saves not sent yet are' : ' save not sent yet is') + ' not in this summary.';
         $('sumUnsent').hidden = !n;
@@ -1773,7 +1799,8 @@
         [v.now].concat(v.now.tables || []).forEach(function (t) { sumTable(box, t); });
         $('sumWa').href = 'https://wa.me/?text=' + encodeURIComponent(v.text);
       }
-      function nb(text) { return text.replace(/Rs\. /g, 'Rs.\u00a0'); } // "Rs. 400,000" never splits
+      // "Rs. 400,000" never splits
+      function nb(text) { return text.replace(/Rs\. /g, 'Rs.\u00a0'); }
       function sumTwo(box, a, b, tag) {
         var d = box.appendChild(el('div', '', 'two'));
         d.appendChild(el(tag, a));
@@ -1811,17 +1838,18 @@
         n.onclick = fn;
         n.onkeydown = function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn(); } };
       }
-      function sumOpen(L) { sum.y = window.scrollY; sum.l = L; renderSum(); window.scrollTo(0, 0); }
+      function sumOpen(L) { sum.y = scrollY; sum.l = L; renderSum(); scrollTo(0, 0); }
       // The sites a count counted, as they are now; "+ N" for those not shown, so they add up.
       function sumList(box, L) {
         var today = todayKey(), x = L.x || 0, n = L.ids.length + x;
         box.appendChild(el('h2', L.lh + ' · ' + n + (n === 1 ? ' site' : ' sites')));
         var list = box.appendChild(el('div', '', 'list'));
-        list.onclick = function () { sum.o = screen !== 'summary'; }; // a card opened its site
+        // a card opened its site
+        list.onclick = function () { sum.o = screen !== 'summary'; };
         L.ids.forEach(function (id, i) {
           var s = siteById(id);
           if (!s) return x++;
-          var c = list.appendChild(cardFor(s, today, 1));
+          var c = list.appendChild(cardFor(s, today));
           if (L.p) c.insertBefore(el('div', L.p[i], 'value pl'), c.querySelector('.name').nextSibling);
         });
         if (x) box.appendChild(el('div', '+ ' + x + (ADMIN ? ' not in the sheet any more' : ' no longer in your list'), 'note'));
@@ -1831,7 +1859,7 @@
         var text = sumView().text, t = $('sumCopy'), ok;
         function byHand() {
           t.value = text; t.hidden = false; t.focus(); t.select();
-          try { ok = document.execCommand('copy'); } catch (e) { /* refused */ }
+          try { ok = document.execCommand('copy'); } catch (e) {}
           t.hidden = $('sumHold').hidden = ok;
           if (ok) toast('Copied'); else t.setSelectionRange(0, text.length);
         }
@@ -1846,7 +1874,7 @@
       $('sumRetry').onclick = function () { getSum(sum.p); };
       $('sumCopyBtn').onclick = copySum;
       $('sumBack').onclick = function () {
-        if (sum.l) { sum.l = 0; renderSum(); window.scrollTo(0, sum.y); } else if (!ADMIN || !aSumBack()) showList(true);
+        if (sum.l) { sum.l = 0; renderSum(); scrollTo(0, sum.y); } else if (!ADMIN || !aSumBack()) showList(true);
       };
 
       // A new day while the app was left open: redraw for today when he comes back to it.
