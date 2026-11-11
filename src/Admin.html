@@ -284,11 +284,13 @@
     data.feed.forEach(function (f, i) {
       if (f.by === 'admin') return;
       var c = counts[f.by] || (counts[f.by] = { total: 0 });
-      // An Update (or Edit details) and its contact row are one save (spec 011): written together, the
-      // contact row just after it (the feed is newest first).
-      var g = data.feed[i + 1];
-      if (!(f.action === 'contact' && g && g.action !== 'contact' && g.by === f.by && g.site === f.site && g.time === f.time)) c.total++;
-      c[aKind(f.action)] = (c[aKind(f.action)] || 0) + 1;
+      // An Update (or Edit details) and its contact row are one save of its kind, "(new contact)"
+      // (spec 011): the contact row is 'paired' and just above it (the feed is newest first).
+      if (f.paired) return;
+      var k = aKind(f.action);
+      c.total++;
+      c[k] = (c[k] || 0) + 1;
+      if (i && data.feed[i - 1].paired) c[k + '+'] = (c[k + '+'] || 0) + 1;
     });
     var idle = data.salesmen.filter(function (s) { return !counts[s.rep]; })
       .map(function (s) { return s.rep + (s.linked ? '' : ' (no link)'); });
@@ -301,7 +303,10 @@
       row.setAttribute('aria-pressed', A.todayRep === s.rep ? 'true' : 'false');
       row.appendChild(el('span', s.rep, 'code'));
       var what = c ? aPlural(c.total, 'save', 'saves') + ': ' + A_KINDS.filter(function (k) { return c[k[0]]; })
-        .map(function (k) { return aPlural(c[k[0]], k[1], k[2]); }).join(', ') : 'nothing yet';
+        .map(function (k) {
+          var n = c[k[0]], p = c[k[0] + '+'];
+          return aPlural(n, k[1], k[2]) + (p ? ' (' + (p < n ? p + ' ' : '') + 'new contact' + (p > 1 ? 's)' : ')') : '');
+        }).join(', ') : 'nothing yet';
       row.appendChild(el('span', what, 'what'));
       row.addEventListener('click', function () { A.todayRep = A.todayRep === s.rep ? '' : s.rep; renderList(); });
       frag.appendChild(row);

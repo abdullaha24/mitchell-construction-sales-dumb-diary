@@ -34,7 +34,6 @@
       .card .meta.nodate { color: var(--orange); font-weight: 600; }
       .more { display: block; width: 100%; margin-top: 4px; }
       #u-addC { margin-top: 16px; }
-      .site-head .ec { margin-top: 12px; }
       main { padding: 12px 16px 96px; max-width: 640px; margin: 0 auto; }
       button { font: inherit; cursor: pointer; }
       .big { min-height: 48px; padding: 10px 16px; border-radius: 10px; border: 0; background: var(--blue);
@@ -83,6 +82,7 @@
       .site-head { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
       .site-head h2 { font-size: 20px; margin: 0 0 4px; }
       .site-head .line { color: var(--soft); font-size: 15px; margin-top: 2px; }
+      .site-head .ec { margin-top: 12px; }
       .section { font-size: 18px; font-weight: 700; margin: 20px 0 0; }
       #formTitle { font-size: 20px; margin: 4px 0 0; }
       /* Spec 007: last-spoken line, going cold, Call / WhatsApp / Snooze, area filter. */
@@ -241,7 +241,7 @@
       <div id="u-cBox" hidden>
         <div class="label two">New contact person<button class="plain" id="u-cX" type="button" aria-label="No new contact">×</button></div>
         <label for="u-cName">Name</label>
-        <input id="u-cName" type="text" maxlength="60" autocomplete="off" placeholder="e.g. Bilal (site engineer)">
+        <input id="u-cName" type="text" maxlength="60" autocomplete="off" placeholder="e.g. Bilal">
         <label for="u-cPhone">Phone (WhatsApp)</label>
         <input id="u-cPhone" type="tel" inputmode="tel" maxlength="24" autocomplete="off" placeholder="e.g. 0300 1234567">
         <div id="u-cNote" class="note" hidden></div>
@@ -635,7 +635,7 @@
                 if (entry.state && entry.state.seen) entry.state = rebased(entry.state, fresh);
                 // Edit details: the main contact as it is now (spec 011).
                 if (entry.fn === 'repEditSite') Object.assign(entry.state, { contactName: fresh.contactName,
-                  phone: showPhone(fresh.phone), saw: { name: fresh.contactName, phone: fresh.phone }, newPerson: null });
+                  phone: showPhone(fresh.phone), saw: snap(fresh).contact, newPerson: null });
               }
               dropIfCarried(entry);
               saveQueue();
@@ -911,7 +911,7 @@
         if (t === undefined) {
           t = [s.name, s.contactName, s.phone, showPhone(s.phone), s.area, s.buyerType,
             (s.products || []).join(' '), s.stage, s.note].concat((s.earlier || []).map(function (e) {
-            return e.name + ' ' + e.phone + ' ' + showPhone(e.phone);
+            return e.name + e.phone + showPhone(e.phone);
           })).map(squash).join('|');
           if (searchCache) searchCache.set(s, t);
         }
@@ -1108,8 +1108,7 @@
           // A person without a number can't be main at a stage that needs one (P3-4).
           if (p.till && (p.phone || !has(rules().numberStages, s.stage))) {
             row.appendChild(el('button', 'Make main')).onclick = function () {
-              upd.contact = { name: p.name, phone: showPhone(p.phone), again: true };
-              updChanged();
+              setContact({ name: p.name, phone: showPhone(p.phone), again: true });
               $('u-cBox').scrollIntoView();
             };
           }
@@ -1280,15 +1279,15 @@
         var box = $('u-problem');
         function problem(text) { box.textContent = text; box.hidden = false; toast(text, true); }
         var mine = upd.contact;
+        // An empty + New contact person box is no new contact (spec 011).
+        if (mine && !mine.name.trim() && !mine.phone.trim()) { upd.contact = mine = null; renderUpdate(); }
         var trouble = stageProblem(upd.stage, upd.value, upd.terms, upd.lostReason, upd.note, upd.followUp, upd.date,
           !!mine || !!s.phone || !!upd.phone.trim(), "Add the contact's number to move this site to " + upd.stage + '.');
         if (trouble) return problem(trouble);
-        if (mine) {
-          var cp = mine.phone.trim();
-          if (!mine.name.trim() && !cp) return problem("Type the new contact's name or number.");
-          if (cp && !tidyPhone(cp)) return problem('Check the number.');
-          if (!cp && has(r.numberStages, upd.stage)) return problem("Type the new contact's number: a site at " + upd.stage + ' needs one.');
-          if (!cp && !confirmNoNumber) { confirmNoNumber = true; clearProblem(); return renderSave(); }
+        var only = mine && !upd.note.trim();
+        if (mine && !mine.phone.trim()) {
+          if (has(r.numberStages, upd.stage)) return problem("Type the new contact's number: a site at " + upd.stage + ' needs one.');
+          if (!confirmNoNumber) { confirmNoNumber = true; clearProblem(); return renderSave(); }
         }
         clearProblem();
         var followUp = has(r.closedStages, upd.stage) ? '' : followKey(upd.followUp, upd.date, s.followUp);
@@ -1299,20 +1298,20 @@
         };
         // His earlier Updates and snoozes of this site still in the queue: this form was opened over
         // them, so it carries their changes (spec 008). Not Edit details: those are their own saves.
-        // A retry is its own form again: it carries what it was first opened over, and itself.
+        // A retry is its own form again: it carries what it was first opened over, and itself. What those
+        // carried goes too, so a late reply of a save carried twice over never counts (spec 011 review).
         var earlier = retrying ? (retrying.carries || []).concat([retrying.id]) : queue.filter(function (q) {
           return q.card.id === s.id && (q.fn === 'repUpdateSite' || q.fn === 'adminPageUpdateSite' || q.fn === 'repSnoozeSite');
-        }).map(function (q) { return q.id; });
-        // A new contact of a save it carries goes again, so a later save never drops it (spec 011).
-        var c = mine;
-        queue.forEach(function (q) { if (!mine && has(earlier, q.id) && q.input.contact) c = q.input.contact; });
-        if (c) input.contact = { name: c.name.trim(), phone: c.phone.trim(), again: !!c.again };
+        }).reduce(function (a, q) { return a.concat(q.carries || [], q.id); }, []);
+        // Spec 011: only the new contact the form shows (one carried from a queued save is in the box).
+        if (mine) input.contact = { name: mine.name.trim(), phone: mine.phone.trim(), again: !!mine.again };
         // What Google had when the form opened, and what he changes: Google writes only that.
         if (upd.seen) {
           input.seen = clone(upd.seen);
+          input.seen.via = upd.via;
           input.touched = touchedOf(upd, todayKey());
-          // Only a new contact: a late follow-up he didn't pick stays as it is (spec 011: not work).
-          if (c && s.followUp && !upd.note.trim() && input.touched.join() === 'followUp' && !choseFollowUp(upd, todayKey())) {
+          // Only a new contact: a follow-up he didn't pick stays as it is (spec 011: not work).
+          if (only && input.touched.join() === 'followUp' && !choseFollowUp(upd, todayKey())) {
             input.touched = []; input.followUp = followUp = s.followUp;
           }
         }
@@ -1322,11 +1321,11 @@
         card.lostReason = upd.stage === r.lostStage ? upd.lostReason : '';
         card.followUp = followUp;
         if (upd.note.trim()) { card.note = (ADMIN ? 'Admin: ' : '') + upd.note.trim(); card.noteDay = todayKey(); }
-        if (tidyPhone(upd.phone)) card.phone = tidyPhone(upd.phone);
-        if (c) moveMain(card, c);
+        if (mine) moveMain(card, mine);
+        else if (tidyPhone(upd.phone)) card.phone = tidyPhone(upd.phone);
         // A salesman's Update is real work: no longer going cold (P6-2). The admin's never is (P7-5).
         // A contact-only one isn't (spec 011).
-        if (!ADMIN && !(c && input.touched && !input.touched.length && !upd.note.trim())) card.worked = todayKey();
+        if (!ADMIN && !(only && input.touched && !input.touched.length)) card.worked = todayKey();
         if (ADMIN && card.stage !== s.stage) card.closed = has(r.closedStages, card.stage) ? todayKey() : '';
         var replaces = retrying;
         enqueue({ id: upd.saveId, fn: ADMIN ? 'adminPageUpdateSite' : 'repUpdateSite', siteId: openId, input: input, card: card,
@@ -1337,27 +1336,43 @@
       }
       // c: the new contact person's number (spec 011), else the "add the number" box. This site never matches itself.
       function checkUpdPhone(c) {
-        if (ADMIN) return; // the admin's save checks the number itself (no salesman's check here)
+        // The admin's save checks the number itself (no salesman's check here).
+        if (ADMIN) return;
         function now() { return String((c ? upd.contact || {} : upd).phone || '').trim(); }
         var typed = now();
         var note = $(c ? 'u-cNote' : 'u-phoneNote');
         if (!typed) { note.hidden = true; return; }
         google.script.run.withSuccessHandler(function (r) { showPhoneNote(note, r, typed === now()); })
-          .withFailureHandler(function () { /* no signal: the save will check again */ }).repCheckPhone(k, typed, openId);
+          .withFailureHandler(function () {}).repCheckPhone(k, typed, openId);
       }
-      // The new main contact; the old one on top of Earlier contacts, as Google will do it (spec 011).
+      // A name as Google compares it (siterules.js looseName_): capitals and spaces don't matter.
+      function loose(t) { return String(t || '').toLowerCase().replace(/\s+/g, ''); }
+      // The new main contact; the old one on top of Earlier contacts, exactly as Google will do it
+      // (siterules.js earlierAfter_): Make main without a number takes out only the first match;
+      // at most 20 people, a line typed by hand always stays.
       function moveMain(card, c) {
-        var p = tidyPhone(c.phone), n = squash(c.name);
+        var p = tidyPhone(c.phone), n = loose(c.name), cut = !c.again, k = 0;
         // The same person: nothing moves.
-        if (p ? p === card.phone : !card.phone && n === squash(card.contactName)) return;
+        if (p ? p === card.phone : !card.phone && n === loose(card.contactName)) return;
         var list = (card.earlier || []).filter(function (e) {
-          return p ? e.phone !== p : !(c.again && !e.phone && squash(e.name) === n);
+          return p ? e.phone !== p : cut || !e.till || e.phone || loose(e.name) !== n || !(cut = 1);
         });
         if (card.contactName || card.phone) list.unshift({ name: card.contactName, phone: card.phone, till: todayKey() });
-        card.earlier = list.slice(0, 20);
+        card.earlier = list.filter(function (e) { return !e.till || ++k <= 20; });
         card.contactName = c.name.trim();
         card.phone = p;
       }
+      // Spec 011: 'via' = the main contact Google last confirmed and the contacts his saves of this
+      // site still on their way set, and what those knew (Google having one of them is no change under him). A new form
+      // shows the last one's new contact in the box (× drops it, then it is never sent) unless it
+      // already has its own; a retry keeps its own.
+      function carryContact(u, id, list, known, retry) {
+        var last;
+        u.via = [known];
+        list.forEach(function (q) { if (q.card.id === id && 'contact' in q.state) u.via = u.via.concat(q.state.via, last = q.state.contact); });
+        if (!retry && u.contact === undefined && u.via.length > 1) u.contact = clone(last);
+      }
+      function setContact(c) { upd.contact = c; upd.phone = ''; $('u-cNote').hidden = true; updChanged(); }
       function showPhoneNote(note, r, current) {
         if (!current) return; // he typed more meanwhile
         var lines = [];
@@ -1514,7 +1529,7 @@
           // Spec 011: a changed number (or a changed name without one) may be a new person: ask once.
           var newP = tidyPhone(form.phone);
           if (form.newPerson == null && (site.phone ? newP && newP !== site.phone
-            : site.contactName && squash(form.contactName) !== squash(site.contactName))) return askNewPerson();
+            : site.contactName && loose(form.contactName) !== loose(site.contactName))) return askNewPerson();
         } else {
           var trouble = stageProblem(form.stage, form.value, form.terms, form.lostReason, form.note, form.followUp, form.date,
             !!form.phone.trim(), "Type the contact's number: a site at " + form.stage + ' needs one.');
@@ -1570,7 +1585,7 @@
         $('snoozeTitle').textContent = 'Is this a new person?';
         var box = $('snoozeChoices'); box.textContent = '';
         [['Yes, keep the old one', true], ['No, fix the number', false]].forEach(function (a) {
-          box.appendChild(el('button', a[0], 'big')).onclick = function () { closeSnooze(); form.newPerson = a[1]; saveDraft(); saveForm(); };
+          box.appendChild(el('button', a[0], 'big')).onclick = function () { closeSnooze(); form.newPerson = a[1]; saveForm(); };
         });
       }
 
@@ -1610,6 +1625,7 @@
         // A form kept from before spec 008 has no 'seen': it saves as it always did.
         if (draft && !draft.seen) upd.seen = null;
         if (!upd.saveId) upd.saveId = newSaveId();
+        carryContact(upd, id, queue, confirmedFor(s).contact, retryEntry);
         $('u-phoneNote').hidden = $('u-cNote').hidden = true;
         showOnly('site');
         renderSiteHead(s);
@@ -1675,8 +1691,8 @@
         if (upd.phone.replace(/\D/g, '').length >= 10) checkUpdPhone.timer = setTimeout(checkUpdPhone, 700);
       });
       // + New contact person (spec 011): × drops it; a typed change makes it a new person, not Make main.
-      $('u-addC').onclick = function () { upd.contact = { name: '', phone: '' }; updChanged(); $('u-cName').focus(); };
-      $('u-cX').onclick = function () { upd.contact = null; updChanged(); };
+      $('u-addC').onclick = function () { setContact({ name: '', phone: '' }); $('u-cName').focus(); };
+      $('u-cX').onclick = function () { setContact(null); };
       ['u-cName', 'u-cPhone'].forEach(function (id, i) {
         $(id).addEventListener('input', function (e) {
           var c = upd.contact;

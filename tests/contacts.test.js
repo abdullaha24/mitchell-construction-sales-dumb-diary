@@ -29,7 +29,7 @@ const site = (id, rep, name, extra = {}) => SITES.map((h) => ({
   next_followup: D, last_note: 'first visit', created_at: D, updated_at: D, worked_at: D, ...extra,
 })[h] ?? '');
 
-function world(extraSites = []) {
+function world(extraSites = [], extraActivity = []) {
   const lists = [['list', 'value', 'region', 'added_by', 'active', 'sort']];
   ['Tile Adhesives'].forEach((v, i) => lists.push(['product_category', v, '', 'owner', true, (i + 1) * 10]));
   ['Dealer', 'Consultant'].forEach((v, i) => lists.push(['buyer_type', v, '', 'owner', true, (i + 1) * 10]));
@@ -40,7 +40,7 @@ function world(extraSites = []) {
       site('S000002', 'SH', 'Gulberg Mall', { contact_phone: '923007654321', earlier_contacts: '923006667777 · Hidden Person · 2026-08-01' }),
       site('S000003', 'RIA', 'Blue Area', { contact_phone: '', contact_name: 'Nadeem' }),
       ...extraSites],
-    Activity: [ACTIVITY, ['A0000003', D, 'RIA', 'S000003', 'created', '', 'Visited / Lead', '', '', '', '', D]],
+    Activity: [ACTIVITY, ['A0000003', D, 'RIA', 'S000003', 'created', '', 'Visited / Lead', '', '', '', '', D], ...extraActivity],
     Lists: lists,
     Links: [['role', 'rep', 'token', 'active', 'issued_at'], ['rep', 'RIA', RIA, true, D], ['rep', 'SH', SH, true, D],
       ['owner', '', ADMIN, true, D]],
@@ -412,4 +412,112 @@ test('a contact row is a save (days logged) but never work (sites worked)', () =
   assert.equal(work.days.size, 1, 'a save: a day logged');
   assert.equal(work.worked.size, 0, 'not a site worked');
   assert.ok(!plain(s0.WORK_ACTIONS || []).includes('contact'));
+});
+
+// ---------------------------------------------------------- Fix round 1 (review of spec 011 E)
+
+test('the "add the number" gate is checked against the contact he saw: never a number for someone else', () => {
+  const w = world();
+  // The admin made Zafar (no number) the main contact a moment ago.
+  assert.equal(w.s.adminPageUpdateSite(ADMIN, 'S000003', contactOnly({ name: 'Zafar' }, { seen: seenOf('Nadeem', '') })).ok, true);
+  const trial = { stage: 'Sample / Trial', followUp: 'tomorrow', phone: '0300 7778888', touched: ['stage', 'followUp'] };
+  const r = plain(w.s.repUpdateSite(RIA, 'S000003', { ...trial, seen: seenOf('Nadeem', '') }));
+  assert.deepEqual([r.ok, r.changed, r.site.contactName], [false, true, 'Zafar']);
+  assert.equal(rowOf(w, 3).contact_phone, '', "Nadeem's number never went to Zafar");
+  assert.equal(w.s.repUpdateSite(RIA, 'S000003', { ...trial, seen: seenOf('Zafar', '') }).ok, true, 'with what he sees now');
+  assert.equal(rowOf(w, 3).contact_phone, '923007778888');
+});
+
+test('seen.via: the contacts of his own saves still on their way are no change under him', () => {
+  const w = world();
+  assert.equal(w.s.repUpdateSite(RIA, 'S000001', contactOnly({ name: 'Bilal', phone: '923001234567' })).ok, true);
+  // A later form opened over that save (whose reply he hasn't had) knew Google had Asif.
+  const later = contactOnly({ name: 'Kamal', phone: '923002223344' });
+  later.seen.via = [{ name: 'Asif', phone: '923331112222' }, null, { name: 'Bilal', phone: '0300 1234567' }];
+  const r = plain(w.s.repUpdateSite(RIA, 'S000001', later));
+  assert.equal(r.ok, true, r.message);
+  assert.deepEqual(r.site.earlier.slice(0, 2).map((e) => e.name), ['Bilal', 'Asif']);
+  // Someone else's change is still one.
+  assert.equal(w.s.adminPageUpdateSite(ADMIN, 'S000001', contactOnly({ name: 'Zubair', phone: '923005550000' },
+    { seen: seenOf('Kamal', '923002223344') })).ok, true);
+  const refused = plain(w.s.repUpdateSite(RIA, 'S000001', { ...later, contact: { name: 'Rafiq', phone: '923006660000' } }));
+  assert.equal(refused.changed, true);
+});
+
+test('the main number is never also an earlier one, whatever changed it (gate, Edit details "No")', () => {
+  const gate = world([site('S000004', 'RIA', 'No Number', { contact_phone: '', contact_name: 'Ali',
+    earlier_contacts: '923007778888 · Ali old phone · 2026-09-01\n923001112222 · Other · 2026-08-01' })]);
+  assert.equal(gate.s.repUpdateSite(RIA, 'S000004', { stage: 'Sample / Trial', followUp: 'tomorrow', phone: '0300 7778888' }).ok, true);
+  assert.deepEqual([rowOf(gate, 4).contact_phone, rowOf(gate, 4).earlier_contacts], ['923007778888', '923001112222 · Other · 2026-08-01']);
+  const edit = world();
+  assert.equal(edit.s.repEditSite(RIA, 'S000001', details({ phone: '0300 4445555', newPerson: false })).ok, true);
+  assert.deepEqual([rowOf(edit, 1).contact_phone, rowOf(edit, 1).earlier_contacts], ['923004445555', '']);
+  assert.equal(plain(edit.s.repLoad(RIA)).sites.find((x) => x.id === 'S000001').earlier, undefined);
+});
+
+test('a contact-only Update on a site with no follow-up stays contact-only; other Updates still need one', () => {
+  const w = world([site('S000004', 'RIA', 'No Date', { next_followup: '' })]);
+  const seen = { ...seenOf('Asif', '923331112222'), followUp: '' };
+  const r = plain(w.s.repUpdateSite(RIA, 'S000004', { stage: 'Visited / Lead', followUp: '', note: '', seen, touched: [],
+    contact: { name: 'Bilal', phone: '923001234567' } }));
+  assert.equal(r.ok, true, r.message);
+  assert.equal(r.only, true);
+  assert.deepEqual(activity(w).slice(1).map((a) => a.action), ['contact']);
+  assert.equal(rowOf(w, 4).worked_at.getTime(), D.getTime());
+  assert.equal(rowOf(w, 4).next_followup, '');
+  for (const extra of [{ note: 'x' }, { contact: undefined, note: 'x' }]) {
+    assert.deepEqual(plain(w.s.repUpdateSite(RIA, 'S000004', { stage: 'Visited / Lead', followUp: '', seen, touched: [],
+      contact: { name: 'Kamal', phone: '923002223344' }, ...extra })),
+    { ok: false, message: 'Pick a follow-up date from today to a year ahead.' });
+  }
+});
+
+test('a contact-only Update whose person is already main says so (only), so the feed adds no Update', () => {
+  const w = world();
+  const r = plain(w.s.adminPageUpdateSite(ADMIN, 'S000001', contactOnly({ name: 'asif', phone: '0333 1112222' })));
+  assert.deepEqual([r.ok, r.only, r.contact], [true, true, undefined]);
+  assert.equal(activity(w).length, 1);
+});
+
+test("the admin's feed pairs an Update or Edit details with its contact row (consecutive IDs)", () => {
+  const w = world();
+  assert.equal(w.s.repUpdateSite(RIA, 'S000001', { stage: 'Visited / Lead', followUp: 'tomorrow', note: 'met',
+    contact: { name: 'Bilal', phone: '923001234567' }, seen: seenOf('Asif', '923331112222'), touched: ['followUp'] }).ok, true);
+  assert.equal(w.s.repUpdateSite(RIA, 'S000003', contactOnly({ name: 'Zafar' }, { seen: seenOf('Nadeem', '') })).ok, true);
+  assert.equal(w.s.repEditSite(RIA, 'S000001', details({ name: 'F-11 B', contactName: 'Kamal', phone: '923002223344', newPerson: true,
+    seen: { contact: { name: 'Bilal', phone: '923001234567' } } })).ok, true);
+  const feed = plain(w.s.adminPageLoad(ADMIN)).feed;
+  assert.deepEqual(feed.map((f) => [f.action, !!f.paired]), [
+    ['contact', true], ['details', false], ['contact', false], ['contact', true], ['update', false],
+  ]);
+});
+
+test('the 20 cap counts people only: a line typed by hand is never dropped and stays in place', () => {
+  const lines = Array.from({ length: 20 }, (_, i) => `92300000${String(i).padStart(4, '0')} · P${i} · 2026-01-01`);
+  lines.splice(5, 0, 'typed by hand');
+  lines.push('another note');
+  const after = s0.earlierAfter_(lines.join('\n'), { name: 'Main', phone: '923008889999' }, { name: 'New', phone: '923001110000' },
+    '2026-11-11').split('\n');
+  assert.equal(after.length, 22);
+  assert.equal(after[0], '923008889999 · Main · 2026-11-11');
+  assert.equal(after[6], 'typed by hand');
+  assert.equal(after[21], 'another note');
+  assert.ok(!after.includes('923000000019 · P19 · 2026-01-01'), 'the oldest person drops off');
+});
+
+test("privacy: a site he worked this week that is now another salesman's is never in his summary", () => {
+  const now = new Date();
+  const w = world([site('S000009', 'SH', 'Handed Over Plaza', { contact_name: 'Secret Main', contact_phone: '923009998877',
+    earlier_contacts: '923009990011 · Secret Earlier · 2026-10-01' })],
+  [['A0000009', now, 'RIA', 'S000009', 'update', '', '', '', '', '', 'worked it', '']]);
+  for (const p of ['this-week', 'this-month']) {
+    const reply = JSON.stringify(plain(w.s.repSummary(RIA, p)));
+    assert.ok(reply.startsWith('{"ok":true'), reply.slice(0, 80));
+    for (const secret of ['S000009', 'Handed Over Plaza', 'Secret Main', 'Secret Earlier', '923009990011', '923009998877']) {
+      assert.ok(!reply.includes(secret), `${p}: ${secret}`);
+    }
+    assert.ok(/"x":1\b/.test(reply), `${p}: his list says "+ 1 no longer in your list" (x)`);
+  }
+  const admin = JSON.stringify(plain(w.s.adminPageSummary(ADMIN, 'this-week')));
+  assert.ok(admin.includes('S000009'), 'the admin still sees it');
 });

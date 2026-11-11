@@ -335,10 +335,13 @@ function checkUpdate_(input, current, choices, todayKey) {
     update.lostReason = input.lostReason;
   }
 
+  // A follow-up left as it is stays (spec 008: an untouched one is never changed, even if late).
+  // A missing one may stay only on a contact-only Update (spec 011), checked below.
+  const followUpProblem = 'Pick a follow-up date from today to a year ahead.';
   if (!CLOSED_STAGES.includes(stage)) {
-    // A follow-up left as it is stays (spec 008: an untouched one is never changed, even if late).
-    const followUp = current.followUp && input.followUp === current.followUp ? current.followUp : followUpKey_(input.followUp, todayKey);
-    if (!followUp) return fail('Pick a follow-up date from today to a year ahead.');
+    const followUp = input.followUp === current.followUp && (current.followUp || contact) ? current.followUp
+      : followUpKey_(input.followUp, todayKey);
+    if (followUp === null) return fail(followUpProblem);
     update.followUp = followUp;
   }
 
@@ -357,6 +360,7 @@ function checkUpdate_(input, current, choices, todayKey) {
     update.followUp === current.followUp && update.value === current.value &&
     update.terms === current.terms && update.lostReason === current.lostReason;
   if (unchanged && !contact) return fail('Nothing to save.');
+  if (!CLOSED_STAGES.includes(stage) && !update.followUp && !unchanged) return fail(followUpProblem);
   update.contactOnly = unchanged;
   return { ok: true, update };
 }
@@ -559,15 +563,38 @@ function sameMain_(a, b) {
 }
 
 /**
- * The main contact a page saw when its form opened (`seen.contact`), or null if it sent none (a
- * page from before spec 011).
- * @param {any} seen
+ * A main contact a page sent (`seen.contact`, one of `seen.via`), or null if it isn't one.
+ * @param {any} c
  * @returns {Person | null}
  */
-function seenMain_(seen) {
-  const c = seen && typeof seen === 'object' ? seen.contact : null;
+function seenMain_(c) {
   if (!c || typeof c !== 'object') return null;
   return { name: typeof c.name === 'string' ? c.name : '', phone: phoneText_(c.phone) };
+}
+
+/**
+ * Has the main contact changed under his form (spec 011)? His form says what Google had when it
+ * opened (`seen.contact`) and the contacts his own saves still on their way set (`seen.via`); the
+ * main contact now is none of them. A page from before spec 011 (no `seen.contact`): no.
+ * @param {any} seen
+ * @param {Person} now
+ */
+function contactMovedUnder_(seen, now) {
+  const saw = seen && typeof seen === 'object'
+    ? [seen.contact].concat(Array.isArray(seen.via) ? seen.via.slice(0, 50) : []).map(seenMain_) : [];
+  return !!saw[0] && !saw.some((x) => !!x && sameMain_(x, now));
+}
+
+/**
+ * The earlier contacts cell without the lines of a number that is now the main one (spec 011: the
+ * main number is never also kept as an earlier one), or null when there is none.
+ * @param {any} cell
+ * @param {string} phone
+ */
+function earlierWithout_(cell, phone) {
+  const list = earlierContacts_(cell);
+  const kept = list.filter((e) => !phone || e.phone !== phone);
+  return kept.length === list.length ? null : kept.map((e) => e.line).join('\n');
 }
 
 /**
@@ -602,7 +629,8 @@ function checkNewContact_(raw) {
  * The earlier contacts cell after `next` becomes the main contact in place of `main`: the old one
  * on top with today's date (if it has a name or a number); the new one's number is never kept as
  * an earlier one (Make main without a number: the first entry with its name goes); at most
- * EARLIER_CONTACTS_MAX lines. Every other line stays exactly as it is.
+ * EARLIER_CONTACTS_MAX people (a line typed by hand is never dropped, and stays where it is).
+ * Every other line stays exactly as it is.
  * @param {any} cell
  * @param {Person} main
  * @param {Person & { again?: boolean }} next
@@ -616,9 +644,9 @@ function earlierAfter_(cell, main, next, todayKey) {
     const at = list.findIndex((e) => e.till && !e.phone && looseName_(e.name) === looseName_(next.name));
     if (at >= 0) list.splice(at, 1);
   }
-  const lines = list.map((e) => e.line);
-  if (main.name || main.phone) lines.unshift(`${main.phone || '-'} · ${main.name} · ${todayKey}`);
-  return lines.slice(0, EARLIER_CONTACTS_MAX).join('\n');
+  if (main.name || main.phone) list.unshift({ ...main, till: todayKey, line: `${main.phone || '-'} · ${main.name} · ${todayKey}` });
+  let people = 0;
+  return list.filter((e) => !e.till || ++people <= EARLIER_CONTACTS_MAX).map((e) => e.line).join('\n');
 }
 
 /**
