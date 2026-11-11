@@ -219,6 +219,10 @@ function stub() {
   await page.fill('#f-phone', '0321 5556666');
   await page.fill('#f-name', 'Blue Area Plaza');
   await save();
+  // Spec 011: a changed number may be a new person: one extra tap, only then.
+  await page.waitForSelector('#snoozeSheet:not([hidden])');
+  assert.equal(await page.textContent('#snoozeTitle'), 'Is this a new person?');
+  await page.click('#snoozeChoices button:has-text("No, fix the number")');
   await page.waitForSelector('#toast:has-text("Saved")');
   assert.equal(await page.isVisible('#siteView'), true, 'back on the site screen');
   assert.equal(await page.textContent('#siteHead h2'), 'Blue Area Plaza');

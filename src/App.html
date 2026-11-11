@@ -34,6 +34,7 @@
       .card .meta.nodate { color: var(--orange); font-weight: 600; }
       .more { display: block; width: 100%; margin-top: 4px; }
       #u-addC { margin-top: 16px; }
+      .site-head .ec { margin-top: 12px; }
       main { padding: 12px 16px 96px; max-width: 640px; margin: 0 auto; }
       button { font: inherit; cursor: pointer; }
       .big { min-height: 48px; padding: 10px 16px; border-radius: 10px; border: 0; background: var(--blue);
@@ -339,7 +340,8 @@
       var upd = null;
       var confirmNoNumber = false;
       var phoneCheck = { valid: true };
-      var openEarlier = false;    // Earlier contacts opened on the site screen (spec 011)
+      // Earlier contacts opened on the site screen (spec 011).
+      var openEarlier = false;
       // Saves waiting to be sent or confirmed, oldest first (spec 005). Each:
       // { id, fn, siteId, input, card (what the list shows meanwhile), state, form | upd (to reopen),
       //   status: 'saving' | 'failed', message }
@@ -882,7 +884,8 @@
       }
 
       // Search: capitals, spaces and dashes don't matter; every word must match; a number matches
-      // however he types it (0300 123, 92300123). Each site's text is worked out once.
+      // however he types it (0300 123, 92300123). Each site's text is worked out once. Spec 011: earlier
+      // contacts' names and numbers are searched too.
       var searchCache = typeof WeakMap === 'function' ? new WeakMap() : null;
       function squash(text) { return String(text || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, ''); }
       function searchText(s) {
@@ -890,7 +893,7 @@
         if (t === undefined) {
           t = [s.name, s.contactName, s.phone, showPhone(s.phone), s.area, s.buyerType,
             (s.products || []).join(' '), s.stage, s.note].concat((s.earlier || []).map(function (e) {
-            return e.name + ' ' + e.phone + ' ' + showPhone(e.phone); // spec 011: earlier contacts too
+            return e.name + ' ' + e.phone + ' ' + showPhone(e.phone);
           })).map(squash).join('|');
           if (searchCache) searchCache.set(s, t);
         }
@@ -1082,7 +1085,7 @@
         }
         if (openEarlier) past.forEach(function (p) {
           head.appendChild(el('div', [p.name, showPhone(p.phone), p.till && 'till ' + dayLabel(p.till, todayKey())]
-            .filter(Boolean).join(' · '), 'line'));
+            .filter(Boolean).join(' · '), 'line ec'));
           var row = buttonRow(p) || el('div', undefined, 'btnrow');
           // A person without a number can't be main at a stage that needs one (P3-4).
           if (p.till && (p.phone || !has(rules().numberStages, s.stage))) {
@@ -1290,6 +1293,10 @@
         if (upd.seen) {
           input.seen = clone(upd.seen);
           input.touched = touchedOf(upd, todayKey());
+          // Only a new contact: a late follow-up he didn't pick stays as it is (spec 011: not work).
+          if (c && s.followUp && !upd.note.trim() && input.touched.join() === 'followUp' && !choseFollowUp(upd, todayKey())) {
+            input.touched = []; input.followUp = followUp = s.followUp;
+          }
         }
         var card = clone(s);
         card.stage = upd.stage;
@@ -1301,7 +1308,7 @@
         if (c) moveMain(card, c);
         // A salesman's Update is real work: no longer going cold (P6-2). The admin's never is (P7-5).
         // A contact-only one isn't (spec 011).
-        if (!ADMIN && (!c || !upd.seen || touchedOf(upd, todayKey()).length || upd.note.trim())) card.worked = todayKey();
+        if (!ADMIN && !(c && input.touched && !input.touched.length && !upd.note.trim())) card.worked = todayKey();
         if (ADMIN && card.stage !== s.stage) card.closed = has(r.closedStages, card.stage) ? todayKey() : '';
         var replaces = retrying;
         enqueue({ id: upd.saveId, fn: ADMIN ? 'adminPageUpdateSite' : 'repUpdateSite', siteId: openId, input: input, card: card,
@@ -1323,7 +1330,8 @@
       // The new main contact; the old one on top of Earlier contacts, as Google will do it (spec 011).
       function moveMain(card, c) {
         var p = tidyPhone(c.phone), n = squash(c.name);
-        if (p ? p === card.phone : !card.phone && n === squash(card.contactName)) return; // the same person: nothing moves
+        // The same person: nothing moves.
+        if (p ? p === card.phone : !card.phone && n === squash(card.contactName)) return;
         var list = (card.earlier || []).filter(function (e) {
           return p ? e.phone !== p : !(c.again && !e.phone && squash(e.name) === n);
         });
