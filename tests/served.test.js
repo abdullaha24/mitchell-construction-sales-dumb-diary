@@ -197,3 +197,11 @@ test(`served sizes: the salesman's page at most ${SALESMAN_PIN} bytes, the admin
   assert.ok(admin <= ADMIN_PIN, `admin's page: ${admin} bytes served`);
   assert.ok(app < Buffer.byteLength(read('App')) * 0.85, 'comments and indentation really go');
 });
+
+test('no function name twice in the page scripts (App.html and Admin.html share one scope)', () => {
+  // Top-level functions: App.html's script is indented 6 spaces, Admin.html's 2 (nested ones may repeat).
+  const names = [['App', 6], ['Admin', 2]].flatMap(([name, indent]) => [...read(name).matchAll(new RegExp(`^ {${indent}}function (\\w+)\\s*\\(`, 'gm'))]
+    .map((m) => m[1]));
+  assert.ok(names.includes('renderSum') && names.includes('aSumCards'), 'it finds them');
+  assert.deepEqual(names.filter((n, i) => names.indexOf(n) !== i), []);
+});

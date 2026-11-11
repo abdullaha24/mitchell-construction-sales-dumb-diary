@@ -533,13 +533,13 @@ test('team side by side: Rep_Mapping order, "nothing logged", lost reasons most 
     { c: ['North', '10', '3', '0.58M', '2'], k: 'reg' },
     { c: ['RIA', '9', '2', '0.51M', '2'], rep: 'RIA' },
     { c: ['AUR', '2', '1', '0.07M', '0'], rep: 'AUR' },
-    { c: ['WAK', '—', '—', '—', '—'], k: 'none', rep: 'WAK' },
+    { c: ['WAK', '—', '—', '—', '—'], k: 'none' },
     { c: ['Center', '1', '0', '0.5M', '0'], k: 'reg' },
     { c: ['SH', '1', '0', '0.5M', '0'], rep: 'SH' },
-    { c: ['SJ', '—', '—', '—', '—'], k: 'none', rep: 'SJ' },
-    { c: ['SM', '—', '—', '—', '—'], k: 'none', rep: 'SM' },
+    { c: ['SJ', '—', '—', '—', '—'], k: 'none' },
+    { c: ['SM', '—', '—', '—', '—'], k: 'none' },
     { c: ['South', '0', '0', '0', '0'], k: 'reg' },
-    { c: ['IB', '—', '—', '—', '—'], k: 'none', rep: 'IB' },
+    { c: ['IB', '—', '—', '—', '—'], k: 'none' },
     { c: ['Team', '11', '3', '1.08M', '2'], k: 'tot' },
     { c: ['Not in the salesmen list'], k: 'grey' },
     { c: ['MUB', '1', '0', '0', '0'] },
@@ -1276,8 +1276,9 @@ test('spec 011: a region\'s summary is built as a salesman\'s, for its current s
     const t = team(w, period);
     assert.deepEqual(t.regions.map((x) => x.reg), ['North', 'Center', 'South']);
     for (const region of t.regions) {
-      const row = t.tables[0].rows.find((r) => r.reg === region.reg);
-      assert.equal(row.k, 'reg');
+      const row = t.tables[0].rows.find((r) => r.k === 'reg' && r.c[0] === region.reg);
+      assert.equal(row.reg === region.reg, region.tiles.some((x) => x.n !== '0') || region.now.rows.some((r) => r.c[1] !== '0'),
+        `${period} ${region.reg}: tappable only when the region has something`);
       const n = (l) => region.tiles.find((x) => x.l === l).n;
       assert.deepEqual([row.c[1], row.c[2]], [n('Sites worked'), n('Quotes')], `${period} ${region.reg}`);
       if (!period.endsWith('month')) assert.equal(row.c[4], n('Lost'), `${period} ${region.reg}`);
@@ -1358,4 +1359,49 @@ test('spec 011: the admin\'s summary reply for three times a busy month stays un
     const size = Buffer.byteLength(JSON.stringify(w.s.teamSummaryFor_(w.diary, period, now, now.getTime() - 10 * 60 * 1000)));
     assert.ok(size <= 150 * 1024, `${period}: ${size} bytes`);
   }
+});
+
+test('spec 011 fix: a Sites row with a blank site_id, or two rows with one ID, never breaks a summary or its lists', () => {
+  const w = summaryWorld({ sites: [...summarySites(),
+    site('', 'RIA', 'Typed By Hand No ID', { stage: RQ, value_rs: 90000, payment_terms: 'Cash', next_followup: day(2026, 11, 1) }),
+    site('S000002', 'RIA', 'Bahria Villas Again', { stage: RQ, value_rs: 800000, payment_terms: 'Credit', next_followup: day(2026, 11, 1) }),
+  ], activity: [...summaryActivity(), act(pk(2026, 11, 4, 10), 'RIA', '', 'created', { to_stage: LEAD })] });
+  for (const period of ['this-week', 'last-week', 'this-month', 'last-month']) {
+    const t = team(w, period);
+    assert.equal(t.ok, true, period);
+    const views = [['RIA own', ria(w, period)], ['team', t], ...t.salesmen.map((x) => [x.rep, x]), ...t.regions.map((x) => [x.reg, x])];
+    for (const [who, view] of views) {
+      for (const [where, count, list] of tappable(view, `${period} ${who}`)) {
+        assert.equal(list.ids.length + (list.x || 0), count, where);
+        assert.ok(list.ids.every(Boolean), `${where}: no blank ID`);
+        assert.equal(new Set(list.ids).size, list.ids.length, `${where}: each ID once`);
+      }
+      assert.ok(sentIds(view).every(Boolean), `${period} ${who}: named rows carry no blank ID`);
+    }
+    assert.ok(t.cards.every((c) => c.id), period);
+  }
+  const late = ria(w, 'this-week').now.rows[2];
+  assert.deepEqual([late.c[1], late.ids.length, late.x], ['4', 3, 1], 'the second S000002 row is listed under its ID; the blank one is "+ 1"');
+  assert.deepEqual([ria(w, 'this-week').tiles[0].n, ria(w, 'this-week').tiles[0].x], ['3', 2], 'a created row with no ID: "+ 1" more');
+  assert.equal(plain(w.s.adminPageSummary(ADMIN, 'this-week')).ok, true, 'the public function too');
+});
+
+test('spec 011 fix: the admin\'s page time is used only when it could be one (0 < since <= now)', () => {
+  const w = summaryWorld();
+  const closedOnly = team(w, 'this-week').cards.length;
+  for (const since of [1e20, -5, 0, NaN, Infinity, NOW.getTime() + 60000, '1700000000000', null]) {
+    const t = plain(w.s.teamSummaryFor_(w.diary, 'this-week', NOW, since));
+    assert.equal(t.cards.length, closedOnly, String(since));
+  }
+  assert.equal(plain(w.s.adminPageSummary(ADMIN, 'this-week', 1e20)).ok, true, 'never "Something went wrong"');
+  assert.ok(plain(w.s.teamSummaryFor_(w.diary, 'this-week', NOW, LONG_AGO.getTime() - 1)).cards.length > closedOnly);
+});
+
+test('spec 011 fix: a team-table row with nothing in the period can\'t be tapped (salesman or region)', () => {
+  const t = team(summaryWorld(), 'this-week');
+  const rows = t.tables[0].rows;
+  assert.deepEqual(rows.filter((r) => r.rep || r.reg).map((r) => r.c[0]), ['North', 'RIA', 'AUR', 'Center', 'SH']);
+  assert.ok(rows.filter((r) => r.k === 'none').every((r) => !r.rep), 'a "—" row is not tappable');
+  assert.equal(rows.find((r) => r.c[0] === 'South').reg, undefined, 'South: nobody logged anything');
+  assert.deepEqual(t.salesmen.map((x) => x.rep), ['RIA', 'AUR', 'WAK', 'SH', 'SJ', 'SM', 'IB'], 'Prev / Next still step through them all');
 });

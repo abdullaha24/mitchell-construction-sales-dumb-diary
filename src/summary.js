@@ -353,14 +353,27 @@ function siteOrder_(a, b) {
  * @param {string} lh
  */
 function siteList_(facts, ids, shown, lh) {
-  /** @type {SummarySite[]} */
-  const sites = [];
+  /** @type {Map<string, SummarySite>} */
+  const sites = new Map();
   for (const id of ids) {
-    const site = facts.byId.get(id);
-    if (site && shown(site)) sites.push(site);
+    const site = id ? facts.byId.get(id) : undefined;
+    if (site && shown(site)) sites.set(id, site);
   }
-  const x = ids.length - sites.length;
-  return { lh, ids: sites.sort(siteOrder_).map((site) => site.id), ...(x ? { x } : {}) };
+  return tapList_(lh, [...sites.values()].sort(siteOrder_).map((site) => site.id), ids.length);
+}
+
+/**
+ * A tap list (spec 011): each site ID once, never a blank one; `x` = what the count counted that is
+ * not in it (a blank site ID, a second `Sites` row with the same ID, a site not sent), so the list
+ * plus "+ x" always equals the count.
+ * @param {string} lh
+ * @param {string[]} ids in the list's order
+ * @param {number} count
+ */
+function tapList_(lh, ids, count) {
+  const unique = [...new Set(ids.filter(Boolean))];
+  const x = count - unique.length;
+  return { lh, ids: unique, ...(x ? { x } : {}) };
 }
 
 /**
@@ -475,7 +488,7 @@ function siteTable_(h, items) {
   /** @type {SummaryTable} */
   const table = {
     h, n: String(sorted.length),
-    rows: shown.map((x) => ({ c: [x.name, x.r], ...(x.s ? { s: x.s } : {}), ...(x.m ? { k: 'm' } : {}), id: x.id })),
+    rows: shown.map((x) => ({ c: [x.name, x.r], ...(x.s ? { s: x.s } : {}), ...(x.m ? { k: 'm' } : {}), ...(x.id ? { id: x.id } : {}) })),
     ...(more ? { more } : {}),
   };
   return { table, list: shown.map((x) => `- ${x.text}`).concat(more ? [more] : []) };
@@ -528,7 +541,7 @@ function nowPart_(sites, today, named, who = '') {
   const cold = coldSites.length;
   const heading = `Now, ${shortDay_(today)}`;
   /** @param {string} label @param {SummarySite[]} list */
-  const tap = (label, list) => ({ lh: `${who}${heading} · ${label}`, ids: list.map((s) => s.id) });
+  const tap = (label, list) => tapList_(`${who}${heading} · ${label}`, list.map((s) => s.id), list.length);
   const dueLabel = `Follow-ups next ${SUMMARY_DUE_DAYS} days`;
   const part = {
     cap: `Now · ${shortDay_(today)}`, heading,
@@ -551,7 +564,7 @@ function nowPart_(sites, today, named, who = '') {
   if (top.length) {
     const right = (/** @type {SummarySite} */ s) => (shownRs_(s) ? formatRs_(shownRs_(s)) : s.stage);
     part.tables.push({ h: 'Hot sites', n: String(hot.length),
-      rows: top.map((s) => ({ c: [siteName_(s), right(s)], ...(shownRs_(s) ? {} : { k: 'm' }), id: s.id })) });
+      rows: top.map((s) => ({ c: [siteName_(s), right(s)], ...(shownRs_(s) ? {} : { k: 'm' }), ...(s.id ? { id: s.id } : {}) })) });
     part.lists.push({ h: 'Hot sites', list: top.map((s) => `- ${waSafe_(siteName_(s))} · ${right(s)}`) });
   }
   // The biggest late or going cold: name | "5 days late" (red) / "no update for 9 days" (amber).
@@ -562,7 +575,7 @@ function nowPart_(sites, today, named, who = '') {
       ...(coldFor(s) ? [`no update for ${coldFor(s)} days`] : []),
     ].join(' · ');
     part.tables.push({ h: 'Late & going cold', n: `Late ${late} · Cold ${cold}`,
-      rows: behind.map((s) => ({ c: [siteName_(s), why(s)], k: `${isLate(s) ? 'late' : 'cold'} w`, id: s.id })) });
+      rows: behind.map((s) => ({ c: [siteName_(s), why(s)], k: `${isLate(s) ? 'late' : 'cold'} w`, ...(s.id ? { id: s.id } : {}) })) });
     part.lists.push({ h: 'Late & going cold', list: behind.map((s) => `- ${waSafe_(siteName_(s))} · ${why(s)}`) });
   }
   return part;
@@ -664,16 +677,25 @@ function groupSummary_(reps, who, facts, period, target, title, withDays, mine) 
  * @param {SummaryNumbers} n
  * @param {SummaryPeriod} period
  * @param {number | null} target
- * @param {boolean} [salesman] a current salesman: "nothing" shows as '—', and the row can be tapped
+ * @param {boolean} [salesman] a current salesman: "nothing" shows as '—'; else the row can be tapped
  */
 function teamRow_(name, n, period, target, salesman) {
   const pct = pctOf_(n.wonRs, target);
   // A % over 999 shows as 999+, so the column (and a WhatsApp line) keeps its width.
   const last = period.month ? (pct === null ? '—' : pct > 999 ? '999+' : String(pct)) : String(n.lost);
-  if (salesman && !n.days && !n.worked && !n.created && !n.results.length) {
-    return { c: [name, '—', '—', '—', period.month ? last : '—'], k: 'none', rep: name };
+  if (salesman && nothing_(n)) {
+    return { c: [name, '—', '—', '—', period.month ? last : '—'], k: 'none' };
   }
   return { c: [name, String(n.worked), String(n.quotes), millions_(n.wonRs), last], ...(salesman ? { rep: name } : {}) };
+}
+
+/**
+ * Nothing in the period: no save, no site worked or added, no result. Such a row of the team table
+ * shows '—' (a salesman) and can't be tapped (spec 011).
+ * @param {SummaryNumbers} n
+ */
+function nothing_(n) {
+  return !n.days && !n.worked && !n.created && !n.results.length;
 }
 
 /**
@@ -740,7 +762,8 @@ function teamSummaryFor_(diary, periodKey, now, since) {
   const rows = [];
   REGIONS.forEach((region, i) => {
     const reps = salesmen.filter((s) => s.region === region);
-    rows.push({ ...teamRow_(region, summaryNumbers_(facts, new Set(reps.map((s) => s.rep))), period, regionTargets[i]), k: 'reg', reg: region });
+    const n = summaryNumbers_(facts, new Set(reps.map((s) => s.rep)));
+    rows.push({ ...teamRow_(region, n, period, regionTargets[i]), k: 'reg', ...(nothing_(n) ? {} : { reg: region }) });
     reps.forEach((s) => rows.push(teamRow_(s.rep, summaryNumbers_(facts, new Set([s.rep])), period, repTarget(s.rep), true)));
   });
   rows.push({ ...teamRow_('Team', all, period, teamTarget), k: 'tot' });
@@ -791,7 +814,8 @@ function teamSummaryFor_(diary, periodKey, now, since) {
       [{ h: `Lost reasons (${all.lost})`, list: reasonList.map(([reason, count]) => `- ${waSafe_(reason)} · ${count}`) }], nowPart, period.running),
     ...views,
   };
-  const after = typeof since === 'number' && isFinite(since) ? since : Infinity;
+  // Only a time his page could have: after 1970 and not after now (anything else: no such cards).
+  const after = typeof since === 'number' && since > 0 && since <= now.getTime() ? since : Infinity;
   // His page holds the sites closed in its month before the day it loaded (adminDataFor_).
   const loaded = after < Infinity ? dayKey_(new Date(after)) : '';
   /** @type {Set<string>} */
@@ -803,7 +827,9 @@ function teamSummaryFor_(diary, periodKey, now, since) {
   /** @type {Object<string, any>[]} */
   const cards = [];
   for (const id of listed) {
-    const { order, at: added, ...card } = /** @type {SummarySite} */ (facts.byId.get(id));
+    const site = facts.byId.get(id);
+    if (!site) continue;
+    const { order, at: added, ...card } = site;
     const closed = CLOSED_STAGES.includes(card.stage) ? (facts.movedOn.get(id) || {})[card.stage] || '-' : '';
     const onPage = closed > '-' && closed < loaded && closed.slice(0, 7) === loaded.slice(0, 7);
     if ((closed && !onPage) || added >= after) cards.push({ ...card, closed: closed === '-' ? '' : closed });

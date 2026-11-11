@@ -91,8 +91,17 @@
     var r = sum.got[sum.p];
     return r && A_SUM.rep ? r.salesmen.concat(r.regions || []).filter(function (x) { return aSumKey(x) === A_SUM.rep; })[0] : r;
   }
-  function aSumGo(key) { A_SUM.rep = key; renderSum(); window.scrollTo(0, 0); }
-  function aSumTap(row, key) { tapOn(row, function () { A_SUM.y = window.scrollY; aSumGo(key); }); }
+  // The cards his summary brought (sites his page doesn't hold): a period that didn't read a site's
+  // move to Won / Lost keeps the day another one found.
+  function aSumCards(r) {
+    (r.cards || []).forEach(function (c) {
+      var o = sum.c[c.id];
+      if (o && o.stage === c.stage && !c.closed) c.closed = o.closed;
+      sum.c[c.id] = c;
+    });
+  }
+  function aSumGo(key) { A_SUM.rep = key; renderSum(); scrollTo(0, 0); }
+  function aSumTap(row, key) { tapOn(row, function () { A_SUM.y = scrollY; aSumGo(key); }); }
   function aSumNav() {
     var r = sum.got[sum.p], nav = $('aNav'), key = A_SUM.rep;
     nav.textContent = '';
@@ -111,7 +120,7 @@
     if (!A_SUM.rep) return false;
     A_SUM.rep = '';
     renderSum();
-    window.scrollTo(0, A_SUM.y);
+    scrollTo(0, A_SUM.y);
     return true;
   }
   function adminShowOnly(name) {
@@ -140,14 +149,14 @@
   function adminPickTab(name) {
     A.tab = name; A.drill = null; shownCount = PAGE_SIZE;
     renderList();
-    window.scrollTo(0, 0);
+    scrollTo(0, 0);
   }
   function adminDrill(title, test, plan) {
-    A.tabScroll = window.scrollY || 0;
+    A.tabScroll = scrollY || 0;
     A.drill = { title: title, test: test, plan: plan };
     shownCount = PAGE_SIZE;
     renderList();
-    window.scrollTo(0, 0);
+    scrollTo(0, 0);
   }
 
   // A reply's card keeps this month's facts the page already had (snoozes; the day it was won or
@@ -253,7 +262,7 @@
     back.type = 'button';
     back.id = 'drillBack';
     back.addEventListener('click', function () {
-      A.drill = null; shownCount = PAGE_SIZE; renderList(); window.scrollTo(0, A.tabScroll);
+      A.drill = null; shownCount = PAGE_SIZE; renderList(); scrollTo(0, A.tabScroll);
     });
     frag.appendChild(back);
     var p = A.drill.plan && aPlanOf(A.drill.plan[0], A.drill.plan[1]);
