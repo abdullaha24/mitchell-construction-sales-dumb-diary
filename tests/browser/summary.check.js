@@ -3,7 +3,10 @@
 // doGet + server code against fake sheets, in Chromium at a cheap-phone size: no trip at open,
 // the button in the top line, the four buttons, loading, no signal, "As of", "not sent yet", the
 // WhatsApp link, Copy and its fallbacks, Back to the list where he was, and the admin tapping a
-// salesman. Dates are built around the real "today" in Pakistan time. Amounts are made up.
+// salesman. Spec 011: the logo strip, tapping a count (tile, NOW row, region row) to see its sites,
+// a card to open its site and back, named rows, ‹ Prev / Next ›, the admin's cards of sites closed in
+// an earlier month, and the wide screen (1280 px). Dates are built around the real "today" in
+// Pakistan time. Amounts are made up.
 // Usage: node tests/browser/summary.check.js [screenshot-folder]
 
 const assert = require('node:assert/strict');
@@ -70,6 +73,9 @@ function buildWorld() {
   // Late and going cold: named under NOW (owner S9-7).
   rows.push(site({ site_id: 'S000034', rep: 'RIA', site_name: 'Late Plaza', stage: 'Rate Quoted', value_rs: 650000,
     payment_terms: 'Cash', next_followup: dayCell(-3), worked_at: dayCell(-10) }));
+  // Won last month (spec 011): not on the admin's page, so his summary brings its card.
+  rows.push(site({ site_id: 'S000060', rep: 'RIA', site_name: 'Old Win', stage: 'Won (Order)', value_rs: 333000, payment_terms: 'Cash',
+    next_followup: '' }));
   // Eleven more quotes today (one with a long name), so the Quotes table shows "+ 2 more" (spec 010).
   for (let i = 40; i <= 50; i++) {
     rows.push(site({ site_id: `S0000${i}`, rep: 'RIA', site_name: i === 40 ? 'Defence Housing Authority Phase Eight Commercial Plaza Block C'
@@ -85,7 +91,11 @@ function buildWorld() {
     act(dayCell(0), 'AUR', 'S000033', 'created', { to_stage: 'Rate Quoted', value_rs: 777000, payment_terms: 'Cash' }),
     ...Array.from({ length: 11 }, (_, i) => act(dayCell(0), 'RIA', `S0000${40 + i}`, 'created',
       { to_stage: 'Rate Quoted', value_rs: (40 + i) * 100000, payment_terms: 'Cash' })),
+    // RIA worked AUR's site today (handed over since): on his list only as "+ 1 no longer in your list".
+    act(dayCell(0), 'RIA', 'S000033', 'update', { note: 'before the handover' }),
   ];
+  activity.unshift(act(new Date(monthCell().getTime() - 10 * DAY), 'RIA', 'S000060', 'stage_change',
+    { from_stage: 'Rate Quoted', to_stage: 'Won (Order)', value_rs: 333000, payment_terms: 'Cash' }));
   const lists = [['list', 'value', 'region', 'added_by', 'active', 'sort']];
   ['Tile Adhesives'].forEach((v, i) => lists.push(['product_category', v, '', 'owner', true, (i + 1) * 10]));
   ['Dealer'].forEach((v, i) => lists.push(['buyer_type', v, '', 'owner', true, (i + 1) * 10]));
@@ -142,10 +152,10 @@ let browser;
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'salesdiary-'));
   browser = await chromium.launch();
 
-  async function open(code, name, allowed) {
+  async function open(code, name, allowed, width = 360) {
     const file = path.join(dir, `${name}.html`);
     fs.writeFileSync(file, world.s.doGet({ parameter: { k: code } }).getContent());
-    const context = await browser.newContext({ viewport: { width: 360, height: 740 }, deviceScaleFactor: 1, hasTouch: true });
+    const context = await browser.newContext({ viewport: { width, height: 740 }, deviceScaleFactor: 1, hasTouch: width < 900 });
     const page = await context.newPage();
     await page.exposeFunction('__server', (fn, argsJson) => {
       if (!allowed.includes(fn)) throw new Error(`page called ${fn}`);
@@ -231,6 +241,16 @@ let browser;
   const nbsp = (line) => line.replace(/Rs\. /g, 'Rs.\u00a0'); // the page keeps "Rs. 400,000" together
   const tableLines = (t) => (t.h ? [`table ${t.h} / ${t.n}`] : []).concat(t.cols ? [t.cols.join(' | ')] : [],
     t.rows.map((r) => r.c.map((x, i) => (i ? nbsp(x) : x + (r.s ? ` ${r.s}` : ''))).join(' | ')), t.more ? [t.more] : []);
+  /** Spec 011: a list's heading, as the page writes it. */
+  const listHead = (part) => {
+    const n = part.ids.length + (part.x || 0);
+    return `${part.lh} · ${n} ${n === 1 ? 'site' : 'sites'}`;
+  };
+  /** Scrolls an element into view (so a tap on it doesn't scroll), then gives the scroll place. */
+  const placeOf = async (page, sel) => {
+    await page.locator(sel).first().scrollIntoViewIfNeeded();
+    return page.evaluate(() => window.scrollY);
+  };
   /** The server's summary, part by part, as the page should show it. */
   const expectedLines = (view, asOf) => {
     const g = view.target;
@@ -284,7 +304,8 @@ let browser;
     assert.equal(await lateRow.locator('td').first().textContent(), 'Late Plaza');
     assert.equal(await lateRow.locator('td.num').textContent(), '3 days late · no update for 10 days');
     assert.equal(await lateRow.locator('td.num').evaluate((c) => getComputedStyle(c).color), 'rgb(180, 35, 24)', 'the reason in red');
-    assert.equal(await lateRow.locator('td').first().evaluate((c) => getComputedStyle(c).color), 'rgb(31, 41, 51)', 'the name in plain ink');
+    assert.equal(await lateRow.locator('td').first().evaluate((c) => getComputedStyle(c).color), 'rgb(0, 115, 142)',
+      'the name in Mitchell teal: it can be tapped (spec 011)');
     assert.equal(await page.locator('#sumBody .sumt tr.late:not(.w) td').first().evaluate((c) => getComputedStyle(c).color),
       'rgb(180, 35, 24)', 'the NOW Late row: label and number red, as in the mockup');
     assert.ok(mine.text.includes('\n*Late & going cold*\n- Late Plaza · 3 days late · no update for 10 days'), 'and in the WhatsApp text');
@@ -304,6 +325,83 @@ let browser;
     assert.equal(await page.isVisible('#sumCopyBtn'), true);
     await h.noSideways('summary');
     if (shots) await page.screenshot({ path: path.join(shots, 'summary-ria.png'), fullPage: true });
+
+    // ---- Spec 011: the logo strip at 360 px scrolls away; the tabs and header stay as they were. ----
+    const logo = await page.$eval('.logo img', (img) => ({ alt: img.alt, h: img.getBoundingClientRect().height, src: img.src.slice(0, 22),
+      line: getComputedStyle(img.parentNode).borderBottom, text: img.parentNode.textContent }));
+    assert.deepEqual(logo, { alt: 'Mitchell Construction Chemicals', h: 30, src: 'data:image/png;base64,', line: '2px solid rgb(243, 144, 41)',
+      text: 'Sales Diary' });
+    assert.equal(await page.$eval('#sumWa', (a) => getComputedStyle(a).backgroundColor), 'rgb(31, 168, 85)', 'WhatsApp stays green');
+    assert.deepEqual(await page.$$eval('#sumBody .tiles .tile', (ts) => [...new Set(ts.map((t) => Math.round(t.getBoundingClientRect().top)))].length), 2,
+      '360 px: tiles 3 per row, as before');
+
+    // ---- Spec 011: a tile opens its sites; a card opens the site; Back returns to the list, then the summary. ----
+    assert.deepEqual(await page.$$eval('#sumBody .tile', (ts) => ts.map((t) => t.classList.contains('tap'))),
+      [...mine.tiles.map((t) => Number(t.n) > 0)], 'only a count above 0 can be tapped');
+    const quotes = mine.tiles[3];
+    const sumY = await placeOf(page, '#sumBody .tile:nth-child(4)');
+    await page.click('#sumBody .tile:nth-child(4)');
+    assert.equal(await page.textContent('#sumBody h2'), listHead(quotes));
+    assert.ok(listHead(quotes).endsWith('Quotes · 12 sites'));
+    assert.equal(await page.isHidden('#sumTabs'), true, 'the list hides the four buttons');
+    assert.equal(await page.isHidden('#sumShare'), true);
+    const cardNames = await h.texts('#sumBody .card .name');
+    assert.deepEqual(cardNames, [...quotes.ids].map((id) => world.s.repLoad(RIA).sites.find((c) => c.id === id).name), "the summary's sites, its order");
+    assert.equal(cardNames[0], 'Quote 50', 'biggest quote first');
+    assert.deepEqual(await h.texts('#sumBody .card .pl'), [...quotes.p], 'each card: what was quoted in the period');
+    assert.equal(await page.locator('#sumBody .card button.snooze').count(), 0, 'no Snooze on a summary list');
+    await h.noSideways('a summary list');
+    if (shots) await page.screenshot({ path: path.join(shots, 'summary-ria-list.png'), fullPage: true });
+    const listY = await placeOf(page, '#sumBody .card:has(.name:text-is("Quote 48"))');
+    assert.ok(listY > 0, 'the list scrolls');
+    await page.click('#sumBody .card:has(.name:text-is("Quote 48"))');
+    await page.waitForSelector('#siteView:not([hidden])');
+    assert.equal(await page.textContent('#siteHead h2'), 'Quote 48');
+    await page.click('#cancel');
+    assert.equal(await page.isVisible('#sumView'), true, 'Back: the list again');
+    assert.equal(await page.textContent('#sumBody h2'), listHead(quotes));
+    assert.equal(await page.evaluate(() => window.scrollY), listY, 'where he was in the list');
+    await page.click('#sumBody .card:has(.name:text-is("Quote 48"))');
+    await page.fill('#u-note', 'sent the rate list');
+    await page.click('#save');
+    await page.waitForSelector('#sumView:not([hidden])');
+    assert.equal(await page.textContent('#sumBody h2'), listHead(quotes), 'Save: the list again');
+    assert.equal(await page.evaluate(() => window.scrollY), listY);
+    await page.waitForFunction(() => !document.querySelector('#sumBody .tag.saving'));
+    assert.ok((await page.textContent('#sumBody .card:has(.name:text-is("Quote 48")) .said')).endsWith('sent the rate list'),
+      'the card as it is now');
+    await page.click('#sumBack');
+    assert.deepEqual(await h.screenLines(), expectedLines(mine), 'Back: the summary as it was (not fetched again)');
+    assert.equal(await page.evaluate(() => window.scrollY), sumY, 'where he was');
+    assert.equal(await page.isVisible('#sumTabs'), true);
+    // Sites worked: the site he worked that is now AUR's is never sent (ADR-0004): "+ 1 no longer in your list".
+    const worked = mine.tiles[1];
+    assert.deepEqual([worked.ids.length, worked.x], [13, 1]);
+    await page.click('#sumBody .tile:nth-child(2)');
+    assert.equal(await page.textContent('#sumBody h2'), listHead(worked));
+    assert.equal(await page.locator('#sumBody .card').count(), 13);
+    assert.equal(await page.textContent('#sumBody > .note'), '+ 1 no longer in your list');
+    assert.ok(!(await h.texts('#sumBody .card .name')).includes('AUR Hidden'));
+    await page.click('#sumBack');
+    // A NOW row: Late.
+    await page.click('#sumBody tr.tap:has(td:text-is("Late"))');
+    assert.equal(await page.textContent('#sumBody h2'), listHead(mine.now.rows[2]));
+    assert.deepEqual(await h.texts('#sumBody .card .name'), ['Late Plaza']);
+    await page.click('#sumBack');
+    assert.equal(await page.locator('#sumBody tr.tap:has(td:text-is("Going cold"))').count(), 1);
+    // A named row opens that site; Back returns to the summary where he was.
+    const rowY = await placeOf(page, '#sumBody tr.late.w');
+    await page.click('#sumBody tr.late.w');
+    await page.waitForSelector('#siteView:not([hidden])');
+    assert.equal(await page.textContent('#siteHead h2'), 'Late Plaza');
+    await page.click('#cancel');
+    assert.deepEqual(await h.screenLines(), expectedLines(mine));
+    assert.equal(await page.evaluate(() => window.scrollY), rowY);
+    // Keyboard: Enter on a tile opens it too.
+    await page.locator('#sumBody .tile:nth-child(5)').focus();
+    await page.keyboard.press('Enter');
+    assert.equal(await page.textContent('#sumBody h2'), listHead(mine.tiles[4]));
+    await page.click('#sumBack');
 
     // ---- Each button fetches its own; tapping again fetches it fresh. ----
     const count = async () => (await h.calls()).filter((c) => c === 'repSummary').length;
@@ -329,7 +427,7 @@ let browser;
     assert.equal(await page.textContent('#sumMsg'), "Couldn't get the summary: no signal. Try again.");
     assert.equal(await page.isVisible('#sumRetry'), true);
     mine = world.s.repSummary(RIA, 'this-week');
-    assert.deepEqual(await h.screenLines(), expectedLines(mine, `As of ${mine.at}`), 'kept, with As of');
+    assert.deepEqual(await h.screenLines(), expectedLines(mine, `As of ${await page.evaluate(() => sum.got['this-week'].at)}`), 'kept, with As of');
     await page.evaluate(() => { window.__offline = false; });
     await page.click('#sumRetry');
     await h.shown();
@@ -424,7 +522,8 @@ let browser;
     assert.ok(all.title.startsWith('Team · This week'));
     assert.equal(await page.getAttribute('#sumWa', 'href'), `https://wa.me/?text=${encodeURIComponent(all.text)}`);
     assert.ok(!/owner/i.test(await page.evaluate(() => document.body.innerText)), 'the word on screen is Admin');
-    assert.deepEqual(await h.texts('#sumBody tr.tap td:first-child'), ['RIA', 'AUR', 'SH'], 'each salesman\'s row can be tapped');
+    assert.deepEqual(await h.texts('#sumBody table.cols tr.tap td:first-child'), ['North', 'RIA', 'AUR', 'Center', 'SH', 'South'],
+      'each salesman\'s and region\'s row can be tapped');
     assert.equal(await page.locator('#sumBody .sumt h3:has-text("Hot sites")').count(), 0, 'the team\'s NOW: counts only');
     await h.numbersNeat();
     // The team table: five columns that fit at 360 px, numbers lined up on the right.
@@ -444,8 +543,8 @@ let browser;
     // ---- Tapping a salesman: exactly his summary plus "Logged on", instantly, even with no signal. ----
     await page.evaluate(() => { window.__offline = true; window.scrollTo(0, 300); });
     const calls = (await h.calls()).length;
-    assert.deepEqual(await page.$$eval('#sumBody tr.tap', (rows) => rows.map((r) => r.tabIndex)), [0, 0, 0], 'focusable');
-    await page.locator('#sumBody tr.tap').first().focus();
+    assert.deepEqual(await page.$$eval('#sumBody table.cols tr.tap', (rows) => rows.map((r) => r.tabIndex)), [0, 0, 0, 0, 0, 0], 'focusable');
+    await page.locator('#sumBody table.cols tr.tap:not(.reg)').first().focus();
     await page.keyboard.press('Enter');
     const his = all.salesmen.find((x) => x.rep === 'RIA');
     assert.deepEqual(await h.screenLines(), expectedLines(his));
@@ -455,10 +554,90 @@ let browser;
       'the same text he sees, plus his days logged');
     assert.equal(await page.getAttribute('#sumWa', 'href'), `https://wa.me/?text=${encodeURIComponent(his.text)}`);
     assert.equal((await h.calls()).length, calls, 'no trip to Google');
+    // ‹ Prev / Next ›: named after the neighbour, in the team table's order; none at the ends.
+    const nav = async () => [await page.locator('#aPrev').count() ? await page.textContent('#aPrev') : null,
+      await page.locator('#aNext').count() ? await page.textContent('#aNext') : null];
+    assert.deepEqual(await nav(), [null, 'AUR ›']);
+    await page.click('#aNext');
+    assert.deepEqual(await h.screenLines(), expectedLines(all.salesmen[1]), 'AUR\'s summary');
+    assert.deepEqual(await nav(), ['‹ RIA', 'SH ›']);
+    await page.click('#aNext');
+    assert.deepEqual(await nav(), ['‹ AUR', null]);
+    await page.click('#aPrev');
+    assert.equal(await page.textContent('#sumBody h2'), all.salesmen[1].title);
+    // In his view, a tile lists the sites with their salesman now (the site RIA worked is AUR's now).
+    await page.click('#aPrev');
+    await page.click('#sumBody .tile:nth-child(2)');
+    const riaWorked = all.salesmen[0].tiles[1];
+    assert.equal(riaWorked.x, undefined, 'the admin sees every site RIA worked that is still in the sheet');
+    assert.equal(await page.textContent('#sumBody h2'), listHead(riaWorked));
+    assert.equal(await page.locator('#sumBody .card').count(), riaWorked.ids.length);
+    assert.equal(await page.isHidden('#aNav'), true, 'no Prev / Next on a list');
+    assert.equal(await page.textContent('#sumBody .card:has(.name:text-is("AUR Hidden")) .who-line'), 'AUR · North');
+    await page.click('#sumBack');
+    assert.deepEqual(await h.screenLines(), expectedLines(all.salesmen[0]), 'Back: his summary');
     await page.click('#sumBack');
     assert.deepEqual(await h.screenLines(), expectedLines(all), 'Back: the team again');
     assert.equal(await page.evaluate(() => window.scrollY), 300, 'where he was');
     await page.evaluate(() => { window.__offline = false; });
+
+    // ---- Spec 011: a region's row opens its summary (built as a salesman's), North → Center → South. ----
+    await page.click('#sumBody tr.reg.tap:has(td:text-is("North"))');
+    const north = all.regions[0];
+    assert.deepEqual(await h.screenLines(), expectedLines(north));
+    assert.equal(north.title, all.title.replace('Team', 'North'));
+    const northRow = all.tables[0].rows.find((r) => r.reg === 'North');
+    assert.deepEqual([northRow.c[1], northRow.c[2]], [north.tiles[1].n, north.tiles[3].n], 'the same numbers as its row');
+    assert.equal(await page.getAttribute('#sumWa', 'href'), `https://wa.me/?text=${encodeURIComponent(north.text)}`, 'its own WhatsApp text');
+    assert.ok(north.text.startsWith('*North · '));
+    assert.deepEqual(await nav(), [null, 'Center ›']);
+    await page.click('#aNext');
+    assert.deepEqual(await nav(), ['‹ North', 'South ›']);
+    assert.equal(await page.textContent('#sumBody h2'), all.regions[1].title);
+    await page.click('#aNext');
+    assert.deepEqual(await nav(), ['‹ Center', null]);
+    await page.click('#aPrev');
+    await page.click('#aPrev');
+    await page.click('#sumBody .tile:nth-child(5)');
+    assert.equal(await page.textContent('#sumBody h2'), listHead(north.tiles[4]));
+    assert.deepEqual(await h.texts('#sumBody .card .pl'), [...north.tiles[4].p]);
+    await page.click('#sumBack');
+    await page.click('#sumBack');
+    assert.deepEqual(await h.screenLines(), expectedLines(all));
+    await h.noSideways('region summaries');
+
+    // ---- Spec 011: last month's Won: a site won last month is not on his page; its card came with the
+    // summary. It opens, saves, and never counts as won this month. ----
+    await page.click('#sumTabs .tab:nth-child(4)');
+    await h.shown();
+    const lastMonth = world.s.adminPageSummary(ADMIN, 'last-month', Date.now());
+    assert.deepEqual([...lastMonth.cards].map((c) => [c.id, c.closed]), [['S000060', new Date(monthCell().getTime() - 10 * DAY + 5 * 3600000)
+      .toISOString().slice(0, 10)]]);
+    await page.click('#sumBody .tile:nth-child(5)');
+    assert.deepEqual(await h.texts('#sumBody .card .name'), ['Old Win']);
+    assert.deepEqual(await h.texts('#sumBody .card .pl'), ['Won Rs. 333,000 · Cash']);
+    assert.match(await page.textContent('#sumBody .card .meta:has-text("Won ")'), /^Won \d+ \w+$/, 'the day it was won');
+    assert.equal(await page.evaluate(() => data.sites.some((s) => s.id === 'S000060')), false, 'never in his page\'s sites');
+    const wonTop = await page.evaluate(() => document.querySelector('#target div:nth-child(2)').textContent);
+    await page.click('#sumBody .card:has(.name:text-is("Old Win"))');
+    await page.waitForSelector('#siteView:not([hidden])');
+    assert.equal(await page.textContent('#siteHead .who-line'), 'Salesman: RIA (North)');
+    await page.fill('#u-note', 'repeat order coming');
+    await page.click('#save');
+    await page.waitForSelector('#sumView:not([hidden])');
+    await page.waitForFunction(() => !document.querySelector('#sumBody .tag.saving'));
+    assert.deepEqual(await h.texts('#sumBody .card .name'), ['Old Win'], 'Save: back to the list');
+    assert.equal(await page.evaluate(() => data.sites.find((s) => s.id === 'S000060').closed), lastMonth.cards[0].closed,
+      'saved at the same stage: its day stays');
+    await page.click('#sumBack');
+    await page.click('#sumBack');
+    assert.equal(await page.evaluate(() => document.querySelector('#target div:nth-child(2)').textContent), wonTop,
+      'a site won last month is not this month\'s Won');
+    await page.click('#atab-month');
+    assert.ok(!(await h.texts('#sites .card .name')).includes('Old Win'), 'nor on This month');
+    await page.click('#atab-team');
+    await page.click('#summary');
+    await h.shown();
     await page.click('#sumBack');
     assert.equal(await page.isVisible('#adminTabs'), true);
     assert.equal(await page.getAttribute('#atab-team', 'aria-selected'), 'true', 'the tab he was on');
@@ -481,6 +660,40 @@ let browser;
     }
     await h.noSideways('admin summaries');
     assert.ok((await h.calls()).every((c) => c.startsWith('adminPage')), 'only the admin functions');
+    await page.context().close();
+  }
+
+  // ======================================================== Spec 011: the wide screen (1280 px)
+  {
+    const page = await open(ADMIN, 'admin-wide', ['adminPageSummary', 'adminPageLoad', 'adminPageSaveStatus'], 1280);
+    const h = helpers(page);
+    await page.waitForSelector('#adminTabs');
+    const box = (sel) => page.$$eval(sel, (els) => els.map((e) => { const r = e.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width }; }));
+    await page.click('#atab-team');
+    const teamCards = await box('#sites .card.team');
+    assert.ok(teamCards.every((r) => r.x === teamCards[0].x && r.w > 900), 'Team cards stay one column');
+    await page.locator('.card.team[data-rep="RIA"] .chip:has-text("Visited / Lead")').click();
+    const cards = await box('#sites .card');
+    assert.ok(cards.length >= 2 && cards[0].y === cards[1].y && cards[1].x > cards[0].x, `cards in two columns: ${JSON.stringify(cards.slice(0, 2))}`);
+    await page.click('#atab-today');
+    const rows = await box('#sites .rep-row');
+    assert.ok(rows.every((r) => r.x === rows[0].x && r.w > 900), 'salesman rows stay one column');
+    await page.click('#summary');
+    await h.shown();
+    const main = (await box('#sumView'))[0];
+    assert.ok(main.w <= 1100 && main.x > 0, `at most 1,100 px, centred: ${JSON.stringify(main)}`);
+    const tiles = await box('#sumBody .tile');
+    assert.equal(new Set(tiles.map((t) => t.y)).size, 1, 'six tiles in one row');
+    if (shots) await page.screenshot({ path: path.join(shots, 'summary-wide.png'), fullPage: true });
+    await page.click('#sumBody tr.tap:has(td:text-is("RIA"))');
+    const tables = await box('#sumBody .sumt');
+    assert.ok(tables[0].y === tables[1].y && tables[1].x > tables[0].x, `tables two per row: ${JSON.stringify(tables)}`);
+    if (shots) await page.screenshot({ path: path.join(shots, 'summary-wide-ria.png'), fullPage: true });
+    await page.click('#sumBody .tile:nth-child(4)');
+    const listCards = await box('#sumBody .card');
+    assert.ok(listCards[0].y === listCards[1].y && listCards[1].x > listCards[0].x, 'a summary list: two columns');
+    if (shots) await page.screenshot({ path: path.join(shots, 'summary-wide-list.png'), fullPage: true });
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth), 1280, 'no sideways scrolling');
     await page.context().close();
   }
 

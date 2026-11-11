@@ -174,7 +174,8 @@ test('whatever is in the sheet is escaped on the page', () => {
   const w = world({ sites: [SITES, siteRow('S000001', 'RIA', evil, '')] });
   const page = visit(w, RIA_CODE);
   const html = page.getContent();
-  assert.ok(!/<img/i.test(html), 'no raw <img>');
+  assert.deepEqual(html.match(/<img[^>]*?src="[^"]{0,22}/gi), ['<img alt="Mitchell Construction Chemicals" src="data:image/png;base64,'],
+    'no raw <img>: the only one is the logo (spec 011)');
   assert.equal((html.match(/<script>/g) || []).length, 1, 'only the page\'s own script');
   assert.equal(appData(page).sites[0].name, evil, 'the name arrives intact, as text');
 });
