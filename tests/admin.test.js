@@ -135,6 +135,7 @@ const ADMIN_CALLS = {
   adminPageLoad: (s, k) => s.adminPageLoad(k),
   adminPageUpdateSite: (s, k) => s.adminPageUpdateSite(k, 'S000001', { stage: RQ, value: '1000', terms: 'Cash', followUp: 'tomorrow' }),
   adminPageSaveStatus: (s, k) => s.adminPageSaveStatus(k, ['abcdefgh01']),
+  adminPageDaily: (s, k) => s.adminPageDaily(k, ''), // spec 012
 };
 
 for (const [name, call] of Object.entries(ADMIN_CALLS)) {

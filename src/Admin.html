@@ -2,7 +2,7 @@
      so a salesman's page never carries any of it. App.html keeps the site screen, the Update form
      and the save queue (one copy for both); this part draws the five tabs, the tap-through lists
      and the admin's extras on cards. Every value goes on screen with textContent, never as HTML.
-     Words on screen say "Admin", never "owner" (owner P7-7). -->
+     Words on screen say "Admin", never "owner" (owner P7-7). Spec 012: the Daily message screen. -->
 <style>
   #refresh { flex: none; min-height: 44px; padding: 6px 12px; font-size: 15px; }
   .target .upd { white-space: nowrap; }
@@ -31,7 +31,24 @@
   .back { margin-bottom: 10px; }
   #aNav { margin: 10px 0 0; }
   #aNav span { flex: 1; }
+  .a-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 4px 0 8px; }
+  .a-top .a-h { margin: 0; }
+  .a-top .plain { flex: none; white-space: nowrap; color: var(--blue); font-weight: 600; }
+  #dailyDays b { flex: 1.3 1 0; align-self: center; text-align: center; }
+  #dailyRegions { margin: 12px 0 2px; }
+  #dailyText { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; font-size: 15px; background: #fff; margin: 10px 0 0;
+               border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
 </style>
+<!-- Spec 012: the Daily message. Share on WhatsApp / Copy (and Copy's fallbacks) are the summary's
+     own, moved onto this screen while it shows (adminShowOnly). -->
+<main id="dailyView" hidden>
+  <button class="plain" id="dailyBack">‹ Back</button>
+  <div class="btnrow" id="dailyDays"><button id="dailyPrev"></button><b id="dailyDay"></b><button id="dailyNext"></button></div>
+  <div class="pills" id="dailyRegions"></div>
+  <div id="dailyMsg" class="note" hidden></div>
+  <button class="plain" id="dailyRetry" hidden>Try again</button>
+  <pre id="dailyText" hidden></pre>
+</main>
 <script>
   // ---- The admin's screen (spec 008). Called from App.html when data.admin is set. ----
   var A = { tab: 'today', drill: null, todayRep: '', lateKind: 'late', lateRep: '', lostReason: '', loadedAt: Date.now(),
@@ -60,7 +77,7 @@
     var refresh = el('button', 'Refresh', 'plain');
     refresh.id = 'refresh';
     refresh.type = 'button';
-    refresh.addEventListener('click', function () { adminRefresh(false); });
+    refresh.addEventListener('click', function () { DM.got = {}; adminRefresh(false); });
     document.querySelector('header').appendChild(refresh);
     var nav = el('nav', undefined, 'tabs');
     nav.id = 'adminTabs';
@@ -81,6 +98,8 @@
     document.addEventListener('visibilitychange', function () {
       if (!document.hidden && Date.now() - A.loadedAt >= A_REFRESH_MS) adminRefresh(true);
     });
+    $('dailyBack').onclick = function () { showList(true); };
+    $('dailyRetry').onclick = function () { aDailyGet(DM.day); };
   }
   // ---- Summary (spec 009): his reply holds the team and each salesman's own; tapping a salesman's
   // line shows that one (no trip), Back returns to the team where he was. Spec 011: a region's
@@ -88,6 +107,7 @@
   var A_SUM = { rep: '', y: 0 };
   function aSumKey(x) { return x.rep || '@' + x.reg; }
   function aSumView() {
+    if (screen === 'daily') return aDailyView(); // Copy on the Daily message
     var r = sum.got[sum.p];
     return r && A_SUM.rep ? r.salesmen.concat(r.regions || []).filter(function (x) { return aSumKey(x) === A_SUM.rep; })[0] : r;
   }
@@ -132,6 +152,10 @@
     $('editDetails').hidden = true;
     $('newSite').hidden = true;
     $('tabs').hidden = true;
+    $('dailyView').hidden = name !== 'daily';
+    if (name === 'daily') $('formActions').hidden = true;
+    var box = $(name === 'daily' ? 'dailyView' : 'sumView');
+    ['sumShare', 'sumHold', 'sumCopy'].forEach(function (id) { box.appendChild($(id)); });
   }
   function adminRefresh(quiet) {
     var b = $('refresh');
@@ -289,7 +313,12 @@
     return 'Update' + money + (f.followUp ? ' · follow up ' + shortDay(f.followUp) : '');
   }
   function aToday(frag, today) {
-    frag.appendChild(el('div', 'Today, ' + aDayName(data.today) + ' ' + shortDay(data.today), 'a-h'));
+    var top = frag.appendChild(el('div', '', 'a-top'));
+    top.appendChild(el('div', 'Today, ' + aDayName(data.today) + ' ' + shortDay(data.today), 'a-h'));
+    var daily = top.appendChild(el('button', 'Daily message', 'plain'));
+    daily.type = 'button';
+    daily.id = 'dailyOpen';
+    daily.onclick = function () { showOnly('daily'); aDailyGo(aLastWorkDay()); };
     if (today !== data.today) frag.appendChild(el('div', 'This is ' + shortDay(data.today) + '. Tap Refresh.', 'banner'));
     var counts = {};
     data.feed.forEach(function (f, i) {
@@ -341,6 +370,60 @@
       });
       frag.appendChild(card);
     });
+  }
+
+  // ---- Daily message (spec 012): one region's day as WhatsApp text, built on the server. One trip
+  // brings all three regions of a day (DM.got[day]), so the pills switch with no trip; Refresh
+  // clears them. It opens on the last working day (yesterday; Saturday when yesterday was Sunday);
+  // ‹ goes back 31 days, › up to today. The text shows exactly as it will paste. ----
+  var DM = { day: '', got: {}, busy: {}, bad: {}, reg: '' };
+  function aLastWorkDay() { var y = addDays(todayKey(), -1); return aDayName(y) === 'Sun' ? addDays(y, -1) : y; }
+  function aDailyView() {
+    var r = DM.got[DM.day];
+    return r && r.regions.filter(function (x) { return x.region === DM.reg; })[0];
+  }
+  function aDailyGo(day) {
+    DM.day = day;
+    if (DM.got[day] || DM.busy[day]) aDailyDraw(); else aDailyGet(day);
+  }
+  function aDailyGet(day) {
+    function done(r, bad) { DM.busy[day] = 0; DM.bad[day] = bad; if (r) DM.got[day] = r; aDailyDraw(); }
+    DM.busy[day] = 1; DM.bad[day] = '';
+    google.script.run.withSuccessHandler(function (r) {
+      if (r && r.ok && r.day === day) done(r, ''); else done(0, 'Something went wrong. Try again.');
+    }).withFailureHandler(function (e) {
+      e = readable(e);
+      done(0, /no signal/.test(e) ? "Couldn't get the message: no signal. Try again." : e);
+    }).adminPageDaily(k, day);
+    aDailyDraw();
+  }
+  function aDailyDraw() {
+    if (screen !== 'daily') return;
+    var day = DM.day, today = todayKey(), regions = aRegions(), bad = DM.bad[day], m = $('dailyMsg');
+    [['dailyPrev', day > addDays(today, -31) && addDays(day, -1)], ['dailyNext', day < today && addDays(day, 1)]].forEach(function (x, i) {
+      var b = $(x[0]), to = x[1];
+      b.style.visibility = to ? '' : 'hidden';
+      b.textContent = to ? (i ? '' : '‹ ') + aDayName(to) + ' ' + Number(to.slice(8)) + (i ? ' ›' : '') : '';
+      b.onclick = function () { aDailyGo(to); };
+    });
+    $('dailyDay').textContent = aDayName(day) + ' ' + shortDay(day) + (day === today ? ' (so far)' : '');
+    if (!DM.reg) DM.reg = (fetchStored('salesdiary.daily') || {}).r; // the pill he used last
+    if (!has(regions, DM.reg)) DM.reg = regions[0];
+    var row = $('dailyRegions');
+    row.textContent = '';
+    regions.forEach(function (reg) {
+      row.appendChild(pill(reg, reg === DM.reg, function () { DM.reg = reg; store('salesdiary.daily', { r: reg }); aDailyDraw(); }))
+        .id = 'daily-' + reg;
+    });
+    m.textContent = DM.busy[day] ? 'Getting the message…' : bad;
+    m.hidden = !m.textContent;
+    $('dailyRetry').hidden = !bad || DM.busy[day];
+    var v = aDailyView();
+    $('dailyText').hidden = $('sumShare').hidden = !v;
+    $('sumHold').hidden = $('sumCopy').hidden = true;
+    if (!v) return;
+    $('dailyText').textContent = v.text;
+    $('sumWa').href = 'https://wa.me/?text=' + encodeURIComponent(v.text);
   }
 
   // ---- Plan (spec 011): each salesman's day from the page's data (no trip). done = sites his own

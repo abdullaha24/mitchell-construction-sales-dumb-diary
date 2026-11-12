@@ -38,12 +38,20 @@ const WEEKDAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
  */
 
 /**
+ * The day of the week of a yyyy-MM-dd day: 0 Sunday to 6 Saturday.
+ * @param {string} key
+ */
+function weekdayOf_(key) {
+  const [y, m, d] = key.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+}
+
+/**
  * `2026-10-31` → `Sat 31 Oct`.
  * @param {string} key yyyy-MM-dd
  */
 function weekdayDay_(key) {
-  const [y, m, d] = key.split('-').map(Number);
-  return `${WEEKDAY_NAMES[new Date(Date.UTC(y, m - 1, d)).getUTCDay()]} ${shortDay_(key)}`;
+  return `${WEEKDAY_NAMES[weekdayOf_(key)]} ${shortDay_(key)}`;
 }
 
 /**
@@ -86,8 +94,7 @@ function summaryPeriod_(period, now) {
   let name;
   let days;
   if (period === 'this-week' || period === 'last-week') {
-    const [y, m, d] = today.split('-').map(Number);
-    const saturday = addDays_(today, -((new Date(Date.UTC(y, m - 1, d)).getUTCDay() + 1) % 7));
+    const saturday = addDays_(today, -((weekdayOf_(today) + 1) % 7));
     from = running ? saturday : addDays_(saturday, -7);
     to = addDays_(from, 7);
     const last = running ? today : addDays_(to, -1);
