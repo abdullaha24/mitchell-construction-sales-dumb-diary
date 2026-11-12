@@ -25,7 +25,7 @@ const D = new Date('2026-11-04T05:00:00Z');
 // Spec 011's budget: the logo (once in App.html), tappable summaries, the wide screen and the new
 // contact person on both pages; the admin's page also the Plan tab and region summaries.
 const SALESMAN_PIN = 84000;
-const ADMIN_PIN = 111700; // his own page (laptop or phone): spec 011 ~107.7 KB; spec 012's Daily message ~111.6 KB (spec: at most 114,000)
+const ADMIN_PIN = 111800; // his own page (laptop or phone): spec 011 ~107.7 KB; spec 012's Daily message ~111.7 KB (spec: at most 114,000)
 
 const { s } = (() => {
   const src = loadSrc({ HtmlService: makeHtmlService(), Utilities: makeUtilities() });

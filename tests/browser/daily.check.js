@@ -125,7 +125,7 @@ function stub() {
         return (...args) => {
           window.__calls.push([prop, ...args.slice(1)]);
           if (window.__offline) {
-            setTimeout(() => failure && failure({ message: 'NetworkError: Connection failure due to HTTP 0' }), 30);
+            setTimeout(() => failure && failure({ message: 'NetworkError: Connection failure due to HTTP 0' }), window.__failDelay || 30);
             return;
           }
           const go = () => window.__server(prop, JSON.stringify(args)).then(
@@ -147,8 +147,17 @@ let browser;
   browser = await chromium.launch();
   const file = path.join(dir, 'admin.html');
   fs.writeFileSync(file, world.s.doGet({ parameter: { k: ADMIN } }).getContent());
+  // The server's clock, `shift` ms ahead of the real one (midnight passing for the page and the server).
+  let shift = 0;
+  const server = (fn, args) => {
+    if (!shift) return world.s[fn](...args);
+    const now = new Date(Date.now() + shift);
+    if (fn === 'adminPageDaily') return world.s.forAdminPage_(() => world.s.dailyFor_(world.diary, args[1], now));
+    const r = world.s[fn](...args);
+    return fn === 'adminPageLoad' ? { ...r, now: now.getTime(), today: dayKey(shift / DAY) } : r;
+  };
   /** What the server says for a day (all three regions). */
-  const reply = (day) => JSON.parse(JSON.stringify(world.s.adminPageDaily(ADMIN, day)));
+  const reply = (day) => JSON.parse(JSON.stringify(server('adminPageDaily', [ADMIN, day])));
 
   /** Any script error on a page fails the check. */
   const errors = [];
@@ -157,7 +166,7 @@ let browser;
     page.on('pageerror', (e) => errors.push(e.message));
     await page.exposeFunction('__server', (fn, argsJson) => {
       if (!SERVER.includes(fn)) throw new Error(`page called ${fn}`);
-      return JSON.stringify(world.s[fn](...JSON.parse(argsJson)));
+      return JSON.stringify(server(fn, JSON.parse(argsJson)));
     });
     await page.addInitScript(stub);
     await page.goto(`file://${file}`);
@@ -439,6 +448,7 @@ let browser;
   {
     const context = await browser.newContext({ viewport: { width: 360, height: 740 }, deviceScaleFactor: 1, hasTouch: true });
     const fresh = async () => {
+      shift = 0;
       const page = await open(context);
       await page.waitForSelector('#dailyOpen');
       return { page, h: helpers(page, 360) };
@@ -446,7 +456,7 @@ let browser;
     const state = (page) => page.evaluate(() => ({ line: $('dailyDay').textContent, msg: $('dailyMsg').hidden ? '' : $('dailyMsg').textContent,
       text: !$('dailyText').hidden, retry: !$('dailyRetry').hidden,
       prev: getComputedStyle($('dailyPrev')).visibility !== 'hidden', next: getComputedStyle($('dailyNext')).visibility !== 'hidden' }));
-    const midnight = (page) => page.evaluate(() => { clockGap += 24 * 3600 * 1000; });
+    const midnight = (page) => { shift += DAY; return page.evaluate(() => { clockGap += 24 * 3600 * 1000; }); };
     const autoRefresh = (page) => page.evaluate(() => { A.loadedAt -= 11 * 60 * 1000; document.dispatchEvent(new Event('visibilitychange')); });
     const last = dayKey(LAST);
     const before = dayKey(LAST - 1);
@@ -464,37 +474,109 @@ let browser;
     assert.equal(await h.text(), reply('').regions[0].text);
     await page.close();
 
-    // E: sitting on today "(so far)" as midnight passes: a pill, Copy or coming back to the page asks again.
+    // E: sitting on today "(so far)" as midnight passes: a pill, Copy or coming back to the page asks
+    // again for THAT day (now a whole day: no "(so far)"); Copy / Share wait for it. A past day's text
+    // stays as it is across midnight (I).
     ({ page, h } = await fresh());
-    await page.click('#dailyOpen');
-    await h.shown();
-    while ((await state(page)).next) {
-      await page.click('#dailyNext');
-      await h.shown();
-    }
-    assert.ok((await page.textContent('#dailyDay')).endsWith('(so far)'));
-    await midnight(page);
-    n = (await h.dailyCalls()).length;
-    await page.click('#daily-Center');
-    await h.shown();
-    assert.deepEqual((await h.dailyCalls()).slice(n), [''], 'a pill tap after midnight asks again');
-    assert.equal(await page.textContent('#dailyDay'), named(last), 'no stale "(so far)"');
-    assert.equal(await h.text(), reply('').regions[1].text);
     await page.evaluate(() => {
       window.__copied = [];
       Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: (t) => { window.__copied.push(t); return Promise.resolve(); } } });
     });
+    await page.click('#dailyOpen');
+    await h.shown();
+    const toToday = async () => {
+      while ((await state(page)).next) {
+        await page.click('#dailyNext');
+        await h.shown();
+      }
+      assert.ok((await page.textContent('#dailyDay')).endsWith('(so far)'));
+    };
+    await toToday();
+    await midnight(page);
+    n = (await h.dailyCalls()).length;
+    await page.click('#daily-Center');
+    await h.shown();
+    assert.deepEqual((await h.dailyCalls()).slice(n), [TODAY], 'a pill tap after midnight asks again for that day');
+    assert.equal(await page.textContent('#dailyDay'), named(TODAY), 'the whole day now: no "(so far)"');
+    assert.equal(await h.text(), reply(TODAY).regions[1].text);
+    assert.ok(!(await h.text()).includes('(so far)'));
+    await toToday(); // the new today
     await midnight(page);
     n = (await h.dailyCalls()).length;
     await page.click('#sumCopyBtn');
     await h.shown();
-    assert.deepEqual((await h.dailyCalls()).slice(n), [''], 'Copy after midnight asks again');
+    assert.deepEqual((await h.dailyCalls()).slice(n), [dayKey(1)], 'Copy of a "(so far)" text after midnight asks again');
     assert.deepEqual(await page.evaluate(() => window.__copied), [], 'and copies nothing stale');
+    await page.click('#sumCopyBtn');
+    await page.waitForFunction(() => window.__copied.length === 1);
+    assert.equal(await page.evaluate(() => window.__copied[0]), reply(dayKey(1)).regions[1].text, 'one tap later: the whole day');
+    await toToday();
     await midnight(page);
     n = (await h.dailyCalls()).length;
     await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
     await h.shown();
-    assert.deepEqual((await h.dailyCalls()).slice(n), [''], 'coming back to the page after midnight asks again');
+    assert.deepEqual((await h.dailyCalls()).slice(n), [dayKey(2)], 'coming back to the page after midnight asks again');
+    // I: a past day across midnight: no trip, Copy copies it at once, no jump to another day.
+    await page.click('#dailyPrev');
+    await h.shown();
+    const past = await h.text();
+    await midnight(page);
+    n = (await h.dailyCalls()).length;
+    await page.click('#daily-North');
+    await page.click('#daily-Center');
+    await page.click('#sumCopyBtn');
+    await page.waitForFunction(() => window.__copied.length === 2);
+    assert.equal(await page.evaluate(() => window.__copied[1]), past);
+    await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+    assert.equal((await h.dailyCalls()).length, n, 'no trip for a past day');
+    assert.equal(await page.textContent('#dailyDay'), named(dayKey(1)));
+    await page.close();
+
+    // H / L: only the latest ask counts. A late reply or failure for an earlier tap never replaces it.
+    ({ page, h } = await fresh());
+    await page.click('#dailyOpen');
+    await h.shown();
+    await page.click('#daily-North');
+    const ready = () => page.waitForFunction(() => !DM.busy);
+    // H: the first ask for ‹ fails (while the second is on its way); he had gone back to the kept day
+    // and asked ‹ again: the second one wins, and the first one's failure is not shown.
+    await page.evaluate(() => {
+      const d = DM.shown.day, p = DM.shown.prev;
+      window.__offline = true; window.__failDelay = 50; aDailyGo(p);
+      aDailyGo(d);
+      window.__offline = false; window.__delay = 400; aDailyGo(p);
+    });
+    await page.waitForTimeout(700);
+    assert.deepEqual(await state(page), { line: named(before), msg: '', text: true, retry: false, prev: true, next: true }, 'H');
+    // L: a late reply for an earlier tap (›) never replaces the latest (‹).
+    await page.evaluate(() => { const r = DM.shown; DM.got = {}; window.__delay = 700; aDailyGo(r.next); window.__delay = 100; aDailyGo(r.prev); });
+    await page.waitForTimeout(1100);
+    assert.equal(await page.textContent('#dailyDay'), named(dayKey(LAST - 2)), 'L: the latest tap');
+    assert.equal(await h.text(), reply(dayKey(LAST - 2)).regions[0].text);
+    assert.ok(await page.evaluate((d) => !!DM.got[d], last), 'the earlier reply is still kept');
+    // The same on the failure side: an earlier ask that succeeds late never hides the latest one's failure.
+    await page.evaluate(() => {
+      window.__delay = 600; aDailyGo(DM.shown.prev); // succeeds late
+      window.__offline = true; window.__failDelay = 50; DM.got = {}; aDailyGo(DM.shown.next); // fails first
+    });
+    await page.waitForTimeout(900);
+    await ready();
+    assert.deepEqual(await state(page), { line: named(dayKey(LAST - 2)), msg: `Couldn't get ${named(before)}: no signal.`, text: true,
+      retry: true, prev: true, next: true }, 'the late success of the earlier ask does not replace the latest failure');
+    await page.evaluate(() => { window.__offline = false; window.__delay = 0; window.__failDelay = 0; });
+    // K: Try again after midnight re-asks the day he asked for, and stays on it.
+    await page.evaluate(() => { window.__offline = true; DM.got = {}; });
+    await page.click('#dailyPrev');
+    await page.waitForSelector('#dailyRetry:not([hidden])');
+    await page.evaluate(() => { window.__offline = false; });
+    await midnight(page);
+    n = (await h.dailyCalls()).length;
+    await page.click('#dailyRetry');
+    await h.shown();
+    assert.deepEqual((await h.dailyCalls()).slice(n), [dayKey(LAST - 3)], 'K: Try again asks for the same day');
+    await page.click('#daily-Center');
+    assert.equal(await page.textContent('#dailyDay'), named(dayKey(LAST - 3)), 'K: and stays there');
+    assert.equal((await h.dailyCalls()).length, n + 1);
     await page.close();
 
     // D: no signal. The first open has nothing to show: the plain message. A day he steps to that
@@ -526,32 +608,38 @@ let browser;
     assert.equal(await page.textContent('#dailyDay'), named(before));
     await page.close();
 
-    // F / G: the automatic refresh on the Daily screen asks again for the day shown, keeping its text;
-    // with no signal the text and arrows stay, with Try again; the other kept days still show.
+    // F / G: the automatic refresh does nothing on a past day; on today "(so far)" it asks again,
+    // keeping the text; with no signal the text and arrows stay, with Try again; kept days still show.
     ({ page, h } = await fresh());
     await page.click('#dailyOpen');
     await h.shown();
     await page.click('#daily-North');
-    await page.click('#dailyPrev');
-    await h.shown();
-    await page.click('#dailyNext'); // kept: no trip
     n = (await h.dailyCalls()).length;
+    await autoRefresh(page);
+    await page.waitForFunction(() => Date.now() - A.loadedAt < 60000);
+    assert.equal((await h.dailyCalls()).length, n, 'a past day: no trip');
+    assert.deepEqual(await state(page), { line: named(last), msg: '', text: true, retry: false, prev: true, next: true });
+    while ((await state(page)).next) {
+      await page.click('#dailyNext');
+      await h.shown();
+    }
+    n = (await h.dailyCalls()).length;
+    await page.evaluate(() => { window.__delay = 300; });
     await autoRefresh(page);
     assert.equal(await page.isVisible('#dailyText'), true, 'the text stays while it asks');
     await h.shown();
-    assert.deepEqual((await h.dailyCalls()).slice(n), [last], 'the day shown is asked again');
-    assert.equal(await h.text(), reply(last).regions[0].text);
+    await page.evaluate(() => { window.__delay = 0; });
+    assert.deepEqual((await h.dailyCalls()).slice(n), [TODAY], 'today "(so far)" is asked again');
     await page.evaluate(() => { window.__offline = true; });
     await autoRefresh(page);
     await page.waitForSelector('#dailyMsg:has-text("no signal")');
-    assert.deepEqual(await state(page), { line: named(last), msg: `Couldn't get ${named(last)}: no signal.`, text: true, retry: true,
-      prev: true, next: true });
+    assert.deepEqual(await state(page), { line: `${named(TODAY)} (so far)`, msg: `Couldn't get ${named(TODAY)}: no signal.`, text: true,
+      retry: true, prev: true, next: false });
     await page.click('#daily-Center');
-    assert.equal(await h.text(), reply(last).regions[1].text);
+    assert.equal(await h.text(), reply(TODAY).regions[1].text);
     n = (await h.dailyCalls()).length;
-    await page.click('#dailyPrev');
-    assert.equal(await page.textContent('#dailyDay'), named(before), 'a kept day shows with no signal');
-    assert.equal(await h.text(), reply(before).regions[1].text);
+    await page.click('#dailyPrev'); // yesterday: kept
+    assert.equal(await page.textContent('#dailyDay'), named(dayKey(-1)), 'a kept day shows with no signal');
     assert.equal(await page.isHidden('#dailyMsg'), true);
     assert.equal((await h.dailyCalls()).length, n, 'no trip');
     await page.evaluate(() => { window.__offline = false; });
