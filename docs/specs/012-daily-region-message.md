@@ -1,6 +1,6 @@
 # 012: Daily region message (yesterday's activity, for the region's WhatsApp group)
 
-- **Status:** Approved (building)
+- **Status:** Approved (built 2026-11-12; not yet live)
 - **Owner approval:** approved by the owner on 2026-11-12 (session 7), after the interview (2026-11-12, answers **S12-1 to S12-8** in
   [open questions](../product/open-questions.md))
 - **Related:** roadmap phase 7e · [ADR-0012](../decisions/0012-daily-message-shared-with-the-region.md)
@@ -109,6 +109,7 @@ Won: Askari Homes Rs. 42,250
 - **Public functions:** allow-list in `tests/menu.test.js` 20 → **21**.
 - **The salesman's page gets nothing new** (zero bytes): the screen lives in `Admin.html`. The
   admin's served page pin may rise from 110,000 to at most **114,000** bytes (it is ~106.7 KB now).
+  *Built:* the salesman's page unchanged (82,496 bytes served); the admin's ~110.8 KB, pin 111,000.
 
 ## Data
 - **No new tab, column or stored value; writes nothing.** Meta-Data only read, as always.
@@ -116,31 +117,31 @@ Won: Askari Homes Rs. 42,250
 - Glossary gains **Daily message** and **activity** (the count).
 
 ## Acceptance criteria
-- [ ] Day tests: the default day on every weekday (Monday → Saturday; Sunday → Saturday; Tuesday →
+- [x] Day tests: the default day on every weekday (Monday → Saturday; Sunday → Saturday; Tuesday →
       Monday), the 1st of a month, 1 January; a row at 23:59 and 00:00 Pakistan time; ‹ / › limits
       (31 days back, today), today headed `(so far)`; a bad `day` refused.
-- [ ] Count tests: activity = different sites with created / stage_change / update; snoozes, Edit
+- [x] Count tests: activity = different sites with created / stage_change / update; snoozes, Edit
       details and contact changes never counted or named; New; Sample given; Quoted; Won / Lost as
       the day ended (won then reopened: not Won; won twice: once; Rs. and reason the last of the
       day); Followed up lists only sites not named in Won / Lost / Quoted / Sample given; a stage
       moved back is Followed up; the admin's rows never show; a former salesman never shows; a
       handed-over site counts for whoever did the work; a site deleted by hand shows `(not in the
       sheet)`.
-- [ ] Exact text tests: a region with a busy salesman, one with a win and a loss, one with nothing
+- [x] Exact text tests: a region with a busy salesman, one with a win and a loss, one with nothing
       (`No activity`), singular `1 activity`, every group in order, Won biggest first, `waSafe_` on
       names; totals equal the sum of the blocks.
-- [ ] Privacy tests (ADR-0012): the text never holds quote Rs., Cash / Credit, notes, contact names
+- [x] Privacy tests (ADR-0012): the text never holds quote Rs., Cash / Credit, notes, contact names
       or numbers, areas, or another region's salesmen; `adminPageDaily` refuses a junk (no sheet
       opened), cancelled, or salesman's code with *"This link doesn't work."*; no `rep…` function
       or salesman page changes.
-- [ ] Speed tests: one Sales Diary open, `Sites` read once, `Activity` never read whole (5,000 old
+- [x] Speed tests: one Sales Diary open, `Sites` read once, `Activity` never read whole (5,000 old
       rows + 40 of the day: at most one block beyond the day plus the header), Meta-Data not opened
       with a fresh kept copy, no writes.
-- [ ] Browser check (360 px and 1280 px): Daily message on Today opens the screen on the last
+- [x] Browser check (360 px and 1280 px): Daily message on Today opens the screen on the last
       working day; ‹ / › step and name the days; the pills switch instantly; the text matches the
       server's; Share on WhatsApp is a `wa.me/?text=` link with the encoded text; Copy and its
       fallbacks; no signal; Back returns to Today; no sideways scroll; all existing checks pass.
-- [ ] `npm run check` and `npm run check:browser` green; served-size pins (salesman unchanged,
+- [x] `npm run check` and `npm run check:browser` green; served-size pins (salesman unchanged,
       admin ≤ 114,000).
 - [ ] Live (agent, admin link): the three messages for a recent day match the sheet read through
       the connector.
@@ -160,3 +161,15 @@ _None._ All answered in the interview (S12-1 to S12-8). The agent's own choices 
 changed at review): the 31-day limit for ‹; Sundays reachable with the arrows; arrows allowed up
 to today *(so far)*; the region's activity = the sum of its salesmen's; the admin's rows left out;
 work counted for whoever saved it; the text shown on screen exactly as it will paste.
+
+Choices made while building (each can be changed at review): `(so far)` sits inside the bold
+heading (`*North · Thu 12 Nov (so far)*`); both arrows name their day the same way (**‹ Tue 10**,
+**Thu 12 ›**); a site he added and then updated the same day is in **New** and in **Followed up**
+(Followed up leaves out only Won / Lost / Quoted / Sample given, as written); a site moved to Rate
+Quoted or Sample / Trial that day is Quoted / Sample given even if it moved on later that day (as
+spec 009 counts them), so a site won, reopened and won again shows under Won and Quoted; Won Rs. and
+the lost reason are the last saved on that site that day by anyone (spec 009's "as the period
+ended"), the site's Rs. in `Sites` if none was saved; a Won site with no Rs. at all shows its name
+only; a site with no name shows its ID; the reply also carries `ok: true`, as every other reply.
+The Share on WhatsApp / Copy row (and Copy's fallbacks) is the summary's own, moved onto this
+screen while it shows, so the salesman's page gets no new bytes.

@@ -33,7 +33,7 @@ Read before any product or UI work:
 **Live as deployment version 14** (2026-11-11): phases 0–7 (specs 001–008), summaries (009–010) and
 spec 011 (Mitchell look, tappable summaries for the review meeting, Plan tab, new contact person).
 Launched to the 7 salesmen on 2026-11-05; bugs are fixed as they come in. Next: the owner's checks,
-the daily region message (spec 012, Approved 2026-11-12, building), then the speed pass (spec 013). Current state, next step and IDs: `docs/plans/handoff.md`.
+the daily region message (spec 012, Approved 2026-11-12, built, not yet live), then the speed pass (spec 013). Current state, next step and IDs: `docs/plans/handoff.md`.
 
 ## Commands
 
@@ -45,7 +45,7 @@ Node 22 or newer. All checks run locally with no Google account.
 | `npm test` | All tests: `node --test "tests/**/*.test.js"`. |
 | `npm run typecheck` | `tsc -p .`: type-checks `src/` (plain JS with JSDoc). |
 | `npm run check` | Type check, then tests. **Must pass before every commit.** |
-| `npm run check:browser` | Drives the owner's Links window, the salesman's page, the admin's screen and both summary screens in Chromium (the pages run against the real server code and fake sheets). Needs Playwright; skips if it isn't installed. Run it when any `.html` changes. |
+| `npm run check:browser` | Drives the owner's Links window, the salesman's page, the admin's screen, both summary screens and the Daily message in Chromium (the pages run against the real server code and fake sheets). Needs Playwright; skips if it isn't installed. Run it when any `.html` changes. |
 | `npm run guide` | Rebuilds the PDF user guides (`docs/guide/`: salesmen's and Admin's) from fresh screenshots on fake data. Needs Playwright. **Only when the owner asks** (2026-11-11: not wanted for now). |
 | `npx clasp push --force` | Sends `src/` to Apps Script. Always `--force`: without it, in a non-interactive shell clasp **silently skips** the push. Git is the source of truth. |
 | `npx clasp show-file-status` | Lists the files a push would send (should be `appsscript.json`, the `.js` files and the `.html` files in `src/`). |
@@ -54,7 +54,7 @@ Node 22 or newer. All checks run locally with no Google account.
 
 Code rules that tests enforce (the tests are the source of truth; keep this list short):
 - **Public functions** (any page can call them, with any arguments) are an allow-list in
-  `tests/menu.test.js` (20). Helpers end in `_`. Every `menu…` / `owner…` function (run from the
+  `tests/menu.test.js` (21). Helpers end in `_`. Every `menu…` / `owner…` function (run from the
   sheet) starts with the signed-in-owner check; every `rep…` function with `requireRep_(k)` inside
   `forSalesman_`, and returns only that salesman's data (ADR-0004); every `adminPage…` function
   (the owner's screen, opened by link) with `requireAdminLink_(k)` inside `forAdminPage_`
