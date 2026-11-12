@@ -112,12 +112,17 @@ Won: Askari Homes Rs. 42,250
 - **Public functions:** allow-list in `tests/menu.test.js` 20 → **21**.
 - **The salesman's page gets nothing new** (zero bytes): the screen lives in `Admin.html`. The
   admin's served page pin may rise from 110,000 to at most **114,000** bytes (it is ~106.7 KB now).
-  *Built:* the salesman's page grew by 10 bytes only (82,506 served: a guard so a summary reply that
-  comes after he left the Summary screen is kept, not drawn); the admin's ~111.1 KB, pin 111,200.
+  *Built:* the salesman's page grew by 34 bytes only (82,530 served: guards so a summary reply that
+  comes after he left the Summary screen is kept, not drawn); the admin's ~111.6 KB, pin 111,700.
 - **The page and the days:** the screen's first open sends `''`; the arrows go to the reply's
   `prev` / `next` (the server is the only source of days). A fetched day is kept, except today's
-  (*"so far"*), which is asked again each time it is shown; the kept days go when the date changes
-  and on every refresh (the button, and the automatic one after 10 minutes away).
+  (*"so far"*), which is asked again each time it is shown. The kept days go on the **Refresh**
+  button and when the page's date changes (checked on opening, a pill, an arrow, Copy / Share and
+  coming back to the page; then it asks again with `''`). The automatic refresh (after 10 minutes
+  away) keeps them; if the Daily message is showing, it asks again for the day shown. The screen
+  changes only when a reply comes: a day that can't be fetched leaves him on the day he had (text,
+  pills, arrows), with *"Couldn't get Mon 9 Nov: no signal."* and **Try again** for that day; only
+  the first open, with nothing to show yet, says *"Couldn't get the message: no signal. Try again."*
 
 ## Data
 - **No new tab, column or stored value; writes nothing.** Meta-Data only read, as always.
@@ -179,4 +184,4 @@ spec 009 counts them), so a site won, reopened and won again shows under Won and
 are decided per site by its final move that day by anyone (see Rules); a Won site with no Rs. at all
 shows its name only; a site with no name shows its ID; the reply also carries `ok: true`, as every other reply.
 The Share on WhatsApp / Copy row (and Copy's fallbacks) is the summary's own, moved onto this
-screen while it shows; the only change to the salesman's page is the 10-byte Summary guard.
+screen while it shows; the only change to the salesman's page is the 34-byte Summary guard.
