@@ -514,7 +514,7 @@
       // What is on screen again: the list, or a summary's site list (spec 011) where he is in it.
       function redraw() { if (screen === 'list') renderList(); else sumRedraw(); }
       function sumRedraw() {
-        if (sum.l && screen === 'summary') { var y = scrollY; renderSum(); scrollTo(0, y); }
+        if (sum.l) { var y = scrollY; renderSum(); scrollTo(0, y); }
       }
       function readable(error) {
         var message = (error && error.message) || String(error || '');
@@ -1799,7 +1799,9 @@
         $('sumUnsent').textContent = n + (n > 1 ? ' saves not sent yet are' : ' save not sent yet is') + ' not in this summary.';
         $('sumUnsent').hidden = !n;
       }
+      // Only on the Summary screen: a reply that comes after he left it is kept, not drawn.
       function renderSum() {
+        if (screen !== 'summary') return;
         var v = sumView(), bad = sum.bad[sum.p], box = $('sumBody'), m = $('sumMsg'), L = sum.l;
         [].forEach.call($('sumTabs').children, function (b) { b.setAttribute('aria-selected', b.value === sum.p); });
         m.textContent = sum.busy[sum.p] ? 'Getting your summary…' : bad;

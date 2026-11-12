@@ -259,7 +259,7 @@ test('Won and Lost as the day ended: won then reopened is not Won; won twice onc
   assert.equal(text.split('\n')[1], '6 activities · Quoted 3 · Won 2 Rs. 190,000 · Lost 2');
 });
 
-test('Followed up: only sites not named in Won / Lost / Quoted / Sample given; a stage moved back is Followed up', () => {
+test('Followed up: every other site he worked (not named in Won / Lost / Quoted / Sample given / New); a stage moved back is Followed up', () => {
   activityId = 0;
   const w = world({
     sites: [site('S000001', 'RIA', 'Quoted And Updated'), site('S000002', 'RIA', 'Moved Back'), site('S000003', 'RIA', 'New And Called'),
@@ -280,7 +280,7 @@ test('Followed up: only sites not named in Won / Lost / Quoted / Sample given; a
     'Won: Won And Noted Rs. 5,000',
     'Quoted: Quoted And Updated',
     'New: New And Called',
-    'Followed up: Moved Back, New And Called, Only Called',
+    'Followed up: Moved Back, Only Called',
   ]);
 });
 
@@ -316,6 +316,71 @@ test('a site deleted from Sites by hand shows as "(not in the sheet)"; a site wi
     ],
   });
   assert.deepEqual(blockOf(textOf(w, 'North'), 'RIA'), ['*RIA* · 2 activities', 'Won: (not in the sheet) Rs. 25,000', 'Followed up: S000002']);
+});
+
+test('Won / Lost is decided per site by its final move that day, by anyone: an undone win is nobody\'s Won and leaks no Rs.', () => {
+  activityId = 0;
+  const w = world({
+    sites: [site('S000001', 'RIA', 'Admin Reopened', { stage: RQ, value_rs: 777000, payment_terms: 'Credit' }),
+      site('S000002', 'AUR', 'AUR Reopened', { stage: RQ, value_rs: 888000, payment_terms: 'Cash' }),
+      site('S000003', 'RIA', 'Admin Won', { stage: WON, value_rs: 555000, payment_terms: 'Cash' }),
+      site('S000004', 'RIA', 'Admin Lost', { stage: LOST, lost_reason: 'Other' })],
+    activity: [
+      // RIA wins; the admin moves it back to Rate Quoted at a new quote.
+      act(at(10), 'RIA', 'S000001', 'stage_change', { from_stage: RQ, to_stage: WON, value_rs: 500000, payment_terms: 'Cash' }),
+      act(at(11), 'admin', 'S000001', 'stage_change', { from_stage: WON, to_stage: RQ, value_rs: 777000, payment_terms: 'Credit',
+        note: 'Admin: not won yet' }),
+      // RIA wins; AUR (it is his now) moves it back to Rate Quoted at a new quote.
+      act(at(12), 'RIA', 'S000002', 'stage_change', { from_stage: RQ, to_stage: WON, value_rs: 600000, payment_terms: 'Cash' }),
+      act(at(15), 'AUR', 'S000002', 'stage_change', { from_stage: WON, to_stage: RQ, value_rs: 888000, payment_terms: 'Cash' }),
+      // RIA quotes; the admin marks it Won / Lost.
+      act(at(13), 'RIA', 'S000003', 'stage_change', { from_stage: LEAD, to_stage: RQ, value_rs: 555000 }),
+      act(at(14), 'admin', 'S000003', 'stage_change', { from_stage: RQ, to_stage: WON, value_rs: 555000, payment_terms: 'Cash' }),
+      act(at(16), 'RIA', 'S000004', 'update', { note: 'still hoping' }),
+      act(at(17), 'admin', 'S000004', 'stage_change', { from_stage: RQ, to_stage: LOST, lost_reason: 'Other' }),
+    ],
+  });
+  const north = textOf(w, 'North');
+  assert.deepEqual(blockOf(north, 'RIA'), ['*RIA* · 4 activities', 'Quoted: Admin Won', 'Followed up: Admin Reopened, AUR Reopened, Admin Lost']);
+  assert.deepEqual(blockOf(north, 'AUR'), ['*AUR* · 1 activity', 'Quoted: AUR Reopened']);
+  assert.equal(north.split('\n')[1], '5 activities · Quoted 2', 'nobody Won or Lost');
+  for (const never of ['Won:', 'Lost:', '· Won', '· Lost', 'Rs.', '777', '888', '555', '500,000', '600,000', 'Other']) assert.ok(!north.includes(never), never);
+});
+
+test("the lost reason: the last saved that day, else the site's own", () => {
+  activityId = 0;
+  const w = world({
+    sites: [site('S000001', 'RIA', 'Reason Today', { stage: LOST, lost_reason: 'Old Reason' }),
+      site('S000002', 'RIA', 'Reason Typed By Hand', { stage: LOST, lost_reason: 'Site Delayed' }),
+      site('S000003', 'RIA', 'No Reason Anywhere', { stage: LOST })],
+    activity: [
+      act(at(9), 'RIA', 'S000001', 'stage_change', { from_stage: RQ, to_stage: LOST, lost_reason: 'Price Too High' }),
+      act(at(10), 'RIA', 'S000002', 'stage_change', { from_stage: RQ, to_stage: LOST }),
+      act(at(11), 'RIA', 'S000003', 'stage_change', { from_stage: RQ, to_stage: LOST }),
+    ],
+  });
+  assert.deepEqual(blockOf(textOf(w, 'North'), 'RIA'), ['*RIA* · 3 activities',
+    'Lost: Reason Today (Price Too High), Reason Typed By Hand (Site Delayed), No Reason Anywhere']);
+});
+
+test('a line break or run of spaces typed by hand in a name, reason or code becomes one space', () => {
+  activityId = 0;
+  const tabs = metaDataTabs();
+  const w = world({
+    metaTabs: tabs,
+    sites: [site('S000001', 'RIA', '  Al   Noor\nBuilders\r\n '), site('S000002', 'RIA', 'Tab\tName', { stage: LOST, lost_reason: 'Price\n\nToo  High' }),
+      site('S000003', 'RIA', 'Won\nSite', { stage: WON, value_rs: 1000 })],
+    activity: [
+      act(at(9), 'RIA', 'S000001', 'update', { note: 'x' }),
+      act(at(10), 'RIA', 'S000002', 'stage_change', { from_stage: RQ, to_stage: LOST, lost_reason: 'Price\n\nToo  High' }),
+      act(at(11), 'RIA', 'S000003', 'stage_change', { from_stage: RQ, to_stage: WON, value_rs: 1000 }),
+    ],
+  });
+  const text = textOf(w, 'North');
+  assert.deepEqual(blockOf(text, 'RIA'), ['*RIA* · 3 activities', 'Won: Won Site Rs. 1,000', 'Lost: Tab Name (Price Too High)',
+    'Followed up: Al Noor Builders']);
+  assert.ok(!/[\r\t]| {2}/.test(text), 'no tab, carriage return or double space');
+  assert.equal(w.s.dailySafe_(' A\n*B*_ '), 'A ∗B∗ˍ');
 });
 
 // ----------------------------------------------------------------------------- The exact text
@@ -378,7 +443,7 @@ test('exact text: a busy salesman with every group in order, a single activity, 
     'Quoted: Gulberg Heights',
     'Sample given: Sample Site',
     'New: Al Noor Builders, Gulberg Heights',
-    'Followed up: Al Noor Builders, Bahria Villas, Moved Back',
+    'Followed up: Bahria Villas, Moved Back',
     '',
     '*AUR* · 1 activity',
     'Followed up: Single Update',

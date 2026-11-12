@@ -207,7 +207,7 @@ let browser;
     const last = dayKey(LAST);
     let r = reply(last);
     assert.equal(r.day, last);
-    assert.deepEqual(await h.dailyCalls(), [last], 'one trip for the day');
+    assert.deepEqual(await h.dailyCalls(), [''], 'one trip; the server picks the day');
     assert.deepEqual(await h.days(), [`‹ ${weekday(dayKey(LAST - 1))} ${Number(dayKey(LAST - 1).slice(8))}`, named(last),
       `${weekday(dayKey(LAST + 1))} ${Number(dayKey(LAST + 1).slice(8))} ›`]);
     assert.deepEqual(await h.pills(), ['North *', 'Center', 'South']);
@@ -233,7 +233,7 @@ let browser;
     assert.equal(await h.text(), r.regions[2].text);
     assert.equal(r.regions[2].text, `*South · ${named(last)}*\nNo activity\n\n*IB* · no activity`);
     await page.click('#daily-Center');
-    assert.deepEqual(await h.dailyCalls(), [last], 'switching pills makes no trip');
+    assert.deepEqual(await h.dailyCalls(), [''], 'switching pills makes no trip');
 
     // ---- Copy: the clipboard; else select-and-copy; else "Press and hold". ----
     await page.evaluate(() => {
@@ -277,7 +277,7 @@ let browser;
     assert.ok(r.regions[0].text.includes('*RIA* · 1 activity\nFollowed up: A very long site name'));
     await page.click('#dailyNext');
     assert.equal(await h.text(), reply(last).regions[0].text, 'shown at once');
-    assert.deepEqual(await h.dailyCalls(), [last, before]);
+    assert.deepEqual(await h.dailyCalls(), ['', before], 'the arrows go to the reply\'s days');
     // Up to today, "(so far)", no ›.
     for (let d = LAST + 1; d <= 0; d++) {
       await page.click('#dailyNext');
@@ -289,6 +289,13 @@ let browser;
     assert.equal(await h.text(), reply(TODAY).regions[0].text);
     assert.ok((await h.text()).startsWith(`*North · ${named(TODAY)} (so far)*\n30 activities`));
     await h.noSideways('today (so far)');
+    // Today is never kept: back and forward again asks again (the day before is kept).
+    let n = (await h.dailyCalls()).length;
+    await page.click('#dailyPrev');
+    assert.equal((await h.dailyCalls()).length, n, 'the day before: kept');
+    await page.click('#dailyNext');
+    await h.shown();
+    assert.deepEqual((await h.dailyCalls()).slice(n), [TODAY], 'today: asked again');
     if (shots) await page.screenshot({ path: path.join(shots, 'daily-today-so-far.png'), fullPage: true });
     // Back 31 days, no further.
     let steps = 0;
@@ -343,7 +350,7 @@ let browser;
     calls = (await h.dailyCalls()).length;
     await page.evaluate(() => document.getElementById('dailyOpen').click());
     await h.shown();
-    assert.equal((await h.dailyCalls()).length, calls + 1, 'fetched again after Refresh');
+    assert.deepEqual((await h.dailyCalls()).slice(calls), [''], 'fetched again after Refresh');
 
     // ---- The summary still has its own buttons. ----
     await page.click('#dailyBack');
@@ -377,6 +384,73 @@ let browser;
     assert.deepEqual(await h.pills(), ['North *', 'Center', 'South']);
     await page.click('#daily-South');
     assert.equal(await h.text(), reply(dayKey(LAST)).regions[2].text, 'the pill works with no storage');
+    await context.close();
+  }
+
+  // ============ A summary reply that lands on the Daily message: kept, not drawn (review scenario A)
+  {
+    const context = await browser.newContext({ viewport: { width: 360, height: 740 }, deviceScaleFactor: 1, hasTouch: true });
+    const page = await open(context);
+    const h = helpers(page, 360);
+    await page.click('#dailyOpen');
+    await h.shown();
+    const text = await h.text();
+    await page.click('#dailyBack');
+    await page.evaluate(() => { window.__delay = 1500; window.scrollTo(0, 0); });
+    await page.click('#summary');
+    await page.click('#sumBack'); // before the summary comes
+    await page.click('#dailyOpen');
+    await page.evaluate(() => {
+      Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: () => Promise.reject(new Error('NotAllowedError')) } });
+      document.execCommand = () => false;
+    });
+    await page.click('#sumCopyBtn');
+    await page.waitForSelector('#sumHold:not([hidden])');
+    await page.waitForFunction(() => window.__calls.some((c) => c[0] === 'adminPageSummary') && sum.got['this-week']);
+    await page.waitForTimeout(200);
+    assert.deepEqual(errors, [], 'no script error');
+    assert.equal(await page.isVisible('#sumCopy'), true, 'the copy box stays');
+    assert.equal(await page.isVisible('#sumHold'), true);
+    assert.equal(await page.inputValue('#sumCopy'), text);
+    assert.equal(await page.evaluate(() => document.getElementById('sumShare').parentNode.id), 'dailyView');
+    assert.equal(await h.text(), text);
+    // Going to the summary now shows it.
+    await page.evaluate(() => { window.__delay = 0; });
+    await page.click('#dailyBack');
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.click('#summary');
+    await page.waitForFunction(() => !document.querySelector('#sumBody').hidden && document.querySelector('#sumMsg').hidden);
+    assert.equal(await page.isVisible('#sumShare'), true);
+    await context.close();
+  }
+
+  // ======= Today "(so far)" is never shown stale: midnight passes, or the page refreshes itself (scenario B)
+  {
+    const context = await browser.newContext({ viewport: { width: 360, height: 740 }, deviceScaleFactor: 1, hasTouch: true });
+    const page = await open(context);
+    const h = helpers(page, 360);
+    await page.waitForSelector('#dailyOpen');
+    await page.evaluate(() => { showOnly('daily'); aDailyGo(todayKey()); });
+    await h.shown();
+    const stale = await h.text();
+    assert.ok(stale.includes('(so far)'));
+    await page.click('#dailyBack');
+    await page.evaluate(() => { clockGap += 24 * 3600 * 1000; }); // midnight passes on the page
+    let n = (await h.dailyCalls()).length;
+    await page.click('#dailyOpen');
+    await h.shown();
+    assert.deepEqual((await h.dailyCalls()).slice(n), [''], 'asked again');
+    assert.equal(await page.textContent('#dailyDay'), named(dayKey(LAST)), 'the server\'s day');
+    assert.equal(await h.text(), reply('').regions[0].text);
+    assert.notEqual(await h.text(), stale);
+    // The 10-minute refresh (coming back to the page) clears the kept days too.
+    await page.click('#dailyBack');
+    await page.evaluate(() => { A.loadedAt -= 11 * 60 * 1000; document.dispatchEvent(new Event('visibilitychange')); });
+    await page.waitForFunction(() => document.querySelector('#refresh').textContent === 'Refresh' && Date.now() - A.loadedAt < 60000);
+    n = (await h.dailyCalls()).length;
+    await page.click('#dailyOpen');
+    await h.shown();
+    assert.deepEqual((await h.dailyCalls()).slice(n), [''], 'asked again after the automatic refresh');
     await context.close();
   }
 

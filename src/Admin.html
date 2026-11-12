@@ -77,7 +77,7 @@
     var refresh = el('button', 'Refresh', 'plain');
     refresh.id = 'refresh';
     refresh.type = 'button';
-    refresh.addEventListener('click', function () { DM.got = {}; adminRefresh(false); });
+    refresh.addEventListener('click', function () { adminRefresh(false); });
     document.querySelector('header').appendChild(refresh);
     var nav = el('nav', undefined, 'tabs');
     nav.id = 'adminTabs';
@@ -158,6 +158,8 @@
     ['sumShare', 'sumHold', 'sumCopy'].forEach(function (id) { box.appendChild($(id)); });
   }
   function adminRefresh(quiet) {
+    aDailyClear(); // the Daily message's kept days too (spec 012)
+    if (screen === 'daily') aDailyGet(DM.day);
     var b = $('refresh');
     b.disabled = true;
     b.textContent = 'Refreshing…';
@@ -318,7 +320,7 @@
     var daily = top.appendChild(el('button', 'Daily message', 'plain'));
     daily.type = 'button';
     daily.id = 'dailyOpen';
-    daily.onclick = function () { showOnly('daily'); aDailyGo(aLastWorkDay()); };
+    daily.onclick = function () { showOnly('daily'); aDailyGo(null); };
     if (today !== data.today) frag.appendChild(el('div', 'This is ' + shortDay(data.today) + '. Tap Refresh.', 'banner'));
     var counts = {};
     data.feed.forEach(function (f, i) {
@@ -373,24 +375,37 @@
   }
 
   // ---- Daily message (spec 012): one region's day as WhatsApp text, built on the server. One trip
-  // brings all three regions of a day (DM.got[day]), so the pills switch with no trip; Refresh
-  // clears them. It opens on the last working day (yesterday; Saturday when yesterday was Sunday);
-  // ‹ goes back 31 days, › up to today. The text shows exactly as it will paste. ----
-  var DM = { day: '', got: {}, busy: {}, bad: {}, reg: '' };
-  function aLastWorkDay() { var y = addDays(todayKey(), -1); return aDayName(y) === 'Sun' ? addDays(y, -1) : y; }
+  // brings all three regions of a day, so the pills switch with no trip. The server decides the days:
+  // the first open sends '' (the last working day) and ‹ › go to the reply's prev / next. A day is
+  // kept (DM.got) except today's, which is "so far": going to today always asks again. The kept days
+  // go when the date changes and on every refresh. The text shows exactly as it will paste. ----
+  var DM = { day: '', first: '', at: '', got: {}, busy: {}, bad: {}, reg: '' };
+  function aDailyClear() { DM.got = {}; DM.first = ''; DM.at = todayKey(); }
   function aDailyView() {
     var r = DM.got[DM.day];
     return r && r.regions.filter(function (x) { return x.region === DM.reg; })[0];
   }
+  // day: yyyy-MM-dd, or null for the day it opens on
   function aDailyGo(day) {
+    if (DM.at !== todayKey()) aDailyClear();
+    if (day === null) day = DM.first;
     DM.day = day;
-    if (DM.got[day] || DM.busy[day]) aDailyDraw(); else aDailyGet(day);
+    if (DM.busy[day] || (DM.got[day] && DM.got[day].next)) aDailyDraw(); else aDailyGet(day);
   }
   function aDailyGet(day) {
-    function done(r, bad) { DM.busy[day] = 0; DM.bad[day] = bad; if (r) DM.got[day] = r; aDailyDraw(); }
+    function done(r, bad) {
+      DM.busy[day] = 0; DM.bad[day] = bad;
+      if (r) {
+        DM.got[r.day] = r;
+        if (!day) DM.first = r.day;
+        if (DM.day === day) DM.day = r.day;
+      }
+      aDailyDraw();
+    }
+    delete DM.got[day];
     DM.busy[day] = 1; DM.bad[day] = '';
     google.script.run.withSuccessHandler(function (r) {
-      if (r && r.ok && r.day === day) done(r, ''); else done(0, 'Something went wrong. Try again.');
+      if (r && r.ok && (!day || r.day === day)) done(r, ''); else done(0, 'Something went wrong. Try again.');
     }).withFailureHandler(function (e) {
       e = readable(e);
       done(0, /no signal/.test(e) ? "Couldn't get the message: no signal. Try again." : e);
@@ -399,14 +414,14 @@
   }
   function aDailyDraw() {
     if (screen !== 'daily') return;
-    var day = DM.day, today = todayKey(), regions = aRegions(), bad = DM.bad[day], m = $('dailyMsg');
-    [['dailyPrev', day > addDays(today, -31) && addDays(day, -1)], ['dailyNext', day < today && addDays(day, 1)]].forEach(function (x, i) {
+    var day = DM.day, r = DM.got[day], regions = aRegions(), bad = DM.bad[day], m = $('dailyMsg');
+    [['dailyPrev', r && r.prev], ['dailyNext', r && r.next]].forEach(function (x, i) {
       var b = $(x[0]), to = x[1];
       b.style.visibility = to ? '' : 'hidden';
       b.textContent = to ? (i ? '' : '‹ ') + aDayName(to) + ' ' + Number(to.slice(8)) + (i ? ' ›' : '') : '';
       b.onclick = function () { aDailyGo(to); };
     });
-    $('dailyDay').textContent = aDayName(day) + ' ' + shortDay(day) + (day === today ? ' (so far)' : '');
+    $('dailyDay').textContent = day ? aDayName(day) + ' ' + shortDay(day) + (r && !r.next ? ' (so far)' : '') : '';
     if (!DM.reg) DM.reg = (fetchStored('salesdiary.daily') || {}).r; // the pill he used last
     if (!has(regions, DM.reg)) DM.reg = regions[0];
     var row = $('dailyRegions');
