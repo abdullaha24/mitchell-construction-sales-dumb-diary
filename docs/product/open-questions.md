@@ -154,3 +154,16 @@ Owner, session 6: review meeting, Plan tab, logo, contacts ([spec 011](../specs/
 | S11-6 | Recording a new contact person at a site? | **"+ New contact person"** (in Update): the new person becomes the main contact; old ones kept under "Earlier contacts" (Call / WhatsApp / Make main), searchable and in the duplicate check (agent's recommendation). |
 | S11-7 | Restore the two contacts overwritten in week 1 from the history? | **No, leave them.** |
 | S11-8 | Ship in two drops or one? | **All in one go** (agent had recommended two drops). |
+
+Owner, session 7: daily region message ([spec 012](../specs/012-daily-region-message.md), 2026-11-12)
+
+| # | Question | Answer |
+| --- | --- | --- |
+| S12-1 | What should the daily region message (pasted into the region's WhatsApp group) mainly show? | **Yesterday only for now** (agent had recommended yesterday + today's plan). **Never the word "saves": say "activity".** |
+| S12-2 | How much detail, given salesmen of the region will read each other's day (ADR-0004)? | **Site names and what happened; Rs. on wins only.** No quote Rs., notes or contacts (agent's recommendation; ADR-0012). |
+| S12-3 | Which day? | **The last working day** (Sunday skipped: Monday shows Saturday), with **‹ › arrows** to step to other days (agent's recommendation). |
+| S12-4 | How is each salesman's list built? | **Grouped by what happened** (`Won: …`, `New: …`), site names joined (agent had recommended one line per site). |
+| S12-5 | Which groups? | **Won (Rs.) · Lost (reason) · Quoted · Sample given · New · Followed up.** Snoozes, typo fixes and contact changes left out; the count = different sites worked (agent's recommendation). |
+| S12-6 | Where is it opened? | **A "Daily message" button on the Today tab** (agent's recommendation). |
+| S12-7 | Around the salesmen's blocks? | **A region total line at the top; no closing line** (agent had recommended both). |
+| S12-8 | Order of salesmen? | **Fixed (`Rep_Mapping`) order every day**, "no activity" in place (agent's recommendation). |

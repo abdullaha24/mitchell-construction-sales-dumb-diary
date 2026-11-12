@@ -23,3 +23,5 @@ and don't re-argue it every session.
 | [0008](0008-sales-diary-id-and-web-address-in-code.md) | The Sales Diary sheet's ID and the web app address are kept in the code | Accepted |
 | [0009](0009-worked-at-and-note-at.md) | Two new `Sites` columns: `worked_at` (going cold) and `note_at` (last-spoken line) | Accepted |
 | [0010](0010-owner-link-can-update-sites.md) | The owner's (admin) link can also update sites; his changes are recorded as `admin` | Accepted |
+| [0011](0011-earlier-contacts-in-a-sites-column.md) | Earlier contacts live in one `Sites` column | Accepted |
+| [0012](0012-daily-message-shared-with-the-region.md) | The daily region message shows a salesman's site names and wins to his region | Proposed |

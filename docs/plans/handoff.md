@@ -1,6 +1,6 @@
 # Handoff: start here
 
-> Updated 2026-11-11, end of session 6. **Every session: read this first, and update it before you
+> Updated 2026-11-12, session 7. **Every session: read this first, and update it before you
 > finish.** Rules and commands are in `AGENTS.md`; owner decisions in `docs/product/open-questions.md`.
 
 ## Where we are
@@ -31,13 +31,18 @@ on 2026-11-05. `main` = GitHub = what is deployed.
 - Speed (agent, Chromium, warm, v14): admin's page opens in ~4.7 s; a summary in 2–3.5 s.
 
 ## Next
+0. **Spec 012, daily region message: Draft, waiting for the owner's approval** (interview done
+   2026-11-12, answers S12-1 to S12-8; ADR-0012 Proposed). When he approves: set spec 012 `Approved`
+   and ADR-0012 `Accepted`, then build (builder subagent + cold review, as usual). New public function
+   `adminPageDaily` (allow-list 20 → 21); admin page pin may rise to 114,000; salesman's page unchanged.
+   Agent's own choices are listed at the end of the spec; he may change them at review.
 1. **Owner's check of spec 011**: a review call from Summary on a laptop (tiles, regions, Prev /
    Next, Plan tab); a salesman tries + New contact person. Then spec 011 Done, roadmap 7d.
    Not yet checked live by the agent: a salesman's own page (no salesman link) and a contact save
    on live data (would write; covered by tests).
 2. **Owner's phone check of the WhatsApp summary** (specs 009 / 010): the numbers block lines up,
    Copy says "Copied". If it doesn't line up: bold labels instead (spec 010). Then 009 / 010 Done.
-3. **Speed pass (spec 012, to write)**: measure where the salesman's open time goes (server /
+3. **Speed pass (spec 013, to write)**: measure where the salesman's open time goes (server /
    download / page script), shrink what runs at open. Target ≤ ~3.9 s warm. The salesman's page
    has ~1.7 KB left under its pin.
 4. **Bugs** from salesmen arrive via the owner in chat. Watch usage through the Sheets connector
@@ -55,7 +60,8 @@ until reload; a lost reply retried after midnight, or a retried Update after his
 can be refused once (he taps Save again; nothing lost).
 
 ## How we work (the owner likes it)
-- Interview the owner first (tappable questions, one at a time, **(Recommended)** option first),
+- Interview the owner first (tappable questions, **one at a time, 4 options**, **(Recommended)** option first;
+  AGENTS.md → How to work, step 0), grounding recommendations in live data (read only),
   show a **mockup picture** for look-and-feel, write the spec, have it reviewed cold, fold in fixes.
 - **Builder subagents** build from the spec with tests (separate worktrees when two run in
   parallel; the main agent merges). A **cold reviewer** reviews every build and **re-reviews every

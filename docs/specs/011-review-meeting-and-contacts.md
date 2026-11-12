@@ -7,7 +7,7 @@
   [open questions](../product/open-questions.md)); he asked for it to be built and shipped in one go
 - **Related:** specs 008 (admin screen), 009 / 010 (summaries), 003 / 004 (contact, Edit details,
   Update) · ADR-0004 (privacy), ADR-0010 (admin updates), **ADR-0011** (earlier contacts) ·
-  [data model](../architecture/data-model.md) v0.9 (updated with the code). The speed pass moves to spec 012.
+  [data model](../architecture/data-model.md) v0.9 (updated with the code). The speed pass moves to spec 013 (012 became the daily region message).
 
 ## Why
 Feedback from the owner and his team after the first week live:
@@ -258,7 +258,7 @@ The column is required like every other (a missing header shows the usual setup 
 - Restoring the two contacts overwritten in week 1 (owner S11-7: leave them).
 - A favicon / home-screen icon (Apps Script needs a hosted image URL): later.
 - Visit vs call planning, meeting notes, changes since last meeting.
-- The speed pass (spec 012).
+- The speed pass (spec 013).
 
 ## Open questions
 None.
