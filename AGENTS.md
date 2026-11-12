@@ -101,6 +101,12 @@ and anything that touches Meta-Data still need his OK.
 
 ## How to work
 
+0. **Brainstorm the owner's way** (owner, 2026-11-12). For any new idea, put on the product-manager
+   hat and **interview him before any code**: **one question at a time** (never a batch), each with
+   **4 tappable options** and **your recommended one first, marked "(Recommended)"**; he picks, you
+   ask the next. Ground recommendations in the live data where you can (read only). Show a mockup
+   (a picture, or the exact message text) for anything he will see. No code until he expressly
+   approves the spec.
 1. **Spec first.** No feature code without a spec in `docs/specs/` that the owner has approved
    (status `Approved`). If none exists, write a `Draft` spec and stop for review.
 2. **Decisions go in ADRs.** Choosing a library, changing the data model, changing how links or
