@@ -4,7 +4,7 @@
 > finish.** Rules and commands are in `AGENTS.md`; owner decisions in `docs/product/open-questions.md`.
 
 ## Where we are
-**Live: deployment version 14** (2026-11-11), same address since phase 1. Launched to the 7 salesmen
+**Live: deployment version 15** (2026-11-12), same address since phase 1. Launched to the 7 salesmen
 on 2026-11-05. `main` = GitHub = what is deployed.
 
 - **Salesman** (his private link): Today's Chase / Hot Pipeline / All My Parties (search, area
@@ -16,13 +16,18 @@ on 2026-11-05. `main` = GitHub = what is deployed.
   cold · This month**; he can Update any site (history `rep` = `admin`). **Summary**: team tiles,
   target bar, team table (tap a region or salesman for its own summary, ‹ Prev / Next ›), lost
   reasons; wide layout at ≥ 900 px for screen share. Links are made / cancelled on the computer
-  only (Sales Diary → Links).
+  only (Sales Diary → Links). **Daily message** (spec 012, ADR-0012): a button on Today; the last
+  working day (Sunday skipped; ‹ › up to 31 days back and today *(so far)*) as a WhatsApp text per
+  region (North / Center / South) for the region's group: a total line, then each salesman in fixed
+  order with Won (Rs.) · Lost (reason) · Quoted · Sample given · New · Followed up, or "no activity".
+  Never quote Rs., notes or contacts. Server: `adminPageDaily` (`src/daily.js`).
 - **Contacts** (spec 011): + New contact person in Update; old ones kept under Earlier contacts
   (`Sites.earlier_contacts`, ADR-0011); `Activity.action` `contact` is a save, never work.
 - **Look**: Mitchell logo strip, teal `#00738e` main colour (`docs/brand/`).
-- Specs 001–008 Done; 009, 010, 011 In progress (only the owner's own checks left). ADRs 0001–0011
-  Accepted. Tests: 429 unit + 9 browser checks. Served pages: salesman ~82.3 KB (pin 84,000),
-  admin ~106.7 KB (pin 110,000).
+- Specs 001–008 Done; 009, 010, 011, 012 In progress (only the owner's own checks left). ADRs
+  0001–0012 Accepted. Tests: 454 unit + 11 browser checks (`daily-random.check.js`: 300 seeded
+  random sequences on the Daily screen; the full browser run takes ~4 min). Served pages: salesman
+  82,530 bytes (pin 84,000), admin 111,726 (pin 111,800; spec 012 allows up to 114,000).
 
 ### Live data (2026-11-11)
 - 42 sites. **RIA has logged nothing since launch.** Two salesmen overwrote a contact through Edit
@@ -31,10 +36,10 @@ on 2026-11-05. `main` = GitHub = what is deployed.
 - Speed (agent, Chromium, warm, v14): admin's page opens in ~4.7 s; a summary in 2–3.5 s.
 
 ## Next
-0. **Spec 012, daily region message: Approved 2026-11-12, building** (answers S12-1 to S12-8;
-   ADR-0012 Accepted). Build with a builder subagent + cold review, as usual. New public function
-   `adminPageDaily` (allow-list 20 → 21); admin page pin may rise to 114,000; salesman's page unchanged.
-   Agent's own choices are listed at the end of the spec; he may change them at review.
+0. **Owner's check of spec 012**: he pastes a Daily message into a region group from his phone
+   (Share on WhatsApp opens the app; Copy works). Then spec 012 Done, roadmap 7e. Live v15 checked by
+   the agent (Tue 10 / Wed 11 Nov matched the sheet). Idea he deferred (S12-1): add *today's plan*
+   to the message.
 1. **Owner's check of spec 011**: a review call from Summary on a laptop (tiles, regions, Prev /
    Next, Plan tab); a salesman tries + New contact person. Then spec 011 Done, roadmap 7d.
    Not yet checked live by the agent: a salesman's own page (no salesman link) and a contact save
@@ -91,6 +96,9 @@ can be refused once (he taps Save again; nothing lost).
 4. Test live (admin link), check numbers against the sheet; close the spec; update this file.
 
 ## Things learned
+- **Page screens that fetch by tap** (spec 012's Daily screen took 3 review rounds): number every
+  request and act only on the latest one's reply or failure; keep only what can't go stale; back it
+  with a seeded random browser check (`daily-random.check.js`) and mutation-check its invariants.
 - **Formula injection:** every typed or picked text goes through `asText_` / `textify_`.
 - **Saves:** checks re-run inside the script lock; one-time `saveId` per form (`repSaveStatus`);
   replies carry only the saved card; one Sales Diary open, one read per tab (`tests/speed.test.js`).

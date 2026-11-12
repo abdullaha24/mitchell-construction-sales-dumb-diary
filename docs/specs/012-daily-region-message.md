@@ -1,6 +1,8 @@
 # 012: Daily region message (yesterday's activity, for the region's WhatsApp group)
 
-- **Status:** Approved (built 2026-11-12; not yet live)
+- **Status:** In progress: **live as deployment version 15** (2026-11-12), reviewed cold three
+  times (each fix round re-reviewed), checked live by the agent on the admin link; the owner pasting a
+  message into a region group is the last open item
 - **Owner approval:** approved by the owner on 2026-11-12 (session 7), after the interview (2026-11-12, answers **S12-1 to S12-8** in
   [open questions](../product/open-questions.md))
 - **Related:** roadmap phase 7e · [ADR-0012](../decisions/0012-daily-message-shared-with-the-region.md)
@@ -170,8 +172,11 @@ Won: Askari Homes Rs. 42,250
       fallbacks; no signal; Back returns to Today; no sideways scroll; all existing checks pass.
 - [x] `npm run check` and `npm run check:browser` green; served-size pins (salesman unchanged,
       admin ≤ 114,000).
-- [ ] Live (agent, admin link): the three messages for a recent day match the sheet read through
-      the connector.
+- [x] Live (agent, admin link): the three messages for a recent day match the sheet read through
+      the connector. *(Version 15, Chromium at 360 px inside Google's frame: Wed 11 Nov and Tue 10 Nov,
+      all three regions, matched the `Activity` tab row by row (e.g. Center 10 Nov Won 4 Rs. 274,450;
+      a quote won later shows as Quoted with no Rs.); Share link holds the shown text; no sideways
+      scroll; no page errors. Admin page opened in 4.6–6.3 s, the Daily message in 3.6 s.)*
 - [ ] Live (owner): he pastes a message into a region group from his phone.
 
 ## Out of scope
