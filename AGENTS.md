@@ -45,7 +45,7 @@ Node 22 or newer. All checks run locally with no Google account.
 | `npm test` | All tests: `node --test "tests/**/*.test.js"`. |
 | `npm run typecheck` | `tsc -p .`: type-checks `src/` (plain JS with JSDoc). |
 | `npm run check` | Type check, then tests. **Must pass before every commit.** |
-| `npm run check:browser` | Drives the owner's Links window, the salesman's page, the admin's screen, both summary screens and the Daily message in Chromium (the pages run against the real server code and fake sheets). Needs Playwright; skips if it isn't installed. Run it when any `.html` changes. |
+| `npm run check:browser` | Drives the owner's Links window, the salesman's page, the admin's screen, both summary screens and the Daily message (also in 300 seeded random sequences) in Chromium (the pages run against the real server code and fake sheets). Needs Playwright; skips if it isn't installed. Run it when any `.html` changes. |
 | `npm run guide` | Rebuilds the PDF user guides (`docs/guide/`: salesmen's and Admin's) from fresh screenshots on fake data. Needs Playwright. **Only when the owner asks** (2026-11-11: not wanted for now). |
 | `npx clasp push --force` | Sends `src/` to Apps Script. Always `--force`: without it, in a non-interactive shell clasp **silently skips** the push. Git is the source of truth. |
 | `npx clasp show-file-status` | Lists the files a push would send (should be `appsscript.json`, the `.js` files and the `.html` files in `src/`). |

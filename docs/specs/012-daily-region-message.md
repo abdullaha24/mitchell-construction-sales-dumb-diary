@@ -33,9 +33,10 @@ a day with nothing logged shows.
   reachable with the arrows (someone may have worked).
 - The page asks Google for a day **only when it is shown** (one trip, a few seconds; *"Getting the
   message…"*). One trip brings **all three regions** for that day, so switching pills is instant and
-  works with no signal. A day already fetched shows at once; **Refresh** on the Admin screen clears
-  them.
-- No signal: *"Couldn't get the message: no signal. Try again."* with **Try again**.
+  works with no signal. A past day already fetched shows at once; **Refresh** on the Admin screen
+  clears them. Today's text is *"so far"*: it is never kept, so going to today always asks again.
+- No signal: *"Couldn't get the message: no signal. Try again."* with **Try again** when there is
+  nothing on screen yet; otherwise he stays on the day he had (see *The page and the days*).
 - **Nothing is saved** in the sheet when he opens, shares or copies.
 
 ### The message (owner S12-1, S12-2, S12-4, S12-5, S12-7, S12-8)
@@ -116,16 +117,26 @@ Won: Askari Homes Rs. 42,250
 - **The salesman's page gets nothing new** (zero bytes): the screen lives in `Admin.html`. The
   admin's served page pin may rise from 110,000 to at most **114,000** bytes (it is ~106.7 KB now).
   *Built:* the salesman's page grew by 34 bytes only (82,530 served: guards so a summary reply that
-  comes after he left the Summary screen is kept, not drawn); the admin's ~111.6 KB, pin 111,700.
-- **The page and the days:** the screen's first open sends `''`; the arrows go to the reply's
-  `prev` / `next` (the server is the only source of days). A fetched day is kept, except today's
-  (*"so far"*), which is asked again each time it is shown. The kept days go on the **Refresh**
-  button and when the page's date changes (checked on opening, a pill, an arrow, Copy / Share and
-  coming back to the page; then it asks again with `''`). The automatic refresh (after 10 minutes
-  away) keeps them; if the Daily message is showing, it asks again for the day shown. The screen
-  changes only when a reply comes: a day that can't be fetched leaves him on the day he had (text,
-  pills, arrows), with *"Couldn't get Mon 9 Nov: no signal."* and **Try again** for that day; only
-  the first open, with nothing to show yet, says *"Couldn't get the message: no signal. Try again."*
+  comes after he left the Summary screen is kept, not drawn); the admin's ~111.7 KB, pin 111,800.
+- **The page and the days** (review round 3: kept simple on purpose):
+  - The server is the only source of days. The **Daily message** button opens on the day it opens
+    on: it asks with `''` (once that day is known and kept for today's date, it shows at once); ‹ ›
+    go to the reply's `prev` / `next`.
+  - Every ask has a number; only the **latest** ask's reply or failure is acted on (a kept day
+    shown at once also makes older asks void). Every reply is still kept for later, except today's.
+  - The screen changes only when a reply comes: a day that can't be fetched leaves him on the day
+    he had (text, pills, arrows), with *"Couldn't get Mon 9 Nov: no signal."* and **Try again**,
+    which asks again for the day of the latest ask. Only an open with nothing on screen yet says
+    *"Couldn't get the message: no signal. Try again."*
+  - Only a *"(so far)"* text can go stale. A past day's text stays valid across midnight: kept past
+    days are never cleared by a date change and he is never moved to another day. When the page's
+    date has moved on (checked on a pill, Copy / Share, and coming back to the page) and the screen
+    shows the old today, it asks again for **that same day** (now a whole day, no *"(so far)"*);
+    Copy / Share of the stale text are held back until it comes (one tap later copies the whole day).
+  - The **Refresh** button clears the kept days. The automatic refresh (after 10 minutes away) asks
+    again only when today *"(so far)"* is on screen; on a past day it does nothing.
+  - A seeded random browser test (`tests/browser/daily-random.check.js`, 300 sequences of 30 random
+    taps, reply fates and midnights) checks these rules after every step.
 
 ## Data
 - **No new tab, column or stored value; writes nothing.** Meta-Data only read, as always.
