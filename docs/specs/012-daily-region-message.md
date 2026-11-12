@@ -1,10 +1,10 @@
 # 012: Daily region message (yesterday's activity, for the region's WhatsApp group)
 
-- **Status:** Draft
-- **Owner approval:** _pending_ (interview 2026-11-12, answers **S12-1 to S12-8** in
+- **Status:** Approved (building)
+- **Owner approval:** approved by the owner on 2026-11-12 (session 7), after the interview (2026-11-12, answers **S12-1 to S12-8** in
   [open questions](../product/open-questions.md))
 - **Related:** roadmap phase 7e · [ADR-0012](../decisions/0012-daily-message-shared-with-the-region.md)
-  (Proposed: what the message may show to a salesman's region colleagues) · ADR-0004 (private lists) ·
+  (Accepted: what the message may show to a salesman's region colleagues) · ADR-0004 (private lists) ·
   ADR-0010 (admin link) · specs 008 (Today tab), 009 / 010 (summaries: periods, WhatsApp text, Share /
   Copy), 011 (Plan tab) · the speed pass moves to spec 013
 

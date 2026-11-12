@@ -33,7 +33,7 @@ Read before any product or UI work:
 **Live as deployment version 14** (2026-11-11): phases 0–7 (specs 001–008), summaries (009–010) and
 spec 011 (Mitchell look, tappable summaries for the review meeting, Plan tab, new contact person).
 Launched to the 7 salesmen on 2026-11-05; bugs are fixed as they come in. Next: the owner's checks,
-the daily region message (spec 012, Draft, awaiting his approval), then the speed pass (spec 013). Current state, next step and IDs: `docs/plans/handoff.md`.
+the daily region message (spec 012, Approved 2026-11-12, building), then the speed pass (spec 013). Current state, next step and IDs: `docs/plans/handoff.md`.
 
 ## Commands
 

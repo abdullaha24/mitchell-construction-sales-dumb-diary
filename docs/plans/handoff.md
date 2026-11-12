@@ -31,9 +31,8 @@ on 2026-11-05. `main` = GitHub = what is deployed.
 - Speed (agent, Chromium, warm, v14): admin's page opens in ~4.7 s; a summary in 2–3.5 s.
 
 ## Next
-0. **Spec 012, daily region message: Draft, waiting for the owner's approval** (interview done
-   2026-11-12, answers S12-1 to S12-8; ADR-0012 Proposed). When he approves: set spec 012 `Approved`
-   and ADR-0012 `Accepted`, then build (builder subagent + cold review, as usual). New public function
+0. **Spec 012, daily region message: Approved 2026-11-12, building** (answers S12-1 to S12-8;
+   ADR-0012 Accepted). Build with a builder subagent + cold review, as usual. New public function
    `adminPageDaily` (allow-list 20 → 21); admin page pin may rise to 114,000; salesman's page unchanged.
    Agent's own choices are listed at the end of the spec; he may change them at review.
 1. **Owner's check of spec 011**: a review call from Summary on a laptop (tiles, regions, Prev /

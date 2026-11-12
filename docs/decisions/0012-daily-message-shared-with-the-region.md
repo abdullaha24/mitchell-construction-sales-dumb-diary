@@ -1,6 +1,6 @@
 # 0012: The daily region message shows a salesman's site names and wins to his region
 
-- **Status:** Proposed (accepted with spec 012's approval)
+- **Status:** Accepted (owner, 2026-11-12, with spec 012)
 - **Date:** 2026-11-12
 - **Deciders:** owner (S12-2) / agent
 
