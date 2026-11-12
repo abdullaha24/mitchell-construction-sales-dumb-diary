@@ -97,9 +97,14 @@
     $('sumView').insertBefore(step, $('sumTabs'));
     document.addEventListener('visibilitychange', function () {
       if (!document.hidden && Date.now() - A.loadedAt >= A_REFRESH_MS) adminRefresh(true);
+      if (!document.hidden) aDailyStale();
     });
     $('dailyBack').onclick = function () { showList(true); };
-    $('dailyRetry').onclick = function () { aDailyGet(DM.day); };
+    $('dailyRetry').onclick = function () { aDailyGet(DM.retry); };
+    // Copy / Share of a "so far" text after midnight: ask again first (before App.html's own handler).
+    ['sumCopyBtn', 'sumWa'].forEach(function (id) {
+      $(id).addEventListener('click', function (e) { if (aDailyStale()) { e.preventDefault(); e.stopImmediatePropagation(); } }, true);
+    });
   }
   // ---- Summary (spec 009): his reply holds the team and each salesman's own; tapping a salesman's
   // line shows that one (no trip), Back returns to the team where he was. Spec 011: a region's
@@ -158,8 +163,11 @@
     ['sumShare', 'sumHold', 'sumCopy'].forEach(function (id) { box.appendChild($(id)); });
   }
   function adminRefresh(quiet) {
-    aDailyClear(); // the Daily message's kept days too (spec 012)
-    if (screen === 'daily') aDailyGet(DM.day);
+    // The Daily message (spec 012): only the button clears its kept days; on the Daily screen (the
+    // automatic refresh) the day shown is asked again (unless a day is already on its way), its text
+    // staying until the new one comes.
+    if (!quiet) aDailyClear();
+    if (screen === 'daily' && DM.shown && DM.want === null) aDailyGet(DM.shown.day);
     var b = $('refresh');
     b.disabled = true;
     b.textContent = 'Refreshing…';
@@ -377,62 +385,72 @@
   // ---- Daily message (spec 012): one region's day as WhatsApp text, built on the server. One trip
   // brings all three regions of a day, so the pills switch with no trip. The server decides the days:
   // the first open sends '' (the last working day) and ‹ › go to the reply's prev / next. A day is
-  // kept (DM.got) except today's, which is "so far": going to today always asks again. The kept days
-  // go when the date changes and on every refresh. The text shows exactly as it will paste. ----
-  var DM = { day: '', first: '', at: '', got: {}, busy: {}, bad: {}, reg: '' };
-  function aDailyClear() { DM.got = {}; DM.first = ''; DM.at = todayKey(); }
+  // kept (DM.got) except today's, which is "so far": going to today always asks again. The screen
+  // shows DM.shown and changes only when a reply comes: a day that can't be fetched leaves him on the
+  // day he had, with Try again. The kept days go on the Refresh button and when the date changes
+  // (then it asks for the day it opens on). The text shows exactly as it will paste. ----
+  var DM = { shown: null, first: '', at: '', got: {}, want: null, bad: '', retry: '', reg: '' };
+  function aDailyClear() { DM.got = {}; DM.first = ''; DM.at = todayKey(); DM.shown = null; }
   function aDailyView() {
-    var r = DM.got[DM.day];
+    var r = DM.shown;
     return r && r.regions.filter(function (x) { return x.region === DM.reg; })[0];
+  }
+  // The page's date moved on while the Daily message shows (midnight): start again.
+  function aDailyStale() {
+    if (screen !== 'daily' || DM.at === todayKey()) return false;
+    aDailyGo('');
+    return true;
   }
   // day: yyyy-MM-dd, or null for the day it opens on
   function aDailyGo(day) {
-    if (DM.at !== todayKey()) aDailyClear();
-    if (day === null) day = DM.first;
-    DM.day = day;
-    if (DM.busy[day] || (DM.got[day] && DM.got[day].next)) aDailyDraw(); else aDailyGet(day);
+    if (DM.at !== todayKey()) { aDailyClear(); day = ''; } else if (day === null) day = DM.first;
+    var r = DM.got[day];
+    if (!r || !r.next) return aDailyGet(day);
+    DM.shown = r; DM.want = null; DM.bad = '';
+    aDailyDraw();
   }
   function aDailyGet(day) {
-    function done(r, bad) {
-      DM.busy[day] = 0; DM.bad[day] = bad;
-      if (r) {
-        DM.got[r.day] = r;
-        if (!day) DM.first = r.day;
-        if (DM.day === day) DM.day = r.day;
-      }
+    function fail(bad) {
+      if (DM.want !== day) return;
+      DM.want = null; DM.bad = bad; DM.retry = day;
       aDailyDraw();
     }
-    delete DM.got[day];
-    DM.busy[day] = 1; DM.bad[day] = '';
+    DM.want = day; DM.bad = '';
     google.script.run.withSuccessHandler(function (r) {
-      if (r && r.ok && (!day || r.day === day)) done(r, ''); else done(0, 'Something went wrong. Try again.');
+      if (!r || !r.ok || (day && r.day !== day)) return fail('Something went wrong. Try again.');
+      DM.got[r.day] = r;
+      if (!day) DM.first = r.day;
+      if (DM.want !== day) return;
+      DM.shown = r; DM.want = null;
+      aDailyDraw();
     }).withFailureHandler(function (e) {
       e = readable(e);
-      done(0, /no signal/.test(e) ? "Couldn't get the message: no signal. Try again." : e);
+      fail(!/no signal/.test(e) ? e : day && DM.shown ? "Couldn't get " + aDayName(day) + ' ' + shortDay(day) + ': no signal.'
+        : "Couldn't get the message: no signal. Try again.");
     }).adminPageDaily(k, day);
     aDailyDraw();
   }
   function aDailyDraw() {
     if (screen !== 'daily') return;
-    var day = DM.day, r = DM.got[day], regions = aRegions(), bad = DM.bad[day], m = $('dailyMsg');
+    var r = DM.shown, day = r ? r.day : '', regions = aRegions(), m = $('dailyMsg');
     [['dailyPrev', r && r.prev], ['dailyNext', r && r.next]].forEach(function (x, i) {
       var b = $(x[0]), to = x[1];
       b.style.visibility = to ? '' : 'hidden';
       b.textContent = to ? (i ? '' : '‹ ') + aDayName(to) + ' ' + Number(to.slice(8)) + (i ? ' ›' : '') : '';
       b.onclick = function () { aDailyGo(to); };
     });
-    $('dailyDay').textContent = day ? aDayName(day) + ' ' + shortDay(day) + (r && !r.next ? ' (so far)' : '') : '';
+    $('dailyDay').textContent = day ? aDayName(day) + ' ' + shortDay(day) + (r.next ? '' : ' (so far)') : '';
     if (!DM.reg) DM.reg = (fetchStored('salesdiary.daily') || {}).r; // the pill he used last
     if (!has(regions, DM.reg)) DM.reg = regions[0];
     var row = $('dailyRegions');
     row.textContent = '';
     regions.forEach(function (reg) {
-      row.appendChild(pill(reg, reg === DM.reg, function () { DM.reg = reg; store('salesdiary.daily', { r: reg }); aDailyDraw(); }))
+      row.appendChild(pill(reg, reg === DM.reg, function () { DM.reg = reg; store('salesdiary.daily', { r: reg }); aDailyStale() || aDailyDraw(); }))
         .id = 'daily-' + reg;
     });
-    m.textContent = DM.busy[day] ? 'Getting the message…' : bad;
+    m.textContent = DM.want !== null ? 'Getting the message…' : DM.bad;
     m.hidden = !m.textContent;
-    $('dailyRetry').hidden = !bad || DM.busy[day];
+    $('dailyRetry').hidden = !DM.bad || DM.want !== null;
     var v = aDailyView();
     $('dailyText').hidden = $('sumShare').hidden = !v;
     $('sumHold').hidden = $('sumCopy').hidden = true;

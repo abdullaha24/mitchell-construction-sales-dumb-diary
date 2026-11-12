@@ -514,7 +514,7 @@
       // What is on screen again: the list, or a summary's site list (spec 011) where he is in it.
       function redraw() { if (screen === 'list') renderList(); else sumRedraw(); }
       function sumRedraw() {
-        if (sum.l) { var y = scrollY; renderSum(); scrollTo(0, y); }
+        if (sum.l && screen === 'summary') { var y = scrollY; renderSum(); scrollTo(0, y); }
       }
       function readable(error) {
         var message = (error && error.message) || String(error || '');
