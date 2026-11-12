@@ -31,3 +31,8 @@ changes. ADR-0004 is unchanged for the app: a salesman's page still receives onl
   same party may now notice it; prices stay private.
 - A test pins what the text may never hold (quote Rs., notes, contacts, other regions).
 - Widening the message later (e.g. quote Rs.) needs a new ADR.
+
+## Note (owner, 2026-11-12, S12-10)
+"The admin's own changes" never appear as anyone's activity. When the admin corrects the Rs. of a site
+won that day, the message uses his corrected figure as the Won amount (a won figure, never a quote).
+This applies the decision above; it does not widen it.

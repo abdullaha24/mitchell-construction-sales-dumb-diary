@@ -69,10 +69,12 @@ Won: Askari Homes Rs. 42,250
   4. `Sample given:` site names;
   5. `New:` sites he added that day;
   6. `Followed up:` every other site he worked that day (an Update with a note, a new follow-up
-     date, a changed Rs., or a stage moved back), only if it is not already named in 1–5.
+     date, a changed Rs., or a stage moved back), only if it is not already named in 1–5 (owner
+     S12-9: a site added and updated the same day shows once, under New).
   Within a group (except Won), sites in the order they were first worked that day.
 - **Never in the message** (owner S12-2, ADR-0012): quote Rs., Cash / Credit, notes, contact names
-  or numbers, areas, another region's salesmen, the admin's own changes. **Snoozes, Edit details and
+  or numbers, areas, another region's salesmen, the admin's own changes as anyone's activity (his
+  same-day correction of a **won** Rs. is used as the Won amount, owner S12-10). **Snoozes, Edit details and
   contact changes are not activity** and never show (as "sites worked", S9-12).
 - Names, reasons and codes from the sheet go through `waSafe_` (as the summaries), so a name can't
   switch on WhatsApp formatting; a line break or run of spaces typed in the sheet becomes one space.
@@ -94,7 +96,8 @@ Won: Askari Homes Rs. 42,250
   moved it to Won (Order) / Lost / Dead, and **he** saved that row. If the admin or a former
   salesman made the last move, it is nobody's Won / Lost in the message; a salesman whose win was
   undone that day still shows the site in his other groups (Quoted, New, Followed up). Won Rs. =
-  the last value saved on that site that day (else the site's Rs. in `Sites`); the reason = the
+  the last value saved on that site that day, by anyone (so the admin's same-day correction of a
+  won amount is the one shown, owner S12-10; else the site's Rs. in `Sites`); the reason = the
   last lost reason saved that day (else the site's own). Won and reopened the same day: not Won.
 - **Site name** = the site's name in `Sites` now; a site no longer in `Sites` shows as
   `(not in the sheet)`.
@@ -170,7 +173,7 @@ Won: Askari Homes Rs. 42,250
 - Urdu labels.
 
 ## Open questions
-_None._ All answered in the interview (S12-1 to S12-8). The agent's own choices (each can be
+_None._ All answered in the interview (S12-1 to S12-8) and at build (S12-9, S12-10). The agent's own choices (each can be
 changed at review): the 31-day limit for ‹; Sundays reachable with the arrows; arrows allowed up
 to today *(so far)*; the region's activity = the sum of its salesmen's; the admin's rows left out;
 work counted for whoever saved it; the text shown on screen exactly as it will paste.

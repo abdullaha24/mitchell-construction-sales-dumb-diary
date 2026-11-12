@@ -167,3 +167,5 @@ Owner, session 7: daily region message ([spec 012](../specs/012-daily-region-mes
 | S12-6 | Where is it opened? | **A "Daily message" button on the Today tab** (agent's recommendation). |
 | S12-7 | Around the salesmen's blocks? | **A region total line at the top; no closing line** (agent had recommended both). |
 | S12-8 | Order of salesmen? | **Fixed (`Rep_Mapping`) order every day**, "no activity" in place (agent's recommendation). |
+| S12-9 | (At build) A site added and updated the same day was named under New **and** Followed up. | **Once, under New**: Followed up lists only sites not named in Won, Lost, Quoted, Sample given or New (agent's recommendation). |
+| S12-10 | (At build) The admin corrects a won Rs. the same day (a salesman typed 85 for 85,000): which amount goes in the message? | **The corrected amount.** His correction is never shown as anyone's activity; it only fixes the Won Rs. (agent's recommendation; matches the summaries). |
