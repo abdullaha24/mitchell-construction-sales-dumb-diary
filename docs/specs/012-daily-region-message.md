@@ -69,13 +69,13 @@ Won: Askari Homes Rs. 42,250
   4. `Sample given:` site names;
   5. `New:` sites he added that day;
   6. `Followed up:` every other site he worked that day (an Update with a note, a new follow-up
-     date, a changed Rs., or a stage moved back), only if it is not already named in 1–4.
+     date, a changed Rs., or a stage moved back), only if it is not already named in 1–5.
   Within a group (except Won), sites in the order they were first worked that day.
 - **Never in the message** (owner S12-2, ADR-0012): quote Rs., Cash / Credit, notes, contact names
   or numbers, areas, another region's salesmen, the admin's own changes. **Snoozes, Edit details and
   contact changes are not activity** and never show (as "sites worked", S9-12).
 - Names, reasons and codes from the sheet go through `waSafe_` (as the summaries), so a name can't
-  switch on WhatsApp formatting.
+  switch on WhatsApp formatting; a line break or run of spaces typed in the sheet becomes one space.
 
 ## Rules
 - **The day** = 00:00 to 24:00 Pakistan time (`Asia/Karachi`); each `Activity` row counts by its own
@@ -89,10 +89,13 @@ Won: Askari Homes Rs. 42,250
 - **New** = sites with a `created` row by him that day.
 - **Sample given / Quoted** = sites he moved to Sample / Trial / Rate Quoted that day (`created` at
   that stage or `stage_change` to it), as the summaries count them (spec 009).
-- **Won / Lost** = as the day ended (the rule spec 009 uses for a finished period, S9-14): the
-  **last** `created` / `stage_change` row he saved on that site that day moved it to Won (Order) /
-  Lost / Dead. Won Rs. = the last value saved on that site that day; the reason = the last lost
-  reason saved that day. Won and reopened the same day: not Won.
+- **Won / Lost** = as the day ended (the rule spec 009 uses for a finished period, S9-14), per
+  site: the **last** `created` / `stage_change` row saved on that site that day, **by anyone**,
+  moved it to Won (Order) / Lost / Dead, and **he** saved that row. If the admin or a former
+  salesman made the last move, it is nobody's Won / Lost in the message; a salesman whose win was
+  undone that day still shows the site in his other groups (Quoted, New, Followed up). Won Rs. =
+  the last value saved on that site that day (else the site's Rs. in `Sites`); the reason = the
+  last lost reason saved that day (else the site's own). Won and reopened the same day: not Won.
 - **Site name** = the site's name in `Sites` now; a site no longer in `Sites` shows as
   `(not in the sheet)`.
 - **Totals** add up the salesmen's groups (a site Quoted and New counts in both, as in the blocks).
@@ -109,7 +112,12 @@ Won: Askari Homes Rs. 42,250
 - **Public functions:** allow-list in `tests/menu.test.js` 20 → **21**.
 - **The salesman's page gets nothing new** (zero bytes): the screen lives in `Admin.html`. The
   admin's served page pin may rise from 110,000 to at most **114,000** bytes (it is ~106.7 KB now).
-  *Built:* the salesman's page unchanged (82,496 bytes served); the admin's ~110.8 KB, pin 111,000.
+  *Built:* the salesman's page grew by 10 bytes only (82,506 served: a guard so a summary reply that
+  comes after he left the Summary screen is kept, not drawn); the admin's ~111.1 KB, pin 111,200.
+- **The page and the days:** the screen's first open sends `''`; the arrows go to the reply's
+  `prev` / `next` (the server is the only source of days). A fetched day is kept, except today's
+  (*"so far"*), which is asked again each time it is shown; the kept days go when the date changes
+  and on every refresh (the button, and the automatic one after 10 minutes away).
 
 ## Data
 - **No new tab, column or stored value; writes nothing.** Meta-Data only read, as always.
@@ -123,7 +131,7 @@ Won: Askari Homes Rs. 42,250
 - [x] Count tests: activity = different sites with created / stage_change / update; snoozes, Edit
       details and contact changes never counted or named; New; Sample given; Quoted; Won / Lost as
       the day ended (won then reopened: not Won; won twice: once; Rs. and reason the last of the
-      day); Followed up lists only sites not named in Won / Lost / Quoted / Sample given; a stage
+      day); Followed up lists only sites not named in Won / Lost / Quoted / Sample given / New; a stage
       moved back is Followed up; the admin's rows never show; a former salesman never shows; a
       handed-over site counts for whoever did the work; a site deleted by hand shows `(not in the
       sheet)`.
@@ -164,12 +172,11 @@ work counted for whoever saved it; the text shown on screen exactly as it will p
 
 Choices made while building (each can be changed at review): `(so far)` sits inside the bold
 heading (`*North · Thu 12 Nov (so far)*`); both arrows name their day the same way (**‹ Tue 10**,
-**Thu 12 ›**); a site he added and then updated the same day is in **New** and in **Followed up**
-(Followed up leaves out only Won / Lost / Quoted / Sample given, as written); a site moved to Rate
+**Thu 12 ›**); Followed up is every other site he worked, so a site he added and then updated the
+same day is in **New** only (review round 1); a site moved to Rate
 Quoted or Sample / Trial that day is Quoted / Sample given even if it moved on later that day (as
-spec 009 counts them), so a site won, reopened and won again shows under Won and Quoted; Won Rs. and
-the lost reason are the last saved on that site that day by anyone (spec 009's "as the period
-ended"), the site's Rs. in `Sites` if none was saved; a Won site with no Rs. at all shows its name
-only; a site with no name shows its ID; the reply also carries `ok: true`, as every other reply.
+spec 009 counts them), so a site won, reopened and won again shows under Won and Quoted; Won / Lost
+are decided per site by its final move that day by anyone (see Rules); a Won site with no Rs. at all
+shows its name only; a site with no name shows its ID; the reply also carries `ok: true`, as every other reply.
 The Share on WhatsApp / Copy row (and Copy's fallbacks) is the summary's own, moved onto this
-screen while it shows, so the salesman's page gets no new bytes.
+screen while it shows; the only change to the salesman's page is the 10-byte Summary guard.
