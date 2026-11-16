@@ -169,3 +169,30 @@ Owner, session 7: daily region message ([spec 012](../specs/012-daily-region-mes
 | S12-8 | Order of salesmen? | **Fixed (`Rep_Mapping`) order every day**, "no activity" in place (agent's recommendation). |
 | S12-9 | (At build) A site added and updated the same day was named under New **and** Followed up. | **Once, under New**: Followed up lists only sites not named in Won, Lost, Quoted, Sample given or New (agent's recommendation). |
 | S12-10 | (At build) The admin corrects a won Rs. the same day (a salesman typed 85 for 85,000): which amount goes in the message? | **The corrected amount.** His correction is never shown as anyone's activity; it only fixes the Won Rs. (agent's recommendation; matches the summaries). |
+
+Owner, session 8: quotes from the diary ([spec 014](../specs/014-quotes-from-the-diary.md), 2026-11-16).
+Amounts and limits for the checks are kept in the private quotations repo, not here.
+
+| # | Question | Answer |
+| --- | --- | --- |
+| S14-1 | Who gives the final OK before a salesman's quote is issued? | **The agent checks every quote; clean ones issue by themselves; unusual ones wait for the Admin** (agent had recommended sending unusual ones back to the salesman). |
+| S14-2 | Does the QuickBooks product list hold prices? | **Names only, no prices**: the salesman types every rate (agent had recommended list prices with a floor). |
+| S14-3 | What counts as unusual? | **A rate well off our last quote for that product, and a big total** (agent's recommendation). Not: first-time products, each salesman's first quote. |
+| S14-4 | Big total from what amount? | **Set by the owner** (kept in the quotations repo; agent's recommendation). |
+| S14-5 | Where does the Admin see and approve held quotes? | **A "Quotes waiting" list on the Admin screen**, with the draft PDF, the reason, Approve / Send back (agent's recommendation). |
+| S14-6 | How does the PDF reach the salesman? | **Download only, no public link** (agent had recommended Open PDF + a WhatsApp link). Download inside Google's frame must be proven on a phone first. |
+| S14-7 | Who signs a salesman's quote? | **The salesman himself**: name, designation, mobile (agent's recommendation). |
+| S14-8 | Extra choices on the form? | **"With GST" switch and a freight line** only (agent's recommendation). |
+| S14-9 | Customer details? | **Pre-filled from the card, editable for this quote only**; the card doesn't change (agent's recommendation). |
+| S14-10 | Units? | One short unit list (agent had recommended per-product units). *Changed by S14-18.* |
+| S14-11 | Update the site when a quote is issued? | **Yes: move to Rate Quoted with the quote total** and a history line (agent's recommendation). |
+| S14-12 | How fast? | **Under 10 minutes is fine**: use the Claude routine (agent's recommendation; ADR-0013). |
+| S14-13 | Cash / Credit? | **A Cash / Credit pick on the form; Credit quotes always wait for the Admin** (agent had recommended always 100% advance). |
+| S14-14 | What does a Credit quote print? | **"Payment: As per agreed credit terms."** (agent had recommended the Admin types it when approving). |
+| S14-15 | Changing an issued quote? | **A Revise button**: -R1, -R2 under the same checks (agent's recommendation). |
+| S14-16 | Rollout? | **Everyone at once** (agent had recommended one pilot salesman for a week). |
+| S14-17 | Product list? | **The QuickBooks items actually sold since July 2025**, duplicates removed: **53 products**. Left out: lines with no item (discounts, adjustments, one-off jobs), empty bags; `MITCH SEAL (KG)` is the same product as `MITCHSEAL (KG)`, which stays. |
+| S14-18 | (With the QuickBooks data) Units again? | **Pre-filled from how QuickBooks invoices each product; he can change it** (agent's recommendation). |
+| S14-19 | Who gets Make quote? | **AUR, WAK, SH, SJ, SM, IB. RIA does not.** |
+| S14-20 | (With the QuickBooks data) Compare a rate with invoice prices? | **No: past quotes only**, as agreed (agent had recommended the usual invoice price). |
+| S14-21 | Which product name prints? | **What the salesman picks**: the QuickBooks item name, exactly (owner: "the customer sees what the salesman picks"; agent's choice, as the item name always exists and keeps pack sizes). |

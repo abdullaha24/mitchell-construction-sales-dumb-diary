@@ -36,6 +36,10 @@ on 2026-11-05. `main` = GitHub = what is deployed.
 - Speed (agent, Chromium, warm, v14): admin's page opens in ~4.7 s; a summary in 2–3.5 s.
 
 ## Next
+00. **Spec 014 (Draft, 2026-11-16): quotes from the diary**, with ADR-0013 (Proposed). Waiting for
+   the owner's review. No code before he approves. First build step: prove a PDF download inside
+   Google's frame on a phone. The quotation side lives in the private `mcc-quotations` repo
+   (`docs/specs/diary-requests.md`).
 0. **Owner's check of spec 012**: he pastes a Daily message into a region group from his phone
    (Share on WhatsApp opens the app; Copy works). Then spec 012 Done, roadmap 7e. Live v15 checked by
    the agent (Tue 10 / Wed 11 Nov matched the sheet). Idea he deferred (S12-1): add *today's plan*
