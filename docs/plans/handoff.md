@@ -1,6 +1,6 @@
 # Handoff: start here
 
-> Updated 2026-11-12, session 7. **Every session: read this first, and update it before you
+> Updated 2026-11-16, session 8. **Every session: read this first, and update it before you
 > finish.** Rules and commands are in `AGENTS.md`; owner decisions in `docs/product/open-questions.md`.
 
 ## Where we are
@@ -36,10 +36,17 @@ on 2026-11-05. `main` = GitHub = what is deployed.
 - Speed (agent, Chromium, warm, v14): admin's page opens in ~4.7 s; a summary in 2–3.5 s.
 
 ## Next
-00. **Spec 014 (Draft, 2026-11-16): quotes from the diary**, with ADR-0013 (Proposed). Waiting for
-   the owner's review. No code before he approves. First build step: prove a PDF download inside
-   Google's frame on a phone. The quotation side lives in the private `mcc-quotations` repo
-   (`docs/specs/diary-requests.md`).
+00. **Build spec 014: quotes from the diary** (Approved 2026-11-16; ADR-0013 Accepted). Two repos:
+   this one (form, card, Admin's Quotes waiting, `Quotes` / `Products` tabs, timed job) and the
+   private `abdullaha24/mcc-quotations` (`docs/specs/diary-requests.md`: the routine run, the code
+   checks, roster, product seed list `config/diary-products-seed.csv`). Attach it with `add_repo`.
+   **Order:** (1) **download proof**: a throw-away page in Google's frame saves a PDF on a real
+   Android phone (owner tests it); if it fails, stop and ask the owner (no public links, S14-6);
+   (2) quotation side: `mcc from-request`, `mcc check-request`, skill, roster, tests;
+   (3) diary side with tests and browser checks; (4) owner sets up the routine + API trigger and
+   pastes its key into Script Properties; (5) live test on a **TEST** site (owner's OK), then all
+   six quote salesmen at once (S14-16). Creating the live `Quotes` / `Products` tabs and `Lists`
+   rows is a live data change: confirm with the owner when you get there.
 0. **Owner's check of spec 012**: he pastes a Daily message into a region group from his phone
    (Share on WhatsApp opens the app; Copy works). Then spec 012 Done, roadmap 7e. Live v15 checked by
    the agent (Tue 10 / Wed 11 Nov matched the sheet). Idea he deferred (S12-1): add *today's plan*

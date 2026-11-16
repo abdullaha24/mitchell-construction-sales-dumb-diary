@@ -1,6 +1,6 @@
 # 0013: Quotes are made by a Claude routine outside Apps Script
 
-- **Status:** Proposed
+- **Status:** Accepted (owner, 2026-11-16, with spec 014)
 - **Date:** 2026-11-16
 - **Deciders:** owner (S14-1, S14-12) / agent
 

@@ -1,7 +1,7 @@
 # 014: Quotes from the diary (a salesman asks for a PDF quotation from a site card)
 
-- **Status:** Draft
-- **Owner approval:** _pending_ (interview 2026-11-16, answers **S14-1 to S14-21** in
+- **Status:** Approved (build not started)
+- **Owner approval:** approved by the owner on 2026-11-16 (session 8), after the interview 2026-11-16, answers **S14-1 to S14-21** in
   [open questions](../product/open-questions.md))
 - **Related:** [ADR-0013](../decisions/0013-quotes-made-outside-apps-script.md) (Proposed: quotes
   are made by a Claude routine, not by Apps Script) · ADR-0002 (links) · ADR-0004 (a salesman sees
@@ -123,7 +123,8 @@ New tabs in **Sales Diary** (both created by `setup.js`; [`data-model.md`](../ar
 updated at build):
 
 `Products`: the pick-list, filled once from the QuickBooks export (53 products sold since
-July 2025), owner-editable.
+July 2025; the starting list is kept in the private quotations repo,
+`config/diary-products-seed.csv`), owner-editable.
 
 | Column | Example | Meaning |
 | --- | --- | --- |

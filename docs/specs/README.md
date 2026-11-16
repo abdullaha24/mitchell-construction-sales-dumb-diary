@@ -27,4 +27,4 @@ Status values: `Draft` → `Approved` → `In progress` → `Done` (or `Dropped`
 | [010](010-summary-tables.md) | Summary tables (neat layout) and a smaller page download | In progress (live, v13) |
 | [011](011-review-meeting-and-contacts.md) | Mitchell look, tappable summaries for the review meeting, Plan tab, new contact person | In progress (live, v14) |
 | [012](012-daily-region-message.md) | Daily region message: yesterday's activity per region, for the WhatsApp group | In progress (live, v15) |
-| [014](014-quotes-from-the-diary.md) | Quotes from the diary: a salesman asks for a PDF quotation from a site card | Draft |
+| [014](014-quotes-from-the-diary.md) | Quotes from the diary: a salesman asks for a PDF quotation from a site card | Approved |

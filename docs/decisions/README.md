@@ -25,4 +25,4 @@ and don't re-argue it every session.
 | [0010](0010-owner-link-can-update-sites.md) | The owner's (admin) link can also update sites; his changes are recorded as `admin` | Accepted |
 | [0011](0011-earlier-contacts-in-a-sites-column.md) | Earlier contacts live in one `Sites` column | Accepted |
 | [0012](0012-daily-message-shared-with-the-region.md) | The daily region message shows a salesman's site names and wins to his region | Accepted |
-| [0013](0013-quotes-made-outside-apps-script.md) | Quotes are made by a Claude routine outside Apps Script | Proposed |
+| [0013](0013-quotes-made-outside-apps-script.md) | Quotes are made by a Claude routine outside Apps Script | Accepted |

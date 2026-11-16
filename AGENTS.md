@@ -33,8 +33,9 @@ Read before any product or UI work:
 **Live as deployment version 15** (2026-11-12): phases 0–7 (specs 001–008), summaries (009–010),
 spec 011 (Mitchell look, tappable summaries for the review meeting, Plan tab, new contact person) and
 spec 012 (the Admin's daily region message for the WhatsApp groups).
-Launched to the 7 salesmen on 2026-11-05; bugs are fixed as they come in. Next: the owner's checks
-(specs 009–012), then the speed pass (spec 013). Current state, next step and IDs: `docs/plans/handoff.md`.
+Launched to the 7 salesmen on 2026-11-05; bugs are fixed as they come in. **Next: build spec 014**
+(quotes from the diary, Approved 2026-11-16), then the owner's checks (specs 009–012) and the speed
+pass (spec 013). Current state, next step and IDs: `docs/plans/handoff.md`.
 
 ## Commands
 
