@@ -97,6 +97,7 @@ and anything that touches Meta-Data still need his OK.
 | `docs/decisions/` | ADRs: one file per significant decision. Copy `_template.md`. |
 | `docs/guide/` | The PDF user guides, salesmen's and Admin's (built by `npm run guide`; don't edit by hand). |
 | `docs/plans/` | `handoff.md` (start here), roadmap, step-by-step build plans. |
+| `docs/reports/` | Usage analyses of the live data for the owner. **The repo is public:** no customer names, phone numbers or Rs. amounts (use `site_id`s and counts). |
 | `src/` | Apps Script source (server code + HTML); clasp's `rootDir`. What each file holds: `src/README.md`. |
 | `tests/` | Automated tests (no Google account needed) and browser checks; see `tests/README.md`. |
 | `scripts/` | Helper scripts; `scripts/README.md` lists them (e.g. the user guide builder). |

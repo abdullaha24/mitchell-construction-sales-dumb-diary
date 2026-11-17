@@ -37,8 +37,10 @@ on 2026-11-05. `main` = GitHub = what is deployed.
   than a chase list). **No Lost / Dead yet.** Notes on 20 of 119 work saves (13 by IB).
   30 open sites past their follow-up date (AUR 14, IB 7, WAK 5, SJ 3, SH 1, SM 0). Snoozes come in
   bursts (6 sites in 30 s), i.e. clearing the list.
-- For the owner to check (not changed): SH's two Rs. 5,000 NA associates orders (S000082/83, likely
-  one entered twice); IB typed per-unit rates as the total (S000001 Rs. 85, S000002 Rs. 3,000).
+- For the owner to check (not changed): SH's S000082 / S000083 (same customer and amount, 4 min
+  apart: likely one order entered twice); IB typed per-unit rates as the total (S000001, S000002).
+- Full write-up, per salesman: `docs/reports/2026-11-17-first-week-usage.md`. **The repo is
+  public** (checked 2026-11-17): reports carry no customer names, phones or Rs. amounts.
 - Two salesmen overwrote a contact through Edit details in week 1 (owner S11-7: leave them).
 - `Links`: row 2 the admin link (`role` `owner`), rows 3–9 the 7 salesmen, all active.
 - Speed (agent, Chromium, warm, v14): admin's page opens in ~4.7 s; a summary in 2–3.5 s.
