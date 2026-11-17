@@ -1,6 +1,6 @@
 # Handoff: start here
 
-> Updated 2026-11-16, session 8. **Every session: read this first, and update it before you
+> Updated 2026-11-17, session 9. **Every session: read this first, and update it before you
 > finish.** Rules and commands are in `AGENTS.md`; owner decisions in `docs/product/open-questions.md`.
 
 ## Where we are
@@ -29,9 +29,17 @@ on 2026-11-05. `main` = GitHub = what is deployed.
   random sequences on the Daily screen; the full browser run takes ~4 min). Served pages: salesman
   82,530 bytes (pin 84,000), admin 111,726 (pin 111,800; spec 012 allows up to 114,000).
 
-### Live data (2026-11-11)
-- 42 sites. **RIA has logged nothing since launch.** Two salesmen overwrote a contact through Edit
-  details in week 1 (owner S11-7: leave them).
+### Live data (2026-11-17, session 9: usage analysis for the owner, read only)
+- 100 sites, 143 `Activity` rows (no `admin` rows). **RIA still nothing.** SJ quiet since Fri 13,
+  IB since Thu 12, SH since Fri 13 night. AUR logs every working day at ~9 am; WAK twice a day
+  (~9 am, ~5–6 pm); SH and SM late at night; IB through the day with notes.
+- 35 orders logged, **28 of them entered straight as Won** (the app is used as an order book more
+  than a chase list). **No Lost / Dead yet.** Notes on 20 of 119 work saves (13 by IB).
+  30 open sites past their follow-up date (AUR 14, IB 7, WAK 5, SJ 3, SH 1, SM 0). Snoozes come in
+  bursts (6 sites in 30 s), i.e. clearing the list.
+- For the owner to check (not changed): SH's two Rs. 5,000 NA associates orders (S000082/83, likely
+  one entered twice); IB typed per-unit rates as the total (S000001 Rs. 85, S000002 Rs. 3,000).
+- Two salesmen overwrote a contact through Edit details in week 1 (owner S11-7: leave them).
 - `Links`: row 2 the admin link (`role` `owner`), rows 3–9 the 7 salesmen, all active.
 - Speed (agent, Chromium, warm, v14): admin's page opens in ~4.7 s; a summary in 2–3.5 s.
 
